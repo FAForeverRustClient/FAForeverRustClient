@@ -1,0 +1,1 @@
+- No visible changes: smaller feature state and normalized settings now come directly from the backend.

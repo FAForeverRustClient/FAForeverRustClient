@@ -74,7 +74,11 @@ pub fn typescript_bindings() -> Result<String, specta_typescript::Error> {
         .map(str::trim_end)
         .collect::<Vec<_>>()
         .join("\n");
-    Ok(format!("{HEADER}\n{body}\n"))
+    let delta_kinds = serde_json::to_string(faf_domain::frontend::FrontendUpdate::DELTA_KINDS)
+        .expect("the static delta policy must serialize");
+    Ok(format!(
+        "{HEADER}\n{body}\nexport const DELTA_EVENT_KINDS = {delta_kinds} as const;\n"
+    ))
 }
 
 pub const INITIAL_STATE_HEADER: &str = "\

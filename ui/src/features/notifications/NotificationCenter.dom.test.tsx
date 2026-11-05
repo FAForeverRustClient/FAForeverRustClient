@@ -3,6 +3,7 @@ import { act, render } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NotificationCenter } from "./NotificationCenter";
 import { seedStore } from "../../testing/mounted";
+import { clearSentCommands, sentCommands } from "../../testing/sentCommands";
 import { playNotificationSound } from "./notificationSound";
 import { useAppStore } from "../../store/store";
 
@@ -142,4 +143,26 @@ it("shows an urgent match immediately while preserving the displaced in-client c
   expect(view.container.textContent).not.toContain("Message 2");
   await act(async () => { await vi.advanceTimersByTimeAsync(12000); });
   expect(view.container.textContent).toContain("Message 2");
+});
+
+it("marks everything read when the bell opens and keeps the new entries marked while it is open", async () => {
+  const at = new Date().toISOString();
+  const entry = (id: string, read: boolean) => ({ id, kind: "friendJoinedGame" as const, title: id, body: "", action: null, text: null, read, createdAt: at });
+  seedStore((state) => ({ ...state, notifications: { items: [entry("new", false), entry("seen", true), entry("newer", false)] } }));
+  const view = render(<NotificationCenter />);
+  await act(async () => {});
+  clearSentCommands();
+  act(() => view.container.querySelector<HTMLButtonElement>(".notification-bell")!.click());
+  expect(sentCommands()).toEqual([
+    { kind: "Notifications", command: { type: "markRead", payload: { id: "new" } } },
+    { kind: "Notifications", command: { type: "markRead", payload: { id: "newer" } } },
+  ]);
+  // The backend's answer: both are read now, and the badge goes.
+  act(() => {
+    const current = useAppStore.getState().state;
+    useAppStore.getState().hydrate({ ...current, notifications: { items: current.notifications.items.map((item) => ({ ...item, read: true })) } });
+  });
+  expect(view.container.querySelector(".notification-badge")).toBeNull();
+  const entries = [...view.container.querySelectorAll(".notification-item")];
+  expect(entries.map((item) => item.classList.contains("is-read"))).toEqual([false, true, false]);
 });

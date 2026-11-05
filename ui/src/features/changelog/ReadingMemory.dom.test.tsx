@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { useAppStore } from "../../store/store";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -132,12 +133,12 @@ it.each([
 it("keeps game and client reading positions independent when switching sections", () => {
   render(<ChangelogView />);
   scrollTo(720);
-  applyEvent({ kind: "Nav", event: { type: "changelogSectionSelected", payload: { section: "client" } } });
+  applyEvent({ kind: "Nav", event: { ...useAppStore.getState().state.nav, changelogSection: "client" } });
   expect(pane().scrollTop).toBe(0);
   scrollTo(350);
-  applyEvent({ kind: "Nav", event: { type: "changelogSectionSelected", payload: { section: "game" } } });
+  applyEvent({ kind: "Nav", event: { ...useAppStore.getState().state.nav, changelogSection: "game" } });
   expect(pane().scrollTop).toBe(720);
-  applyEvent({ kind: "Nav", event: { type: "changelogSectionSelected", payload: { section: "client" } } });
+  applyEvent({ kind: "Nav", event: { ...useAppStore.getState().state.nav, changelogSection: "client" } });
   expect(pane().scrollTop).toBe(350);
   expect(screen.getByRole("heading", { level: 1, name: "FAForever Client v0.4.0" })).toBeTruthy();
 });

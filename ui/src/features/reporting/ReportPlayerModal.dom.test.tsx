@@ -6,6 +6,7 @@
 // excerpt is shown before it is sent, the text shown is the text sent, and a
 // log that is not of the reported game says so.
 
+import { useAppStore } from "../../store/store";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -45,10 +46,7 @@ function excerpt(overrides: Partial<ReportLogExcerpt> = {}): ReportLogExcerpt {
 }
 
 function prepared(overrides: Partial<ReportLogExcerpt> = {}) {
-  applyEvent({
-    kind: "Reporting",
-    event: { type: "logPrepared", payload: { excerpt: excerpt(overrides) } },
-  });
+  applyEvent({ kind: "Reporting", event: { ...useAppStore.getState().state.reporting, logAttachment: { type: "ready", payload: { excerpt: excerpt(overrides) } } } });
 }
 
 function mountDialog(history: ModerationReportSummary[] = []) {
@@ -97,7 +95,7 @@ describe("attaching a game log to a report", () => {
     mountDialog();
     await fillReport(user, "4242");
     await user.click(checkbox());
-    applyEvent({ kind: "Reporting", event: { type: "logPreparing", payload: { gameId: 4242 } } });
+    applyEvent({ kind: "Reporting", event: { ...useAppStore.getState().state.reporting, logAttachment: { type: "preparing", payload: { gameId: 4242 } } } });
 
     expect(checkbox().checked).toBe(true);
     expect(screen.getByRole("status").textContent).toContain("Reading your game log");
@@ -214,15 +212,12 @@ describe("attaching a game log to a report", () => {
   it("says plainly when there is no log, and offers Retry when it could not be read", async () => {
     const user = userEvent.setup();
     mountDialog();
-    applyEvent({ kind: "Reporting", event: { type: "logUnavailable", payload: { gameId: null } } });
+    applyEvent({ kind: "Reporting", event: { ...useAppStore.getState().state.reporting, logAttachment: { type: "unavailable", payload: { gameId: null } } } });
     expect(screen.getByRole("status").textContent).toContain(
       "No game log is kept on this computer yet.",
     );
 
-    applyEvent({
-      kind: "Reporting",
-      event: { type: "logFailed", payload: { gameId: null, reason: "Access is denied. (os error 5)" } },
-    });
+    applyEvent({ kind: "Reporting", event: { ...useAppStore.getState().state.reporting, logAttachment: { type: "failed", payload: { gameId: null, reason: "Access is denied. (os error 5)" } } } });
     await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(reportingCommands()).toEqual([
       { kind: "Reporting", command: { type: "attachLog", payload: { gameId: null } } },

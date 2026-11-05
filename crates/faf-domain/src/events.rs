@@ -1,8 +1,9 @@
 //! [`AppEvent`]: the single delta type.
 //!
 //! This is a namespaced enum-of-enums (one variant per slice), never a flat enum.
-//! The exact same value is reduced into [`crate::AppState`] **and** serialized to
-//! the frontend, which guarantees backend and UI never disagree (ARCHITECTURE.md §3.2).
+//! Rust reduces these events into [`crate::AppState`]. The window receives
+//! authoritative replacements or explicitly retained compact deltas through
+//! [`crate::frontend::FrontendUpdate`], with conformance coverage for the latter.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;

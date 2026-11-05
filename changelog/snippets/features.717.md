@@ -1,0 +1,2 @@
+- A notification says when a friend's live game can be watched, five minutes after it started, with a button that starts the replay.
+- A friend starting a game is announced with their name as the title and the game as the message.

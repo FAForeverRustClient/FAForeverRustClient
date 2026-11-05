@@ -41,6 +41,8 @@ struct Case {
 #[derive(Serialize)]
 struct Step {
     event: AppEvent,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    update: Option<faf_domain::frontend::FrontendUpdate>,
     /// The owning state slice afterwards. The frontend also verifies that all
     /// other slices equal their pre-event values, which preserves the
     /// cross-slice guard without repeating the full AppState for every step.
@@ -60,7 +62,6 @@ struct Fixture {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HelperFixture {
-    review_summaries: Vec<ReviewSummaryCase>,
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     replay_read_keys: Vec<ReplayReadKeyCase>,
@@ -151,12 +152,6 @@ struct TrainingFilterCase {
     ratings: std::collections::BTreeMap<String, i32>,
     /// Ids selected, in the order the filter returns them.
     expected_ids: Vec<String>,
-}
-
-#[derive(Serialize)]
-struct ReviewSummaryCase {
-    reviews: Vec<Review>,
-    expected: ReviewSummary,
 }
 
 #[derive(Serialize)]
@@ -3397,16 +3392,6 @@ fn replay_lookups_kept_fixture() -> ReplayLookupsKeptFixture {
 }
 
 fn helper_fixture() -> HelperFixture {
-    let review_sets = vec![
-        Vec::new(),
-        vec![review(1, 5, "Ada"), review(2, 2, "Bob")],
-        vec![
-            review(3, 1, "Ada"),
-            review(4, 2, "Bob"),
-            review(5, 2, "Cid"),
-        ],
-        vec![review(6, -1, "Ada"), review(7, 9, "Bob")],
-    ];
     let statuses = vec![
         UploadStatus::Idle,
         UploadStatus::Compressing {
@@ -3508,13 +3493,6 @@ fn helper_fixture() -> HelperFixture {
     ];
 
     HelperFixture {
-        review_summaries: review_sets
-            .into_iter()
-            .map(|reviews| ReviewSummaryCase {
-                expected: summarize(&reviews),
-                reviews,
-            })
-            .collect(),
         upload_busy: statuses
             .into_iter()
             .map(|status| UploadBusyCase {
@@ -3725,7 +3703,27 @@ fn case(name: &str, events: Vec<AppEvent>) -> Case {
                 .get(&slice)
                 .unwrap_or_else(|| panic!("event slice `{slice}` is absent from AppState"))
                 .clone();
-            Step { event, expected }
+            let captured = faf_domain::frontend::FrontendUpdate::capture(&state, &event);
+            let encoded_event = serde_json::to_value(&event).expect("event must serialize");
+            let kind = encoded_event["kind"]
+                .as_str()
+                .expect("every event has a kind");
+            assert_eq!(
+                captured.is_none(),
+                faf_domain::frontend::FrontendUpdate::DELTA_KINDS.contains(&kind),
+                "the generated compact-delta list must match the projection policy"
+            );
+            if captured.is_none() {
+                let delta = faf_domain::frontend::FrontendUpdate::from_delta(event.clone())
+                    .expect("uncaptured events must use compact deltas");
+                assert_eq!(serde_json::to_value(delta).unwrap(), encoded_event);
+            }
+            let update = captured;
+            Step {
+                event,
+                update,
+                expected,
+            }
         })
         .collect();
     Case {

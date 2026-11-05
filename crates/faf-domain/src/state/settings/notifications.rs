@@ -347,6 +347,11 @@ pub struct NotificationPreferences {
     pub friend_offline: bool,
     pub friend_playing: bool,
     pub friend_joined_game: bool,
+    /// Whether a friend's game is announced once its live replay can be
+    /// watched, five minutes after it started. A switch of its own, so somebody
+    /// can hear that a friend started without being told again later, or the
+    /// reverse.
+    pub friend_replay_ready: bool,
     pub new_custom_games: bool,
     pub new_custom_games_friends_only: bool,
     pub game_full: bool,
@@ -421,6 +426,7 @@ impl Default for NotificationPreferences {
             friend_offline: true,
             friend_playing: true,
             friend_joined_game: true,
+            friend_replay_ready: true,
             new_custom_games: false,
             new_custom_games_friends_only: true,
             game_full: true,
@@ -475,6 +481,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             friend_offline: bool,
             friend_playing: bool,
             friend_joined_game: bool,
+            friend_replay_ready: bool,
             new_custom_games: bool,
             new_custom_games_friends_only: bool,
             game_full: bool,
@@ -519,6 +526,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     friend_offline: defaults.friend_offline,
                     friend_playing: defaults.friend_playing,
                     friend_joined_game: defaults.friend_joined_game,
+                    friend_replay_ready: defaults.friend_replay_ready,
                     new_custom_games: defaults.new_custom_games,
                     new_custom_games_friends_only: defaults.new_custom_games_friends_only,
                     game_full: defaults.game_full,
@@ -574,6 +582,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             friend_offline: wire.friend_offline,
             friend_playing: wire.friend_playing,
             friend_joined_game: wire.friend_joined_game,
+            friend_replay_ready: wire.friend_replay_ready,
             new_custom_games: wire.new_custom_games,
             new_custom_games_friends_only: wire.new_custom_games_friends_only,
             game_full: wire.game_full,
@@ -650,6 +659,7 @@ preference_patch! {
         friend_offline: bool,
         friend_playing: bool,
         friend_joined_game: bool,
+        friend_replay_ready: bool,
         new_custom_games: bool,
         new_custom_games_friends_only: bool,
         game_full: bool,

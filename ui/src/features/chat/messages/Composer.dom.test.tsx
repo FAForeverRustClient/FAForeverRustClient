@@ -9,6 +9,7 @@
 // The box is a single-line `<input>`: there is no multi-line message, so
 // Shift+Enter has no newline to insert and is not tested here.
 
+import { useAppStore } from "../../../store/store";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -261,11 +262,11 @@ describe("chat composer keyboard, mounted", () => {
   it("clears drafts and sent-line recall when the account changes", async () => {
     const user = userEvent.setup();
     const input = mount();
-    applyEvent({ kind: "Auth", event: { type: "loggedIn", payload: { player: { id: 1, name: "First", roles: [] } } } });
+    applyEvent({ kind: "Auth", event: { ...useAppStore.getState().state.auth, status: "loggedIn", player: { id: 1, name: "First", roles: [] }, mode: "account", error: null, signInLink: null } });
     await user.click(input);
     await user.keyboard("first account sent this{Enter}private unfinished line");
 
-    applyEvent({ kind: "Auth", event: { type: "loggedIn", payload: { player: { id: 2, name: "Second", roles: [] } } } });
+    applyEvent({ kind: "Auth", event: { ...useAppStore.getState().state.auth, status: "loggedIn", player: { id: 2, name: "Second", roles: [] }, mode: "account", error: null, signInLink: null } });
     expect(input.value).toBe("");
     await user.keyboard("{ArrowUp}");
     expect(input.value).toBe("");

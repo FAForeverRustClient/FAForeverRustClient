@@ -3099,7 +3099,9 @@ export type ForumPost = {
  *  the same channel as deltas so the webview cannot observe a post-recovery
  *  event and then roll itself back to an older snapshot from another channel.
  */
-export type FrontendMessage = { kind: "event"; revision: number; event: AppEvent } | { kind: "snapshot"; revision: number; state: AppState };
+export type FrontendMessage = { kind: "event"; revision: number; event: FrontendUpdate } | { kind: "snapshot"; revision: number; state: AppState };
+
+export type FrontendUpdate = { kind: "Session"; event: SessionState } | { kind: "Auth"; event: AuthState } | { kind: "Nav"; event: NavState } | { kind: "Notifications"; event: NotificationState } | { kind: "Clan"; event: ClanState } | { kind: "Reporting"; event: ReportingState } | { kind: "Reviews"; event: ReviewsState } | { kind: "Streams"; event: StreamsState } | { kind: "Tutorials"; event: TutorialsState } | { kind: "GalacticWar"; event: GalacticWarState } | { kind: "LinuxRuntime"; event: LinuxRuntimeState } | { kind: "Install"; event: InstallState } | { kind: "Connectivity"; event: ConnectivityState } | { kind: "Settings"; event: SettingsUpdate } | { kind: "Chat"; event: ChatEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "UnitHistory"; event: UnitHistoryEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Coop"; event: CoopEvent };
 
 /**  Counts that outlive the current season. */
 export type GalacticWarAlltime = {
@@ -6854,6 +6856,13 @@ export type NotificationPreferences = {
 	friendOffline: boolean,
 	friendPlaying: boolean,
 	friendJoinedGame: boolean,
+	/**
+	 *  Whether a friend's game is announced once its live replay can be
+	 *  watched, five minutes after it started. A switch of its own, so somebody
+	 *  can hear that a friend started without being told again later, or the
+	 *  reverse.
+	 */
+	friendReplayReady: boolean,
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
@@ -6929,6 +6938,7 @@ export type NotificationPreferencesPatch = {
 	friendOffline?: boolean,
 	friendPlaying?: boolean,
 	friendJoinedGame?: boolean,
+	friendReplayReady?: boolean,
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,
@@ -10504,6 +10514,12 @@ export type SettingsState = {
 	avatarHistory?: string[],
 	cacheInfo?: GameCacheInfo,
 };
+
+/**
+ *  Preference-group assignments, not another implementation of normalization.
+ *  Changing one group never resends unrelated player notes or browsing history.
+ */
+export type SettingsUpdate = { field: "all"; value: SettingsState } | { field: "theme"; value: Theme } | { field: "gamePath"; value: string } | { field: "replayGamePath"; value: string } | { field: "paths"; value: PathPreferences } | { field: "general"; value: GeneralPreferences } | { field: "appearance"; value: AppearancePreferences } | { field: "social"; value: SocialPreferences } | { field: "notifications"; value: NotificationPreferences } | { field: "chat"; value: ChatPreferences } | { field: "game"; value: GamePreferences } | { field: "discord"; value: DiscordPreferences } | { field: "connectivity"; value: ConnectivityPreferences } | { field: "debug"; value: DebugPreferences } | { field: "updates"; value: UpdatePreferences } | { field: "browsing"; value: BrowsingPreferences } | { field: "events"; value: EventsPreferences } | { field: "keptGeneratedMaps"; value: string[] } | { field: "mapGenerator"; value: GeneratorOptions } | { field: "matchmakerVetoes"; value: PlayerVeto[] } | { field: "mapPoolsSeen"; value: MapPoolsSeen[] } | { field: "avatarHistory"; value: string[] } | { field: "cacheInfo"; value: GameCacheInfo };
 
 /**  How entrants get in. */
 export type SignupMode =
@@ -14828,3 +14844,4 @@ export type WebviewEngine = {
  *  are talked about in a Monday-first week regardless of where the player is.
  */
 export type WeekStart = "monday" | "sunday";
+export const DELTA_EVENT_KINDS = ["Chat","Lobby","Replays","Maps","Mods","Social","Tourney","Changelog","UnitHistory","ClientUpdate","Guides","Uploads","Training","PlayerCard","Leaderboard","MapGenerator","Events","Coop"] as const;
