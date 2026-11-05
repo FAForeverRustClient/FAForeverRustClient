@@ -5251,6 +5251,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.joinProgress.adapter.javaAgainstExpJavaHost": "Du trittst wegen deiner Einstellungen mit dem Java-Adapter (faf-ice-adapter) bei, aber dieses Spiel ist mit dem experimentellen Java-Adapter (4.0.1) gehostet. Spieler mit verschiedenen Adaptern können sich nicht miteinander verbinden.",
   "chat.joinsAndParts": "Betreten & Verlassen",
   "app.stateSyncFailed": "Der Client hat den Kontakt zum Backend verloren: {reason}",
+  "app.stateSyncTimedOut": "Der Client hat beim Abrufen verpasster Aktualisierungen keine rechtzeitige Antwort erhalten.",
   "chat.gameBadge.aria": "{status}: {title} auf {map}",
   "chat.roster.filterPlaceholder": { one: "{count} Person, zum Filtern tippen", other: "{count} Personen, zum Filtern tippen" },
   "chat.roster.filterAria": { one: "Liste filtern ({count} Person)", other: "Liste filtern ({count} Personen)" },

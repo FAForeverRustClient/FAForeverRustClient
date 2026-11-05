@@ -2634,6 +2634,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "gameFolders.diagnostics": "Diagnostyka",
   "chat.joinsAndParts": "Wejścia i wyjścia",
   "app.stateSyncFailed": "Klient stracił kontakt z zapleczem: {reason}",
+  "app.stateSyncTimedOut": "Klient nie otrzymał odpowiedzi na czas podczas pobierania pominiętych aktualizacji.",
   "chat.gameBadge.aria": "{status}: {title} na mapie {map}",
   "chat.roster.filterPlaceholder": { one: "{count} użytkownik, pisz, aby filtrować", few: "{count} użytkownicy, pisz, aby filtrować", many: "{count} użytkowników, pisz, aby filtrować", other: "{count} użytkownika, pisz, aby filtrować" },
   "chat.roster.filterAria": { one: "Filtruj listę ({count} użytkownik)", few: "Filtruj listę ({count} użytkownicy)", many: "Filtruj listę ({count} użytkowników)", other: "Filtruj listę ({count} użytkownika)" },

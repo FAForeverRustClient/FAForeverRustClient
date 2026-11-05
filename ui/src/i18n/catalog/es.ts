@@ -2598,6 +2598,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "gameFolders.diagnostics": "Diagnóstico",
   "chat.joinsAndParts": "Entradas y salidas",
   "app.stateSyncFailed": "El cliente ha perdido el hilo del backend: {reason}",
+  "app.stateSyncTimedOut": "El cliente no recibió respuesta a tiempo al intentar recuperar las actualizaciones perdidas.",
   "chat.gameBadge.aria": "{status}: {title} en {map}",
   "chat.roster.filterPlaceholder": { one: "{count} usuario, escribe para filtrar", other: "{count} usuarios, escribe para filtrar" },
   "chat.roster.filterAria": { one: "Filtrar la lista ({count} usuario)", other: "Filtrar la lista ({count} usuarios)" },

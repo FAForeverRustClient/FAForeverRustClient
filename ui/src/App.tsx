@@ -6,7 +6,7 @@ import { useAppBackground } from "./shared/appBackground";
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "./ipc/client";
 import { native } from "./ipc/native";
-import { RevisionedMirror } from "./ipc/revisionedMirror";
+import { RevisionedMirror, SnapshotRecoveryTimeoutError } from "./ipc/revisionedMirror";
 import { measureEventApply } from "./ipc/eventCost";
 import { useAppStore } from "./store/store";
 import { t } from "./i18n";
@@ -162,9 +162,11 @@ export function App() {
         () => ipc.snapshot(),
         (error) => {
           if (active) {
-            setCommandError(t("app.stateSyncFailed", {
-              reason: error instanceof Error ? error.message : String(error),
-            }));
+            setCommandError(
+              error instanceof SnapshotRecoveryTimeoutError
+                ? t("app.stateSyncTimedOut")
+                : t("app.stateSyncFailed", { reason: error instanceof Error ? error.message : String(error) }),
+            );
           }
         },
       );

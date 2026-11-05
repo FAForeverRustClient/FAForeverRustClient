@@ -5,6 +5,7 @@ import {
   RECOVERY_MAX_ATTEMPTS,
   RECOVERY_TIMEOUT_MS,
   RevisionedMirror,
+  SnapshotRecoveryTimeoutError,
   recoveryRetryDelay,
 } from "./revisionedMirror";
 
@@ -226,7 +227,7 @@ describe("RevisionedMirror recovery", () => {
 
     await vi.runAllTimersAsync();
     expect(resnapshot).toHaveBeenCalledTimes(RECOVERY_MAX_ATTEMPTS);
-    expect(onError).toHaveBeenCalledExactlyOnceWith(new Error("State snapshot request timed out"));
+    expect(onError).toHaveBeenCalledExactlyOnceWith(expect.any(SnapshotRecoveryTimeoutError));
   });
 
   it("backs off between retries and reports once the attempts run out", async () => {

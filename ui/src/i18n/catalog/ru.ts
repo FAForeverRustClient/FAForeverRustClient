@@ -3155,6 +3155,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "changelog.client.noNotes": "К этому релизу нет заметок.",
   "chat.joinsAndParts": "Входы и выходы",
   "app.stateSyncFailed": "Клиент потерял связь с бэкендом: {reason}",
+  "app.stateSyncTimedOut": "Клиент не получил ответ вовремя при попытке получить пропущенные обновления.",
   "chat.gameBadge.aria": "{status}: {title} на карте {map}",
   "chat.roster.filterPlaceholder": { one: "{count} человек, введите текст для фильтра", few: "{count} человека, введите текст для фильтра", many: "{count} человек, введите текст для фильтра", other: "{count} человека, введите текст для фильтра" },
   "chat.roster.filterAria": { one: "Фильтр списка ({count} человек)", few: "Фильтр списка ({count} человека)", many: "Фильтр списка ({count} человек)", other: "Фильтр списка ({count} человека)" },

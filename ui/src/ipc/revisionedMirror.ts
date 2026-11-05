@@ -14,6 +14,8 @@ export const RECOVERY_COOLDOWN_MS = 750;
 /** Time an individual snapshot request can hold up recovery. */
 export const RECOVERY_TIMEOUT_MS = 15_000;
 
+export class SnapshotRecoveryTimeoutError extends Error {}
+
 /**
  * The wait before retrying a snapshot that failed, doubled per failure.
  *
@@ -212,7 +214,7 @@ export class RevisionedMirror {
     this.lastRecoveryAt = Date.now();
     let timeout: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_, reject) => {
-      timeout = setTimeout(() => reject(new Error("State snapshot request timed out")), RECOVERY_TIMEOUT_MS);
+      timeout = setTimeout(() => reject(new SnapshotRecoveryTimeoutError()), RECOVERY_TIMEOUT_MS);
     });
     let failure: { error: unknown } | null = null;
     try {

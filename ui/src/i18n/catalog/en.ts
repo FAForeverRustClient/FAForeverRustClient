@@ -370,6 +370,7 @@ export const en = {
   "chat.search.placeholder": "Search this conversation",
   "chat.joinsAndParts": "Joins & parts",
   "app.stateSyncFailed": "The client lost track of the backend: {reason}",
+  "app.stateSyncTimedOut": "The client did not get a response in time while trying to catch up on updates.",
   "chat.gameBadge.aria": "{status}: {title} on {map}",
   "chat.roster.filterPlaceholder": { one: "{count} user, type to filter", other: "{count} users, type to filter" },
   "chat.roster.filterAria": { one: "Filter the roster ({count} user)", other: "Filter the roster ({count} users)" },
