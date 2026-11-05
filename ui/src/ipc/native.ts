@@ -13,6 +13,7 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
+  ClientNotification,
   LogPreview,
   MapAnalysis,
   MarkedMapPreview,
@@ -82,6 +83,12 @@ export const native = {
   },
   notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
     return invoke("notification_popup_interact", { id, interaction });
+  },
+  nextNotificationActivation(acknowledgedId?: string): Promise<ClientNotification | null> {
+    return invoke("notification_popup_next_activation", { acknowledgedId });
+  },
+  onNotificationActivation(handler: () => void): Promise<() => void> {
+    return listen("notifications://activation-ready", handler);
   },
   onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" | "expire" }) => void): Promise<() => void> {
     return listen<{ id: string; interaction: "activate" | "dismiss" | "expire" }>("notifications://interact", (event) => handler(event.payload));

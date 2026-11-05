@@ -1,2 +1,4 @@
 - If a needed game file disappears from the cache during preparation, the client downloads it again.
 - The client retries automatically when a request to recover missed updates goes unanswered.
+- Clicks on desktop notifications are handled even if the main window is rebuilding.
+- Cleared or disabled notifications no longer appear while the desktop popup window is starting.

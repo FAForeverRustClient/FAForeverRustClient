@@ -312,7 +312,7 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                 Ok(event) => {
                     if matches!(
                         &event.event,
-                        AppEvent::Notifications(_) | AppEvent::Settings(_)
+                        AppEvent::Notifications(_) | AppEvent::Settings(_) | AppEvent::Auth(_)
                     ) {
                         crate::notification_popup::refresh(&handle);
                     }
@@ -400,6 +400,8 @@ pub(crate) fn start_core(app: &tauri::App, backend_version: String) -> Arc<App> 
                         handle.request_restart();
                         return;
                     }
+                    // The skipped events may have removed or disabled a card.
+                    crate::notification_popup::refresh(&handle);
                     let bytes = serde_json::to_vec(&snapshot.state).map_or(0, |json| json.len());
                     let _ = handle.emit_to(
                         tauri::EventTarget::webview_window(

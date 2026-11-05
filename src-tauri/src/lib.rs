@@ -204,6 +204,7 @@ pub fn run() {
                 notification_popup::notification_displays,
                 notification_popup::notification_popup_snapshot,
                 notification_popup::notification_popup_interact,
+                notification_popup::notification_popup_next_activation,
                 notification_popup::notification_popup_size,
                 notification_popup::notification_popup_painted,
                 notification_popup::game_notification_attention,
