@@ -1,0 +1,2 @@
+- If a needed game file disappears from the cache during preparation, the client downloads it again.
+- The client retries automatically when a request to recover missed updates goes unanswered.
