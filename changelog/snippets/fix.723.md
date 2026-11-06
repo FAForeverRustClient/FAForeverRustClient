@@ -1,0 +1,1 @@
+- Changelog units whose id is written in angle brackets show their icon again.
