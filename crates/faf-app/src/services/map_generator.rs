@@ -301,11 +301,7 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             // Read the authoritative persisted setting here rather than
             // trusting the webview to supply the cleanup exclusion list.
             let settings = ctx.ports.settings.load().await.unwrap_or_default();
-            let mut protected_maps = settings.browsing.favorite_maps;
-            // Two ways to be spared, and they mean different things: a
-            // favourite is a map somebody marked in the vault, a kept map is
-            // one they asked the generator to hold on to as it ran.
-            protected_maps.extend(settings.kept_generated_maps);
+            let protected_maps = protected_generated_maps(&settings);
             match ctx.ports.map_generator.clean_up(&protected_maps).await {
                 Ok(0) => services::notifications::add_text(
                     out,
@@ -340,6 +336,18 @@ pub async fn handle(cmd: MapGeneratorCommand, ctx: &ServiceCtx, out: &EventSink)
             }
         }
     }
+}
+
+/// The generated maps a clean-up spares: the Maps tab's button and the sweep
+/// as the client exits (`App::sweep_generated_maps`, #720).
+///
+/// Two ways to be spared, and they mean different things: a favourite is a
+/// map somebody marked in the vault, a kept map is one they asked the
+/// generator to hold on to as it ran.
+pub(crate) fn protected_generated_maps(settings: &faf_domain::state::SettingsState) -> Vec<String> {
+    let mut protected = settings.browsing.favorite_maps.clone();
+    protected.extend(settings.kept_generated_maps.iter().cloned());
+    protected
 }
 
 /// Whether Cancel was pressed while the run was still being prepared. See the

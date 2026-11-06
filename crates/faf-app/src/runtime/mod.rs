@@ -285,6 +285,10 @@ pub struct App {
     /// a game's end the state does not record.
     process: Arc<dyn crate::ports::ProcessPort>,
     lesson_results: Arc<std::sync::atomic::AtomicUsize>,
+    /// For [`Self::sweep_generated_maps`], which runs as the process exits,
+    /// when the command loop may already be gone.
+    settings: Arc<dyn crate::ports::SettingsPort>,
+    map_generator: Arc<dyn crate::ports::MapGeneratorPort>,
 }
 
 /// The command-processing loop. Spawn `run()` on any async runtime.
@@ -432,6 +436,8 @@ impl App {
         let order = Arc::new(ReleaseOrder::default());
         let send_order = Arc::new(Mutex::new(()));
         let process = ports.process.clone();
+        let settings = ports.settings.clone();
+        let map_generator = ports.map_generator.clone();
 
         let sink = EventSink {
             state: state.clone(),
@@ -479,6 +485,8 @@ impl App {
             revision,
             process,
             lesson_results: ctx.training.lesson_results.clone(),
+            settings,
+            map_generator,
         };
         let app_loop = AppLoop {
             cmd_rx,
@@ -648,6 +656,28 @@ impl App {
         self.lesson_results
             .load(std::sync::atomic::Ordering::SeqCst)
             != 0
+    }
+
+    /// Delete the generated maps nobody asked to keep, for the shell to call
+    /// as the client exits (#720). The Java client does the same on exit
+    /// (`MapGeneratorService.destroy`); this one only ever deleted them from
+    /// the Maps tab's clean-up button, so a generated map stayed on disk for
+    /// good unless somebody went and pressed it.
+    ///
+    /// Spared as by that button: favourites, and the maps on the keep list.
+    /// Both come from the settings file rather than the state, as there: a
+    /// state whose settings never loaded would spare nothing. A file that
+    /// cannot be read deletes nothing, and so does a running game, whose map
+    /// Windows would leave half deleted.
+    pub async fn sweep_generated_maps(&self) -> Result<usize, String> {
+        if self.process.game_running() {
+            return Ok(0);
+        }
+        let Some(settings) = self.settings.load().await else {
+            return Err("the settings file could not be read".into());
+        };
+        let protected = crate::services::map_generator::protected_generated_maps(&settings);
+        self.map_generator.clean_up(&protected).await
     }
 }
 
