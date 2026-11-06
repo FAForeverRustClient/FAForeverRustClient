@@ -412,6 +412,14 @@ export function NotificationsSettingsSection() {
             label={t("settings.notifications.whenFocused")}
           />
         </SettingRow>
+        <SettingRow label={t("settings.notifications.flashTaskbar")} hint={t("settings.notifications.flashTaskbarHint")}>
+          <SettingsSwitch
+            checked={preferences.flashTaskbar}
+            disabled={!preferences.enabled}
+            onChange={(flashTaskbar) => update({ flashTaskbar })}
+            label={t("settings.notifications.flashTaskbar")}
+          />
+        </SettingRow>
       </SettingsGroup>
       <SettingsGroup title={t("settings.notifications.group.inClient")}>
         <SettingRow label={t("settings.notifications.toastPositionLabel")}>

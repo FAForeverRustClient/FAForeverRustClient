@@ -1210,6 +1210,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.historyLifetimeHint": "Powiadomienie samo znika z historii pod dzwonkiem po tym czasie od nadejścia. 0 zachowuje każde, dopóki go nie usuniesz.",
   "settings.notifications.mapPool": "Nowe pule map",
   "settings.notifications.whenFocused": "Powiadamiaj przy aktywnym oknie",
+  "settings.notifications.flashTaskbar": "Miganie na pasku zadań",
+  "settings.notifications.flashTaskbarHint": "Wyróżnia ikonę na pasku zadań, gdy nadejdzie powiadomienie, a klient działa w tle.",
   "settings.notifications.matchFound": "Znaleziono grę",
   "settings.notifications.privateMessages": "Wiadomości prywatne",
   "settings.notifications.mentions": "Wzmianki",

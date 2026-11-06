@@ -59,13 +59,15 @@ export async function deliverNotifications(items: ClientNotification[], options:
   const record = (candidates: ClientNotification[], outcome: DeliveryOutcome, detail?: string) => candidates.forEach((item) => report?.({ id: item.id, outcome, detail }));
   const focused = await native.isWindowFocused().catch(() => document.hasFocus());
   const gameFocused = items.some((item) => item.kind === "gameFull") && await native.gameNotificationAttention().catch(() => false);
-  if (!focused && !gameFocused) void native.requestAttention().catch(() => undefined);
   const visible = items.filter((item) => {
     if (item.kind === "gameFull" && gameFocused) { record([item], "gameFocused"); return false; }
     if (!current(item)) { record([item], "disabled"); return false; }
     return true;
   });
   const latest = state().settings.notifications;
+  if (latest.flashTaskbar && !focused && !gameFocused && visible.length > 0) {
+    void native.requestAttention().catch(() => undefined);
+  }
   visible.forEach((item) => {
     if (deliveryFor(item.kind, latest).sound) {
       const sound = soundForKind(item.kind, latest.sounds);

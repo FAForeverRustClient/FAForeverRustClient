@@ -332,6 +332,8 @@ pub struct NotificationPreferences {
     /// such; a `u8` among them would be a row that is not a sound.
     pub sound_choice_version: u8,
     pub notify_when_focused: bool,
+    /// Request attention for notifications while the client is in the background.
+    pub flash_taskbar: bool,
     /// Which corner a toast appears in. See [`ToastPosition`].
     pub toast_position: ToastPosition,
     pub delivery: std::collections::BTreeMap<
@@ -415,6 +417,7 @@ impl Default for NotificationPreferences {
             sounds: NotificationSoundChoices::default(),
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: false,
+            flash_taskbar: true,
             toast_position: ToastPosition::BottomLeft,
             delivery: Default::default(),
             mentions_require_at: false,
@@ -467,6 +470,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sounds: NotificationSoundChoices,
             sound_choice_version: u8,
             notify_when_focused: bool,
+            flash_taskbar: bool,
             toast_position: ToastPosition,
             delivery: std::collections::BTreeMap<
                 crate::state::notifications::NotificationKind,
@@ -515,6 +519,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     // the file the migration below is for.
                     sound_choice_version: 0,
                     notify_when_focused: defaults.notify_when_focused,
+                    flash_taskbar: defaults.flash_taskbar,
                     toast_position: defaults.toast_position,
                     delivery: defaults.delivery,
                     mentions_require_at: defaults.mentions_require_at,
@@ -576,6 +581,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sounds,
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: wire.notify_when_focused,
+            flash_taskbar: wire.flash_taskbar,
             toast_position: wire.toast_position,
             delivery: wire.delivery,
             mentions_require_at: wire.mentions_require_at,
@@ -654,6 +660,7 @@ preference_patch! {
         history_lifetime_seconds: u32,
         sound_choice_version: u8,
         notify_when_focused: bool,
+        flash_taskbar: bool,
         toast_position: ToastPosition,
         desktop_style: DesktopNotificationStyle,
         desktop_position: ToastPosition,
@@ -1004,6 +1011,7 @@ mod desktop_tests {
             "toastPosition": "topLeft", "sounds": {"privateMessage": "silent"}});
         let preferences: NotificationPreferences = serde_json::from_value(stored).unwrap();
         assert!(!preferences.desktop && !preferences.popup && !preferences.sound);
+        assert!(preferences.flash_taskbar);
         assert_eq!(preferences.toast_position, ToastPosition::TopLeft);
         assert_eq!(preferences.desktop_position, ToastPosition::BottomRight);
         assert_eq!(preferences.desktop_style, DesktopNotificationStyle::Popup);
@@ -1014,6 +1022,20 @@ mod desktop_tests {
             NotificationSound::Silent
         );
     }
+
+    #[test]
+    fn taskbar_flash_can_be_disabled_independently_and_stays_off_when_loaded() {
+        let patch: NotificationPreferencesPatch =
+            serde_json::from_value(serde_json::json!({"flashTaskbar": false})).unwrap();
+        let preferences = patch.apply_to(NotificationPreferences::default());
+        assert!(!preferences.flash_taskbar);
+        assert!(preferences.desktop && preferences.popup && preferences.sound);
+        let saved = serde_json::to_value(&preferences).unwrap();
+        assert_eq!(saved["flashTaskbar"], false);
+        let loaded: NotificationPreferences = serde_json::from_value(saved).unwrap();
+        assert_eq!(loaded, preferences);
+    }
+
     #[test]
     fn delivery_edits_merge_per_channel_and_reset_to_inherited_values() {
         let first: NotificationPreferencesPatch = serde_json::from_value(

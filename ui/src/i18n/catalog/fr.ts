@@ -1261,6 +1261,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.historyLifetimeHint": "Une notification quitte d'elle-même l'historique de la cloche ce délai après son arrivée. 0 les garde toutes jusqu'à ce que vous les effaciez.",
   "settings.notifications.mapPool": "Nouveaux pools de cartes",
   "settings.notifications.whenFocused": "Notifier même en premier plan",
+  "settings.notifications.flashTaskbar": "Faire clignoter la barre des tâches",
+  "settings.notifications.flashTaskbarHint": "Met en évidence l’icône dans la barre des tâches lorsqu’une notification arrive et que le client est en arrière-plan.",
   "settings.notifications.matchFound": "Partie trouvée",
   "settings.notifications.privateMessages": "Messages privés",
   "settings.notifications.mentions": "Mentions",

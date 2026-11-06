@@ -1324,6 +1324,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.historyLifetimeHint": "Уведомление само исчезает из истории под колокольчиком через это время после прихода. 0 хранит каждое, пока вы его не удалите.",
   "settings.notifications.mapPool": "Новые пулы карт",
   "settings.notifications.whenFocused": "Уведомлять при активном окне",
+  "settings.notifications.flashTaskbar": "Мигание на панели задач",
+  "settings.notifications.flashTaskbarHint": "Выделяет значок на панели задач, когда приходит уведомление, а клиент находится в фоне.",
   "settings.notifications.matchFound": "Матч найден",
   "settings.notifications.privateMessages": "Личные сообщения",
   "settings.notifications.mentions": "Упоминания",
