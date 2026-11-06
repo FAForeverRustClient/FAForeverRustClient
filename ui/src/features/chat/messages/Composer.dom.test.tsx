@@ -186,11 +186,16 @@ describe("chat composer keyboard, mounted", () => {
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(input);
 
-    // A word nobody here is called.
+    // A word nobody here is called keeps the press (#712): the writer is
+    // about to correct it. A space after it gives Tab back to the page.
     await user.keyboard("zz");
     await user.tab();
-    expect(document.activeElement).toBe(emoji);
+    expect(document.activeElement).toBe(input);
     expect(input.value).toBe("zz");
+    await user.keyboard(" ");
+    await user.tab();
+    expect(document.activeElement).toBe(emoji);
+    expect(input.value).toBe("zz ");
 
     // A name already typed out in full.
     await user.click(input);

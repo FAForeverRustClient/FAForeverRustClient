@@ -11,10 +11,19 @@ describe("Tab in the composer", () => {
     expect(tabCompletion("", NICKS, null, true)).toBeNull();
   });
 
-  it("lets focus leave when the last word matches nobody", () => {
-    expect(tabCompletion("hello there", NICKS, null, false)).toBeNull();
+  it("keeps the press in the box for a word that names nobody, and changes nothing (#712)", () => {
+    // A mistyped name or a player who has left: the writer is about to fix
+    // the word, and focus jumping to the emoji button made them click back.
+    expect(tabCompletion("hello zz", NICKS, null, false)).toEqual({ completion: null, text: "hello zz", caret: 8 });
+    expect(tabCompletion("zz, welcome", NICKS, null, false, { start: 2, end: 2 }))
+      .toEqual({ completion: null, text: "zz, welcome", caret: 2 });
+  });
+
+  it("lets focus leave when no word is being typed", () => {
     // A trailing space means no word is being typed at all.
     expect(tabCompletion("hello Ser ", NICKS, null, false)).toBeNull();
+    // And Shift+Tab goes back whatever the word.
+    expect(tabCompletion("hello zz", NICKS, null, true)).toBeNull();
   });
 
   it("completes the word being typed, case-insensitively, sorted", () => {
