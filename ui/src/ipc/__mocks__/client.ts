@@ -36,6 +36,8 @@ export const ipc = {
 
   reportEventCost(): void {},
 
+  reportNotificationSkip(): void {},
+
   snapshot(): Promise<VersionedSnapshot> {
     return Promise.reject(new Error("no backend in a mounted test"));
   },

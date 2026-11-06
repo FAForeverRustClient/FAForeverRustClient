@@ -7,6 +7,7 @@ import { clearSentCommands, sentCommands } from "../../testing/sentCommands";
 import { playNotificationSound } from "./notificationSound";
 import { useAppStore } from "../../store/store";
 import type { ClientNotification } from "../../ipc/bindings";
+import { ipc } from "../../ipc/client";
 
 vi.mock("../../ipc/client");
 const nativeMock = vi.hoisted(() => ({
@@ -88,6 +89,22 @@ it("falls back to system notification when creating the popup fails", async () =
   await act(async () => {});
   expect(nativeMock.ensureNotificationPermission).toHaveBeenCalledOnce();
   expect(nativeMock.sendNotification).toHaveBeenCalledOnce();
+});
+
+it("writes a notification that missed the desktop popup to the client log", async () => {
+  const report = vi.spyOn(ipc, "reportNotificationSkip");
+  vi.mocked(nativeMock.showNotificationPopup).mockRejectedValue(new Error("Unavailable"));
+  render(<NotificationCenter />);
+  await act(async () => {});
+  expect(report).toHaveBeenCalledWith("matchFound", "desktopFailed", "Error: Unavailable");
+});
+
+it("logs nothing for a notification the popup delivered", async () => {
+  const report = vi.spyOn(ipc, "reportNotificationSkip");
+  render(<NotificationCenter />);
+  await act(async () => {});
+  expect(nativeMock.showNotificationPopup).toHaveBeenCalledOnce();
+  expect(report).not.toHaveBeenCalled();
 });
 
 it("keeps game-full alerts quiet when the owned game is already foreground", async () => {
