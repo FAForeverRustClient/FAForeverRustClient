@@ -2193,7 +2193,6 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingRange": "Rango de puntuación",
   "lobby.details.visibility": "Visibilidad",
   "lobby.details.unrated": "Sin puntuación",
-  "lobby.details.open": "Abierto",
   "lobby.details.public": "Pública",
   "lobby.details.downloadMap": "Descargar el mapa",
   "lobby.details.simMods": "Mods de simulación",

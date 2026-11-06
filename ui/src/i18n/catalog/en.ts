@@ -999,7 +999,6 @@ export const en = {
   "lobby.details.ratingRange": "Rating range",
   "lobby.details.visibility": "Visibility",
   "lobby.details.unrated": "Unrated",
-  "lobby.details.open": "Open",
   "lobby.details.public": "Public",
   "lobby.details.downloadMap": "Download map",
   "lobby.details.generateMap": "Generate map",

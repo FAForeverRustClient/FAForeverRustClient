@@ -891,7 +891,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingRange": "Ratingbereich",
   "lobby.details.visibility": "Sichtbarkeit",
   "lobby.details.unrated": "Ohne Wertung",
-  "lobby.details.open": "Offen",
   "lobby.details.public": "Öffentlich",
   "lobby.details.downloadMap": "Karte herunterladen",
   "lobby.details.generateMap": "Karte generieren",

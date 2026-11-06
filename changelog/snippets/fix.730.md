@@ -1,0 +1,1 @@
+- Removed the duplicate rating range from the Play game details sidebar.

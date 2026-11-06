@@ -2207,7 +2207,6 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingRange": "Zakres rankingu",
   "lobby.details.visibility": "Widoczność",
   "lobby.details.unrated": "Bez rankingu",
-  "lobby.details.open": "Otwarty",
   "lobby.details.public": "Publiczna",
   "lobby.details.downloadMap": "Pobierz mapę",
   "lobby.details.simMods": "Mody symulacji",
