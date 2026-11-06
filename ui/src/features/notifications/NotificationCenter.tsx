@@ -9,7 +9,7 @@ import { openHttpsUrl } from "../../shared/externalLinks";
 import { useClockPreference } from "../../shared/format/clock";
 import { useAppStore } from "../../store/store";
 import { NotificationCard } from "./NotificationCard";
-import { admitNotifications, deliverNotifications } from "./deliverNotifications";
+import { admitNotifications, deliverNotifications, UNANNOUNCED_OUTCOMES, type DeliveryResult } from "./deliverNotifications";
 import { NotificationRecovery } from "./NotificationRecovery";
 import { notificationArtwork } from "./notificationArtwork";
 import { deliveryFor } from "./notificationDelivery";
@@ -201,14 +201,21 @@ export function NotificationCenter() {
     const arrived = items.filter((item) => !item.read && !processed.current.has(item.id));
     if (arrived.length === 0) return;
     arrived.forEach((item) => processed.current.add(item.id));
-    const announcing = admitNotifications(arrived, useAppStore.getState().state, cooldown.current, markRead);
+    const kinds = new Map(arrived.map((item) => [item.id, item.kind]));
+    const report = ({ id, outcome, detail }: DeliveryResult) => {
+      if (UNANNOUNCED_OUTCOMES.has(outcome)) ipc.reportNotificationSkip(kinds.get(id) ?? "unknown", outcome, detail);
+    };
+    const announcing = admitNotifications(arrived, useAppStore.getState().state, cooldown.current, markRead, report);
     void deliverNotifications(announcing, {
       state: () => useAppStore.getState().state,
+      report,
       showInside: (inside) => setToastIds((ids) => {
         const immediate = inside.filter((item) => item.kind === "matchFound" || item.kind === "gameFull" || item.kind === "partyInvite").map((item) => item.id);
         return [...new Set([...immediate, ...ids, ...inside.map((item) => item.id)])];
       }),
-    }).catch(() => undefined);
+    }).catch((error: unknown) => {
+      announcing.forEach((item) => ipc.reportNotificationSkip(item.kind, "deliveryError", String(error)));
+    });
   }, [items, preferences]);
 
   useEffect(() => {

@@ -357,6 +357,18 @@ pub(crate) fn report_event_cost(
     );
 }
 
+/// A notification the window decided not to announce, or failed to put on
+/// the desktop, and why. Sent once per such notification, never for one
+/// that was delivered, so the log says why a notification in the bell never
+/// popped up. Every string is cut short in case it is not what it claims.
+#[tauri::command]
+pub(crate) fn report_notification_skip(kind: String, outcome: String, detail: Option<String>) {
+    let kind: String = kind.chars().take(32).collect();
+    let outcome: String = outcome.chars().take(32).collect();
+    let detail: Option<String> = detail.map(|detail| detail.chars().take(200).collect());
+    tracing::info!(%kind, %outcome, detail = detail.as_deref(), "notification not announced on the desktop");
+}
+
 /// Backend → UI: a consistent snapshot for initial hydration.
 ///
 /// Logged with its size and how long the copy took: the snapshot carries the

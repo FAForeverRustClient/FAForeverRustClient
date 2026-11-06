@@ -73,11 +73,19 @@ impl PopupQueue {
         let eligible_ids = popup_notification_ids(&state.notifications, preferences);
         if !preview {
             cards.retain(|card| {
-                eligible_ids.contains(&card.id)
-                    && !self
-                        .activations
-                        .iter()
-                        .any(|click| click.item.id == card.id)
+                if !eligible_ids.contains(&card.id) {
+                    log_popup_skip(state, &card.id, popup_skip_reason(state, &card.id));
+                    false
+                } else if self
+                    .activations
+                    .iter()
+                    .any(|click| click.item.id == card.id)
+                {
+                    log_popup_skip(state, &card.id, "already clicked");
+                    false
+                } else {
+                    true
+                }
             });
         }
         if cards.is_empty() {
@@ -85,7 +93,9 @@ impl PopupQueue {
         }
         // Enqueue can promote pending cards too. Prune stale ones first.
         self.refresh(&eligible_ids, preferences.toast_duration_seconds);
-        self.enqueue(cards, hold)?;
+        self.enqueue(cards, hold).inspect_err(|error| {
+            tracing::warn!(%error, "desktop popup refused");
+        })?;
         if !preview {
             let immediate = state
                 .notifications
@@ -296,6 +306,41 @@ fn popup_notification_ids(
         .collect()
 }
 
+/// Why a card the client asked for gets no popup.
+///
+/// The client counts an accepted call as delivered and runs no fallback, so a
+/// card dropped here would otherwise leave no trace at all. Mirrors the checks
+/// in [`popup_notification_ids`].
+fn popup_skip_reason(state: &AppState, id: &str) -> &'static str {
+    let preferences = &state.settings.notifications;
+    let Some(notification) = state.notifications.items.iter().find(|item| item.id == id) else {
+        return "no longer in the history";
+    };
+    if notification.read {
+        "already read"
+    } else if !preferences.enabled {
+        "notifications are off"
+    } else if !preferences.desktop {
+        "desktop notifications are off"
+    } else if preferences.desktop_style != DesktopNotificationStyle::Popup {
+        "desktop style is not popup"
+    } else {
+        "desktop notifications are off for this kind"
+    }
+}
+
+/// One info line per dropped card: rare, and the only record of why a
+/// notification in the bell never reached the desktop.
+fn log_popup_skip(state: &AppState, id: &str, reason: &str) {
+    let kind = state
+        .notifications
+        .items
+        .iter()
+        .find(|item| item.id == id)
+        .map(|item| item.kind);
+    tracing::info!(id, ?kind, reason, "desktop popup skipped");
+}
+
 /// What the popup page has confirmed about the batches it was sent.
 ///
 /// `shown` follows its size report, after which the shell shows the window.
@@ -378,6 +423,7 @@ pub(crate) async fn show_notification_popup(
     // other's batch before their own cards have been accepted.
     let _delivery = popups.delivery.lock().await;
     if cards.len() > MAX_CARDS {
+        tracing::warn!(cards = cards.len(), "desktop popup refused: too many cards");
         return Err("Too many desktop notifications".into());
     }
     let core = app.state::<crate::Core>().0.clone();
@@ -388,13 +434,20 @@ pub(crate) async fn show_notification_popup(
             .take(VISIBLE_CARDS)
             .collect()
     } else {
-        let eligible_ids = core.with_state(|state| {
-            popup_notification_ids(&state.notifications, &state.settings.notifications)
-        });
-        cards
-            .into_iter()
-            .filter(|card| eligible_ids.contains(&card.id))
-            .collect()
+        core.with_state(|state| {
+            let eligible_ids =
+                popup_notification_ids(&state.notifications, &state.settings.notifications);
+            cards
+                .into_iter()
+                .filter(|card| {
+                    let eligible = eligible_ids.contains(&card.id);
+                    if !eligible {
+                        log_popup_skip(state, &card.id, popup_skip_reason(state, &card.id));
+                    }
+                    eligible
+                })
+                .collect()
+        })
     };
     if cards.iter().any(|card| {
         card.image_url.as_ref().is_some_and(|image| {
@@ -405,6 +458,7 @@ pub(crate) async fn show_notification_popup(
             !local && !remote
         })
     }) {
+        tracing::warn!("desktop popup refused: invalid artwork");
         return Err("Invalid notification artwork".into());
     }
     if cards.is_empty() {
@@ -417,6 +471,7 @@ pub(crate) async fn show_notification_popup(
             || c.action_label.as_ref().is_some_and(|l| l.len() > 256)
     }) || dismiss_label.len() > 256
     {
+        tracing::warn!("desktop popup refused: content too large");
         return Err("Notification popup content is too large".into());
     }
     let requested_ids: Vec<_> = cards.iter().map(|card| card.id.clone()).collect();
@@ -538,6 +593,11 @@ async fn display(app: &tauri::AppHandle, requested_ids: &[String]) -> Result<(),
     let batch = {
         let mut queue = popups.queue.lock().unwrap();
         if !queue.contains_any(requested_ids) {
+            // Read, cleared or switched off while the window was getting ready.
+            tracing::info!(
+                cards = requested_ids.len(),
+                "desktop popup skipped: its cards left the queue before display"
+            );
             return Ok(());
         }
         queue.revised_batch()
@@ -903,6 +963,41 @@ mod tests {
     }
 
     #[test]
+    fn a_skipped_popup_names_the_check_that_dropped_it() {
+        let mut state = AppState::default();
+        state.notifications.items = vec![
+            notice("unread", NotificationKind::FriendOnline),
+            ClientNotification {
+                read: true,
+                ..notice("read", NotificationKind::MatchFound)
+            },
+        ];
+        let preferences = &mut state.settings.notifications;
+        preferences.desktop_all_kinds = false;
+        assert_eq!(
+            popup_skip_reason(&state, "gone"),
+            "no longer in the history"
+        );
+        assert_eq!(popup_skip_reason(&state, "read"), "already read");
+        assert_eq!(
+            popup_skip_reason(&state, "unread"),
+            "desktop notifications are off for this kind"
+        );
+        state.settings.notifications.desktop_style = DesktopNotificationStyle::System;
+        assert_eq!(
+            popup_skip_reason(&state, "unread"),
+            "desktop style is not popup"
+        );
+        state.settings.notifications.desktop = false;
+        assert_eq!(
+            popup_skip_reason(&state, "unread"),
+            "desktop notifications are off"
+        );
+        state.settings.notifications.enabled = false;
+        assert_eq!(popup_skip_reason(&state, "unread"), "notifications are off");
+    }
+
+    #[test]
     fn popup_activation_waits_for_acknowledgement() {
         let mut state = AppState::default();
         state.auth.status = AuthStatus::LoggedIn;
@@ -1247,6 +1342,7 @@ mod tests {
             "exit_app",
             "show_notification_popup",
             "game_notification_attention",
+            "report_notification_skip",
         ] {
             assert!(!allowed(LABEL, command, false));
         }
