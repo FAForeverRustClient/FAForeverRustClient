@@ -202,12 +202,14 @@ export function App() {
   }, []);
 
   // The reference clients establish lobby and chat sessions as part of account
-  // login, rather than waiting for the user to open those tabs. Test mode stays
-  // local and keeps its existing on-demand fake connections.
+  // login, rather than waiting for the user to open those tabs. The fake
+  // lobby also starts here so Play can honor an explicit disconnect.
   useEffect(() => {
-    if (!hydrated || auth.status !== "loggedIn" || auth.mode !== "account" || !playerName) return;
+    if (!hydrated || auth.status !== "loggedIn" || auth.mode === "offline" || !playerName) return;
     ipc.send({ kind: "Lobby", command: { type: "connect" } });
-    ipc.send({ kind: "Chat", command: { type: "connect", payload: { username: playerName } } });
+    if (auth.mode === "account") {
+      ipc.send({ kind: "Chat", command: { type: "connect", payload: { username: playerName } } });
+    }
   }, [auth.mode, auth.status, hydrated, playerName]);
 
   useEffect(() => {

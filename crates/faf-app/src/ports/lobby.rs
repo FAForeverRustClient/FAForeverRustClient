@@ -140,6 +140,23 @@ pub enum LobbyUpdate {
     },
 }
 
+/// Refusal at the local outgoing queue. Acceptance only means the frames
+/// entered that queue, before the server answers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LobbySendError {
+    Disconnected,
+    Busy,
+}
+
+impl LobbySendError {
+    pub fn reason(self) -> &'static str {
+        match self {
+            Self::Disconnected => "The FAF lobby is disconnected. Reconnect and try again.",
+            Self::Busy => "The FAF lobby send queue is full. Wait a moment and try again.",
+        }
+    }
+}
+
 #[async_trait]
 pub trait LobbyPort: Send + Sync {
     /// Retry names for unresolved relations without blocking the socket reader.
@@ -161,10 +178,11 @@ pub trait LobbyPort: Send + Sync {
 
     /// Create a custom game using the same `game_host` payload as the reference
     /// client. The accepted request eventually produces a `game_launch` update.
-    fn host(&self, config: HostGameConfig);
+    fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError>;
 
-    /// Start or stop searching a named matchmaker queue.
-    fn matchmake(&self, queue_name: String, start: bool);
+    /// Start or stop searching the named queues. Accept all requests into
+    /// the outgoing queue together, or refuse without enqueuing any.
+    fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError>;
 
     fn leave_party(&self);
 
@@ -173,7 +191,7 @@ pub trait LobbyPort: Send + Sync {
     /// Invite a player to our party (`invite_to_party`).
     fn invite_to_party(&self, player_id: i32);
 
-    fn accept_party_invite(&self, player_id: i32);
+    fn accept_party_invite(&self, player_id: i32) -> Result<(), LobbySendError>;
 
     /// Set the factions this player is willing to receive in matchmaker games.
     fn set_party_factions(&self, factions: Vec<String>);

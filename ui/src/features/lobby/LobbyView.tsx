@@ -79,7 +79,6 @@ export function LobbyView() {
   const [password, setPassword] = useState("");
 
   useEffect(() => {
-    if (useAppStore.getState().state.lobby.status === "disconnected") connect();
     ipc.send({ kind: "Maps", command: { type: "loadInstalled" } });
     // The two vaults are the catalogue crawls, loaded once per session: the
     // services refuse a second one, so this tab can ask on every visit.
@@ -292,7 +291,7 @@ export function LobbyView() {
           onJoin={requestJoin}
           onPreview={setPreviewGame}
           onOpenUserMenu={openPlayerMenu}
-          onReconnect={() => ipc.send({ kind: "Lobby", command: { type: "connect" } })}
+          onReconnect={connect}
           onHost={() => openHostDialog()}
           onClearFilters={() => {
             setSearch("");

@@ -52,10 +52,8 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
         await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "custom" } } });
         break;
       case "acceptPartyInvite":
-        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId } } });
-        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "play" } } });
-        await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "matchmaking" } } });
-        break;
+        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId, notificationId: item.id } } });
+        return;
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });

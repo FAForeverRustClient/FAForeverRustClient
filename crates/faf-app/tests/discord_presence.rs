@@ -11,7 +11,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::{fake_ports, FakeAuth};
-use faf_app::ports::{DiscordPort, DiscordRequest, LobbyPort, LobbyUpdate};
+use faf_app::ports::{DiscordPort, DiscordRequest, LobbyPort, LobbySendError, LobbyUpdate};
 use faf_app::{App, Ports};
 use faf_domain::protocol::discord::Activity;
 use faf_domain::state::{
@@ -53,12 +53,18 @@ impl LobbyPort for ScriptedLobby {
     fn join(&self, _id: i32, _password: Option<String>) -> bool {
         true
     }
-    fn host(&self, _config: HostGameConfig) {}
-    fn matchmake(&self, _queue_name: String, _start: bool) {}
+    fn host(&self, _config: HostGameConfig) -> Result<(), LobbySendError> {
+        Err(LobbySendError::Disconnected)
+    }
+    fn matchmake(&self, _queue_names: &[String], _start: bool) -> Result<(), LobbySendError> {
+        Err(LobbySendError::Disconnected)
+    }
     fn leave_party(&self) {}
     fn kick_party_member(&self, _player_id: i32) {}
     fn invite_to_party(&self, _player_id: i32) {}
-    fn accept_party_invite(&self, _player_id: i32) {}
+    fn accept_party_invite(&self, _player_id: i32) -> Result<(), LobbySendError> {
+        Err(LobbySendError::Disconnected)
+    }
     fn set_party_factions(&self, _factions: Vec<String>) {}
     fn set_relation(&self, _player_id: i32, _relation: Relation, _member: bool) {}
     fn set_player_vetoes(&self, _vetoes: Vec<PlayerVeto>) {}

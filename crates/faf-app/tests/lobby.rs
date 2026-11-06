@@ -16,7 +16,8 @@ use faf_app::ports::{
 use faf_app::{App, Ports};
 use faf_domain::state::{
     GameLaunch, HostGameConfig, JoinState, LobbyCommand, LobbyEvent, LobbyStatus, MatchmakingState,
-    NotificationEvent, NotificationKind, PlayerProfile, SettingsState, SocialEvent,
+    NavCommand, NotificationEvent, NotificationKind, PlayMode, PlayerProfile, SettingsState,
+    SocialEvent, Tab,
 };
 use faf_domain::AppEvent;
 
@@ -28,6 +29,7 @@ struct RecordingSettings {
 #[derive(Default)]
 struct RecordingProcess {
     kills: Arc<AtomicUsize>,
+    install_dir: Option<PathBuf>,
 }
 
 #[async_trait]
@@ -57,7 +59,7 @@ impl ProcessPort for RecordingProcess {
     fn set_additional_arguments(&self, _arguments: Vec<String>) {}
 
     fn game_install_dir(&self) -> Option<PathBuf> {
-        None
+        self.install_dir.clone()
     }
 
     fn replay_install_dir(&self) -> Option<PathBuf> {
@@ -282,6 +284,7 @@ async fn server_kill_notice_is_retained_and_terminates_the_game() {
         lobby: Arc::new(lobby.clone()),
         process: Arc::new(RecordingProcess {
             kills: kills.clone(),
+            ..Default::default()
         }),
         ..fake_ports()
     };
@@ -396,6 +399,7 @@ async fn cancellation_after_matchmaker_launch_stops_the_spawned_game() {
         lobby: Arc::new(lobby.clone()),
         process: Arc::new(RecordingProcess {
             kills: kills.clone(),
+            ..Default::default()
         }),
         ..fake_ports()
     };
@@ -712,6 +716,127 @@ async fn a_search_is_prepared_before_the_server_is_asked_for_it() {
 }
 
 #[tokio::test]
+async fn refused_lobby_requests_report_failure_and_keep_only_accepted_work() {
+    let lobby = FakeLobby::default();
+    let (app, app_loop) = App::new(
+        "test",
+        Ports {
+            lobby: Arc::new(lobby.clone()),
+            process: Arc::new(RecordingProcess {
+                install_dir: Some(PathBuf::from("test-install")),
+                ..Default::default()
+            }),
+            ..fake_ports()
+        },
+    );
+    tokio::spawn(app_loop.run());
+    let mut events = app.subscribe();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    wait_for_initial_games(&mut events).await;
+    assert!(lobby.push_update(LobbyUpdate::PartyInvite {
+        player_id: 2,
+        login: "Stormlord".into()
+    }));
+    let invite = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let AppEvent::Notifications(NotificationEvent::Added { notification }) =
+                events.recv().await.unwrap()
+            {
+                if notification.kind == NotificationKind::PartyInvite {
+                    return notification;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the fake lobby should deliver an invite");
+    app.dispatch_and_wait(NavCommand::Select { tab: Tab::Maps }.into())
+        .await
+        .unwrap();
+
+    lobby.set_send_busy(true);
+    app.dispatch_and_wait(
+        LobbyCommand::Host {
+            config: host_config(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        app.snapshot().lobby.join,
+        JoinState::LaunchFailed { .. }
+    ));
+    app.dispatch_and_wait(
+        LobbyCommand::StartSearch {
+            queue_names: vec!["ladder1v1".into(), "tmm2v2".into()],
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert_eq!(app.snapshot().lobby.matchmaking, MatchmakingState::Idle);
+    let accept = || LobbyCommand::AcceptPartyInvite {
+        player_id: 2,
+        notification_id: Some(invite.id.clone()),
+    };
+    app.dispatch_and_wait(accept().into()).await.unwrap();
+    let refused = app.snapshot();
+    assert_eq!(refused.nav.active_tab, Tab::Maps);
+    assert!(refused
+        .notifications
+        .items
+        .iter()
+        .any(|item| item.id == invite.id && !item.read));
+    for title in [
+        "Could not host game",
+        "Could not start the search",
+        "Cannot join the party",
+    ] {
+        assert!(
+            refused
+                .notifications
+                .items
+                .iter()
+                .any(|item| item.title == title && item.body.contains("send queue is full")),
+            "missing send refusal for {title}"
+        );
+    }
+
+    lobby.set_send_busy(false);
+    app.dispatch_and_wait(accept().into()).await.unwrap();
+    let accepted = app.snapshot();
+    assert_eq!(accepted.nav.active_tab, Tab::Play);
+    assert_eq!(accepted.lobby.play_mode, PlayMode::Matchmaking);
+    assert!(accepted
+        .notifications
+        .items
+        .iter()
+        .any(|item| item.id == invite.id && item.read));
+    search_started(&app, &mut events).await;
+    lobby.set_send_busy(true);
+    app.dispatch_and_wait(
+        LobbyCommand::Matchmake {
+            queue_name: "ladder1v1".into(),
+            start: false,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let still_searching = app.snapshot();
+    assert!(matches!(
+        still_searching.lobby.matchmaking,
+        MatchmakingState::Searching { .. }
+    ));
+    assert!(still_searching
+        .notifications
+        .items
+        .iter()
+        .any(|item| item.title == "Could not stop the search"));
+}
+
+#[tokio::test]
 async fn a_party_invite_cannot_be_accepted_while_searching() {
     // The server would move the player into the party and leave their own
     // search running, which as a member they could not stop.
@@ -727,9 +852,15 @@ async fn a_party_invite_cannot_be_accepted_while_searching() {
     wait_for_initial_games(&mut events).await;
     search_started(&app, &mut events).await;
 
-    app.dispatch(LobbyCommand::AcceptPartyInvite { player_id: 5 }.into())
-        .await
-        .unwrap();
+    app.dispatch(
+        LobbyCommand::AcceptPartyInvite {
+            player_id: 5,
+            notification_id: None,
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
 
     tokio::time::timeout(Duration::from_secs(5), async {
         loop {

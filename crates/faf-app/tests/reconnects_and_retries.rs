@@ -23,6 +23,7 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_app::infra::{fake_ports, FakeAuth, FakeChat, FakeLobby};
+use faf_app::ports::LobbySendError;
 use faf_app::ports::{
     ChatPort, ChatUpdate, GameLaunchParams, GamePreparation, GameUpdaterPort, InstallPresence,
     LobbyPort, LobbyUpdate, PreparationPhase, PreparationStep, ProcessPort, SettingsPort,
@@ -143,15 +144,15 @@ impl LobbyPort for RecordingLobby {
     fn join(&self, id: i32, password: Option<String>) -> bool {
         self.inner.join(id, password)
     }
-    fn host(&self, config: HostGameConfig) {
+    fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError> {
         self.inner.host(config)
     }
-    fn matchmake(&self, queue_name: String, start: bool) {
+    fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
         self.searches
             .lock()
             .unwrap()
-            .push((queue_name.clone(), start));
-        self.inner.matchmake(queue_name, start)
+            .extend(queue_names.iter().cloned().map(|name| (name, start)));
+        self.inner.matchmake(queue_names, start)
     }
     fn leave_party(&self) {
         self.inner.leave_party()
@@ -162,7 +163,7 @@ impl LobbyPort for RecordingLobby {
     fn invite_to_party(&self, player_id: i32) {
         self.inner.invite_to_party(player_id)
     }
-    fn accept_party_invite(&self, player_id: i32) {
+    fn accept_party_invite(&self, player_id: i32) -> Result<(), LobbySendError> {
         self.inner.accept_party_invite(player_id)
     }
     fn set_party_factions(&self, factions: Vec<String>) {

@@ -2,3 +2,5 @@
 - The client retries automatically when a request to recover missed updates goes unanswered.
 - Clicks on desktop notifications are handled even if the main window is rebuilding.
 - Cleared or disabled notifications no longer appear while the desktop popup window is starting.
+- Hosting, matchmaking, and party invites show a failure when the lobby cannot send the request.
+- Returning to Play keeps the lobby disconnected until you reconnect.
