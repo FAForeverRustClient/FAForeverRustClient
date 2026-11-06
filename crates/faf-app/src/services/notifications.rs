@@ -15,6 +15,11 @@ static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 pub async fn handle(cmd: NotificationCommand, _ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         NotificationCommand::MarkRead { id } => out.emit(NotificationEvent::Read { id }),
+        NotificationCommand::MarkReadMany { ids } => {
+            if !ids.is_empty() {
+                out.emit(NotificationEvent::ReadMany { ids });
+            }
+        }
         NotificationCommand::Dismiss { id } => out.emit(NotificationEvent::Dismissed { id }),
         NotificationCommand::Clear => out.emit(NotificationEvent::Cleared),
     }

@@ -1,0 +1,1 @@
+- Opening the notification bell marks all unread notifications read in one step instead of one update per notification.

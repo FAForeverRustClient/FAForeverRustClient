@@ -1832,6 +1832,52 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn marking_notifications_read_in_bulk_sends_one_window_update() {
+        use faf_domain::frontend::FrontendUpdate;
+        use faf_domain::state::{
+            ClientNotification, NotificationCommand, NotificationEvent, NotificationKind,
+        };
+
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        let ids: Vec<_> = (0..50).map(|index| format!("notice-{index}")).collect();
+        // The newest arrival evicts one of the IDs captured by the bell.
+        for id in ids.iter().map(String::as_str).chain(["arrived-later"]) {
+            app_loop.sink.emit(NotificationEvent::Added {
+                notification: ClientNotification {
+                    id: id.into(),
+                    kind: NotificationKind::Mention,
+                    title: "Mention".into(),
+                    body: "A message".into(),
+                    created_at: "2026-01-01T00:00:00Z".into(),
+                    read: false,
+                    action: None,
+                    text: None,
+                },
+            });
+        }
+        let (mut events, before) = app.subscribe_versioned_with_snapshot();
+        tokio::spawn(app_loop.run());
+
+        app.dispatch_and_wait(NotificationCommand::MarkReadMany { ids }.into())
+            .await
+            .expect("bulk read completes");
+
+        let update = events.try_recv().expect("one window update");
+        assert_eq!(update.revision, before.revision + 1);
+        let Some(FrontendUpdate::Notifications(state)) = update.update else {
+            panic!("expected an authoritative notification replacement");
+        };
+        assert_eq!(state.items.len(), 50);
+        assert_eq!(state.items[0].id, "arrived-later");
+        assert!(!state.items[0].read);
+        assert!(state.items[1..].iter().all(|item| item.read));
+        assert!(matches!(
+            events.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty)
+        ));
+    }
+
+    #[tokio::test]
     async fn dispatch_and_wait_observes_the_completed_service_effect() {
         let (app, app_loop) = App::new("test", crate::infra::fake_ports());
         tokio::spawn(app_loop.run());

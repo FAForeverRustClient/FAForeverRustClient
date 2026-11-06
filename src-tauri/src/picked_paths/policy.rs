@@ -93,6 +93,7 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
         )
         | AppCommand::Notifications(
             NotificationCommand::MarkRead { id: _ }
+            | NotificationCommand::MarkReadMany { ids: _ }
             | NotificationCommand::Dismiss { id: _ }
             | NotificationCommand::Clear,
         )

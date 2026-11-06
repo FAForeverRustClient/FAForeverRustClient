@@ -88736,6 +88736,183 @@
         {
           "event": {
             "event": {
+              "payload": {
+                "notification": {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n3",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n3"
+                }
+              },
+              "type": "added"
+            },
+            "kind": "Notifications"
+          },
+          "expected": {
+            "items": [
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n3",
+                "kind": "friendOnline",
+                "read": false,
+                "text": null,
+                "title": "Notification n3"
+              },
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n1",
+                "kind": "mention",
+                "read": false,
+                "text": null,
+                "title": "Notification n1"
+              },
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n2",
+                "kind": "friendOnline",
+                "read": true,
+                "text": null,
+                "title": "Notification n2"
+              }
+            ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n3",
+                  "kind": "friendOnline",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n3"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification n1"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n2"
+                }
+              ]
+            },
+            "kind": "Notifications"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "ids": [
+                  "n1",
+                  "n3",
+                  "n9"
+                ]
+              },
+              "type": "readMany"
+            },
+            "kind": "Notifications"
+          },
+          "expected": {
+            "items": [
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n3",
+                "kind": "friendOnline",
+                "read": true,
+                "text": null,
+                "title": "Notification n3"
+              },
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n1",
+                "kind": "mention",
+                "read": true,
+                "text": null,
+                "title": "Notification n1"
+              },
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "n2",
+                "kind": "friendOnline",
+                "read": true,
+                "text": null,
+                "title": "Notification n2"
+              }
+            ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n3",
+                  "kind": "friendOnline",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n3"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n1",
+                  "kind": "mention",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n1"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "n2",
+                  "kind": "friendOnline",
+                  "read": true,
+                  "text": null,
+                  "title": "Notification n2"
+                }
+              ]
+            },
+            "kind": "Notifications"
+          }
+        },
+        {
+          "event": {
+            "event": {
               "type": "cleared"
             },
             "kind": "Notifications"
