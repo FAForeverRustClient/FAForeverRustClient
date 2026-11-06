@@ -67,7 +67,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Lane | Policy patterns |
 |---|---|
-| `Ordinary` | 237 |
+| `Ordinary` | 238 |
 | `Priority` | 33 |
 
 ### Priority commands
@@ -92,7 +92,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Admission | Policy patterns |
 |---|---|
-| `Concurrent` | 187 |
+| `Concurrent` | 188 |
 | `SingleFlight` | 22 |
 | `Serial` | 20 |
 | `Latest` | 5 |
