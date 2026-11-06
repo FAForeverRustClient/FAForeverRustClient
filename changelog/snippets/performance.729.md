@@ -1,0 +1,1 @@
+- The map catalogue sends less data when the client loads or restores its state.
