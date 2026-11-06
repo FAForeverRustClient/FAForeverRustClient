@@ -196,6 +196,7 @@ pub fn run() {
                 commands::map_generator_automatic_instances,
                 commands::report_webview_stall,
                 commands::report_event_cost,
+                commands::report_notification_skip,
                 commands::exit_app,
                 commands::page_ready,
                 commands::page_gone,

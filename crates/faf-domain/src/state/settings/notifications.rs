@@ -156,11 +156,10 @@ pub enum NotificationSound {
 /// UI. Everything without a switch of its own (server notices, errors, a
 /// finished map, a new client version) shares [`Self::other`].
 ///
-/// **Two rows are not [`NotificationSound::Chime`]: a found match plays
-/// [`NotificationSound::FafMatch`] and a filled lobby plays
-/// [`NotificationSound::Alert`].** Everything else keeps the tone the client
-/// played before this existed, so installing an update changes those two
-/// sounds and not the rest.
+/// **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
+/// lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+/// tone the client played before this existed, so installing an update changes
+/// those two sounds and not the rest.
 ///
 /// That is a reversal. The original note here argued that shipping choices
 /// nobody made was the wrong answer to "all notifications sound the same", and
@@ -172,6 +171,10 @@ pub enum NotificationSound {
 /// that. A lobby filling up expires the same way -- the game launches without
 /// whoever was looking elsewhere -- and was asked for by name. The remaining
 /// ten rows are still one tone and still a preference.
+///
+/// A found match first defaulted to [`NotificationSound::FafMatch`], the Java
+/// client's sample. It is long and harsh next to the synthesised tones, so it
+/// stays on offer and stops being what everybody hears by default.
 ///
 /// [`NotificationSound::Silent`] is available on every row, which is how a kind
 /// is seen and not heard.
@@ -200,14 +203,14 @@ pub struct NotificationSoundChoices {
 
 /// Bump when a default in [`NotificationSoundChoices`] changes and the change
 /// should reach people whose settings already name the old one.
-const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 2;
+const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 3;
 
 impl Default for NotificationSoundChoices {
     fn default() -> Self {
         // One value, deliberately: see the note on the struct.
         Self {
-            // The one graded default: see the note on the struct.
-            match_found: NotificationSound::FafMatch,
+            // A graded default: see the note on the struct.
+            match_found: NotificationSound::Alert,
             private_message: NotificationSound::Chime,
             mention: NotificationSound::Chime,
             friend_online: NotificationSound::Chime,
@@ -553,10 +556,15 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         let mut sounds = wire.sounds;
         let graded = NotificationSoundChoices::default();
         if wire.sound_choice_version < 1 && sounds.match_found == NotificationSound::Chime {
-            sounds.match_found = graded.match_found;
+            sounds.match_found = graded.match_found.clone();
         }
         if wire.sound_choice_version < 2 && sounds.game_full == NotificationSound::Chime {
             sounds.game_full = graded.game_full;
+        }
+        // Version 2 still defaulted a found match to the sample, so a file
+        // from then naming it was mostly written by that default.
+        if wire.sound_choice_version < 3 && sounds.match_found == NotificationSound::FafMatch {
+            sounds.match_found = graded.match_found;
         }
         Ok(Self {
             enabled: wire.enabled,
@@ -781,7 +789,7 @@ mod tests {
     }
 
     #[test]
-    fn a_chime_written_by_the_old_default_moves_to_the_faf_match_sound() {
+    fn a_chime_written_by_the_old_default_moves_to_the_graded_sound() {
         // Every settings file written before this existed says `chime` in all
         // twelve rows, because every save writes every field. Without the
         // version that made the new default unreachable for everybody who had
@@ -791,7 +799,7 @@ mod tests {
 
         assert_eq!(
             settings.notifications.sounds.match_found,
-            NotificationSound::FafMatch
+            NotificationSound::Alert
         );
         assert_eq!(
             settings.notifications.sound_choice_version,
@@ -813,15 +821,44 @@ mod tests {
     }
 
     #[test]
+    fn the_sample_written_by_the_version_two_default_moves_to_alert() {
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":2,"sounds":{"matchFound":"fafMatch"}}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            settings.notifications.sounds.match_found,
+            NotificationSound::Alert
+        );
+    }
+
+    #[test]
+    fn the_sample_chosen_since_version_three_is_left_alone() {
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":3,"sounds":{"matchFound":"fafMatch"}}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            settings.notifications.sounds.match_found,
+            NotificationSound::FafMatch
+        );
+    }
+
+    #[test]
     fn the_migration_only_touches_the_row_the_old_default_wrote() {
         // Anything that is not `chime` is a choice somebody made, including a
         // deliberate silence, and the migration must not overwrite it.
-        for stored in ["silent", "soft", "ping", "alert"] {
+        for (stored, expected) in [
+            ("silent", NotificationSound::Silent),
+            ("soft", NotificationSound::Soft),
+            ("ping", NotificationSound::Ping),
+        ] {
             let json = format!(r#"{{"notifications":{{"sounds":{{"matchFound":"{stored}"}}}}}}"#);
             let settings: SettingsState = serde_json::from_str(&json).unwrap();
-            assert_ne!(
-                settings.notifications.sounds.match_found,
-                NotificationSound::FafMatch,
+            assert_eq!(
+                settings.notifications.sounds.match_found, expected,
                 "{stored} should have been left alone"
             );
         }

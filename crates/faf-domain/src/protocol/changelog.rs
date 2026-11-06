@@ -703,6 +703,13 @@ fn unmarked_change(line: &str, item_line: &str) -> bool {
 fn parse_unit_open(trimmed: &str) -> Option<String> {
     let inner = trimmed.strip_prefix("{%")?.strip_suffix("%}")?.trim();
     let id = inner.strip_prefix("unit ")?.trim();
+    // Some snippets keep the brackets of the template's `<unit id>`
+    // placeholder around the id. Kept, they end up in the icon URL, which
+    // then names no file and the icon is dropped.
+    let id = id
+        .strip_prefix('<')
+        .and_then(|id| id.strip_suffix('>'))
+        .map_or(id, str::trim);
     (!id.is_empty()).then(|| id.to_string())
 }
 
@@ -2338,6 +2345,25 @@ mod tests {
     }
 
     #[test]
+    fn a_unit_id_in_template_brackets_still_finds_its_icon() {
+        let entry = parse_entry(
+            "x",
+            "{% unit <ues0202> %}\nNon-Seraphim cruisers\n{% endunit %}\n",
+        );
+        assert_eq!(
+            entry.blocks[0],
+            ChangelogBlock::Unit {
+                units: vec![ChangelogUnit {
+                    unit_id: Some("ues0202".into()),
+                    icon_url: "https://faforever.github.io/fa/assets/icons/UES0202_icon.png".into(),
+                }],
+                name: "Non-Seraphim cruisers".into(),
+            }
+        );
+        assert_eq!(parse_unit_open("{% unit <> %}"), None);
+    }
+
+    #[test]
     fn enhancement_icons_keep_their_path_and_case() {
         assert_eq!(
             unit_icon_url("enhancements/ual0001/ResourceAllocation"),
@@ -2764,6 +2790,8 @@ mod tests {
             "`",
             "{% unit %}",
             "{% unit XRL0302 %}",
+            "{% unit <> %}",
+            "{% unit <XRL0302 %}",
             "**Name (ABC1234):**",
             "Größe: 1 -> 2\n- Größe: 1 --> 2",
             "\u{feff}---\ntitle: x\n---",

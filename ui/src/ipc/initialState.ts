@@ -854,7 +854,7 @@ export const INITIAL_STATE: AppState = {
       "popup": true,
       "historyLifetimeSeconds": 0,
       "sounds": {
-        "matchFound": "fafMatch",
+        "matchFound": "alert",
         "privateMessage": "chime",
         "mention": "chime",
         "friendOnline": "chime",
@@ -868,7 +868,7 @@ export const INITIAL_STATE: AppState = {
         "partyInvite": "chime",
         "other": "chime"
       },
-      "soundChoiceVersion": 2,
+      "soundChoiceVersion": 3,
       "notifyWhenFocused": false,
       "toastPosition": "bottomLeft",
       "delivery": {},

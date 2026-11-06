@@ -12,6 +12,16 @@ import { happensInView, RepeatCooldown } from "./notificationGate";
 export type DeliveryOutcome = "disabled" | "eventDisabled" | "inView" | "cooldown" | "channelsOff" | "gameFocused" | "soundMuted"
   | "sound" | "client" | "desktop" | "system" | "permissionDenied" | "desktopFailed" | "focusSuppressed";
 export type DeliveryResult = { id: string; outcome: DeliveryOutcome; detail?: string };
+
+/**
+ * The outcomes that leave a live notification in the bell without reaching
+ * the desktop, which the client log records so a missing popup can be
+ * explained. Not `inView`: a reply in the conversation being read is not
+ * missing anything, and an active chat would fill the log with them.
+ */
+export const UNANNOUNCED_OUTCOMES: ReadonlySet<DeliveryOutcome> = new Set<DeliveryOutcome>([
+  "disabled", "cooldown", "channelsOff", "gameFocused", "focusSuppressed", "desktopFailed", "permissionDenied",
+]);
 export type DeliveryOptions = {
   state: () => AppState;
   showInside: (items: ClientNotification[]) => void;
