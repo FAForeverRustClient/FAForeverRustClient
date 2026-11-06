@@ -84,6 +84,18 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
         // handed it the same way it validates every other one.
         await openHttpsUrl(action.payload.url);
         break;
+      case "updateClient":
+        // Download, then install, from the one click (#682). A download the
+        // background already finished installs at once. Install closes the
+        // client, so it refuses itself while a game, search or lesson runs,
+        // and the sidebar's update notice offers it again afterwards.
+        if (useAppStore.getState().state.clientUpdate.status.type !== "ready") {
+          await ipc.settle({ kind: "ClientUpdate", command: { type: "download" } });
+        }
+        if (useAppStore.getState().state.clientUpdate.status.type === "ready") {
+          await ipc.settle({ kind: "ClientUpdate", command: { type: "install" } });
+        }
+        break;
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
         if (action.payload.section) {

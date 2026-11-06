@@ -6646,7 +6646,13 @@ export type NotificationAction = { type: "openChat"; payload: {
  */
 { type: "openStream"; payload: {
 	url: string,
-} };
+} } |
+/**
+ *  Download the client release on offer and install it (#682), or install
+ *  it straight away when it is already downloaded. Opening Settings, as
+ *  this notice used to, landed on a page with no download button on it.
+ */
+{ type: "updateClient" };
 
 export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,
@@ -8510,6 +8516,12 @@ export type RatingHistoryQuery = {
 	period: RatingHistoryPeriod,
 	page: number,
 	pageSize: number,
+	/**
+	 *  Only the newest this many games of the period, or all of it when
+	 *  `None` (#709). The API pages newest first, so the load stops after the
+	 *  pages that hold them instead of reading the whole history to keep 100.
+	 */
+	latestGames?: number | null,
 };
 
 /**  Which FAF rating decides seeding, and whether one is used at all. */

@@ -5,9 +5,13 @@
 // It used to take every Tab unconditionally, which made the message box a
 // keyboard trap: with an empty line, or a word nobody in the channel is called,
 // Tab did nothing and focus could never leave for the emoji picker, the send
-// button or anything else on the page. Tab now belongs to the completion only
-// while there is something to complete or a run of candidates to cycle;
-// otherwise it is the browser's, and moves focus like everywhere else.
+// button or anything else on the page. Tab now belongs to the box while the
+// caret ends a word: it completes the word, cycles a run of candidates, or,
+// for a word nobody here is called, does nothing (#712). That one used to move
+// focus to the emoji button, so a mistyped name or a player who had just left
+// threw the writer out of the line they were correcting. Everywhere else Tab
+// is the browser's and moves focus as it does on any page: an empty line,
+// after a space, a selection, a name already complete, and Shift+Tab always.
 
 export interface Completion {
   /** Text before the word being completed. */
@@ -19,7 +23,8 @@ export interface Completion {
 }
 
 export interface TabCompletion {
-  completion: Completion;
+  /** `null` when the press is kept in the box but completed nothing. */
+  completion: Completion | null;
   /** The whole line after the completion is applied. */
   text: string;
   /** Restore the caret just after the completed nickname. */
@@ -40,6 +45,8 @@ export interface TabCompletion {
  *  * Shift+Tab never starts a completion: it is how the keyboard goes back.
  *  * Tab starts one only when the word before the caret is the start of a
  *    nickname here, and is not already exactly the only one it could be.
+ *  * A word before the caret that starts no nickname here keeps the press,
+ *    leaving the line and the caret as they were (#712).
  */
 export function tabCompletion(
   draft: string,
@@ -70,7 +77,9 @@ export function tabCompletion(
   const matches = nicknames
     .filter((name) => name.toLowerCase().startsWith(lower))
     .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
-  if (matches.length === 0) return null;
+  // Somebody was being named, and nobody here is called that: a typo, or a
+  // player who has left. The writer is mid-word and about to correct it.
+  if (matches.length === 0) return { completion: null, text: draft, caret };
   // Typed out in full already: completing it would change nothing, and
   // swallowing the key for that would trap focus all over again.
   if (matches.length === 1 && matches[0] === partial) return null;

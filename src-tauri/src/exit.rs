@@ -287,6 +287,31 @@ pub(crate) fn watch(app: &tauri::App, core: Arc<App>) {
     });
 }
 
+/// The most the exit waits for the generated maps to be deleted. A sweep of
+/// a few folders takes milliseconds; a maps folder on a stalled network drive
+/// must not keep a closed client in the task list.
+const SWEEP_LIMIT: Duration = Duration::from_secs(5);
+
+/// Delete the generated maps nobody kept, once the client is exiting (#720),
+/// however it got there: the close button, the tray's Quit, the exit after a
+/// game, an update's restart. See `App::sweep_generated_maps` for what is
+/// spared.
+pub(crate) fn sweep_generated_maps(app: &tauri::AppHandle) {
+    let Some(core) = app.try_state::<Core>() else {
+        return;
+    };
+    let core = core.0.clone();
+    let swept = tauri::async_runtime::block_on(async move {
+        tokio::time::timeout(SWEEP_LIMIT, core.sweep_generated_maps()).await
+    });
+    match swept {
+        Ok(Ok(0)) => {}
+        Ok(Ok(count)) => tracing::info!(count, "removed generated maps on exit"),
+        Ok(Err(reason)) => tracing::warn!(%reason, "kept the generated maps on exit"),
+        Err(_) => tracing::warn!("gave up removing generated maps on exit"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::time::Duration;

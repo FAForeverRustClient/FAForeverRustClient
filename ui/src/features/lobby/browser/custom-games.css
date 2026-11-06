@@ -1104,16 +1104,17 @@
   -webkit-line-clamp: 2;
 }
 
-/* One line of whole tags: one that does not fit wraps to a second line,
-   which the height leaves out, rather than being cut off mid-word. The
-   first tags are the ones that matter most for that reason. */
+/* One line of whole tags. What does not fit is folded into a "+N" tag by
+   `FittingChips`, which lists every tag on hover (issue 680): a tag that wrapped
+   onto a second line, which the height left out, was gone without a trace.
+   The clip is only a backstop for the moment before the measurement. */
 .game-tile-flags {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   min-width: 0;
   height: 20px;
   align-items: center;
-  gap: 8px 4px;
+  gap: 4px;
   /* Centred in the room between the host and the bottom row, rather than
      hanging under the host with the room all below it. */
   margin-block: auto;
@@ -1121,13 +1122,19 @@
   line-height: 14px;
 }
 
-.game-tile-flags:empty {
-  display: none;
+.game-tile-flags > [data-chip] {
+  display: flex;
+  flex: none;
+}
+
+.game-tile-flags > i.more {
+  cursor: default;
 }
 
 /* With the tags taking the free room on both sides, the bottom row needs no
-   push of its own; without tags it keeps it, and stays at the bottom. */
-.game-tile-flags:not(:empty) + .game-tile-stats {
+   push of its own; without tags (no line at all) it keeps it, and stays at
+   the bottom. */
+.game-tile-flags + .game-tile-stats {
   margin-top: 0;
 }
 
@@ -1681,6 +1688,37 @@
   .game-browser-panel,
   .game-detail-panel {
     min-height: 520px;
+  }
+
+  /* Stacked, the tab scrolls as a page (`shell.css`), and the list grew to
+     every game it holds: sixty lobbies put the selected game's details and
+     the way back to "Host game" four thousand pixels apart (issue 674). The
+     list keeps its old minimum as its height and scrolls itself, the details
+     follow right under it, and the toolbar stays at the top while the page
+     scrolls past. */
+  .custom-games-layout > .game-browser-panel {
+    height: 520px;
+  }
+
+  .custom-games-layout > .play-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-block: var(--space-2);
+    background: var(--color-bg);
+  }
+}
+
+/* Short but wide: the tab scrolls as a page here too (`shell.css`), for the
+   panels that cannot be shorter, and the custom games grew with it to every
+   game in the list, the details panel beside them as tall (issue 674). Kept
+   to the window's height instead, less the page's padding: once the mode tabs
+   above have scrolled out, the toolbar, the list and the details fill the
+   window, and the list scrolls inside itself as it does in a tall one. */
+@media (max-height: 700px) and (min-width: 901px) {
+  .custom-games-layout {
+    flex: none;
+    height: max(320px, 100cqh - 46px);
   }
 }
 

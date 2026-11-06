@@ -231,6 +231,10 @@ pub fn run() {
             // closes the only window, which must not exit the client.
             #[cfg(windows)]
             webview_recovery::on_run_event(_app, &_event);
+            // The one event every way out passes through, once.
+            if let tauri::RunEvent::Exit = _event {
+                exit::sweep_generated_maps(_app);
+            }
         });
 }
 

@@ -247,6 +247,11 @@ pub struct RatingHistoryQuery {
     pub period: RatingHistoryPeriod,
     pub page: i32,
     pub page_size: i32,
+    /// Only the newest this many games of the period, or all of it when
+    /// `None` (#709). The API pages newest first, so the load stops after the
+    /// pages that hold them instead of reading the whole history to keep 100.
+    #[serde(default)]
+    pub latest_games: Option<i32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
@@ -827,6 +832,7 @@ mod tests {
             period: RatingHistoryPeriod::All,
             page: 2,
             page_size: 1000,
+            latest_games: None,
         };
         let point = |timestamp: &str| RatingHistoryPoint {
             timestamp: timestamp.into(),

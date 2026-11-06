@@ -71,7 +71,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["faf"]
+        "schemes": ["faf", "discord-464069837237518357"]
       }
     }
   }
