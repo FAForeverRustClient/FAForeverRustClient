@@ -93,8 +93,9 @@ export const native = {
   onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" | "expire" }) => void): Promise<() => void> {
     return listen<{ id: string; interaction: "activate" | "dismiss" | "expire" }>("notifications://interact", (event) => handler(event.payload));
   },
-  gameNotificationAttention(activate = false): Promise<boolean> {
-    return invoke("game_notification_attention", { activate });
+  /** Whether the game is in front; flashes its taskbar entry unless `flash` is false. */
+  gameNotificationAttention(activate = false, flash = true): Promise<boolean> {
+    return invoke("game_notification_attention", { activate, flash });
   },
 
   openLogFolder(kind: LogKind): Promise<void> {

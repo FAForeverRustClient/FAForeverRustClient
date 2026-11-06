@@ -892,17 +892,20 @@ fn publish(app: &tauri::AppHandle, batch: &NotificationPopupBatch) -> Result<(),
     Ok(())
 }
 
+/// Whether the game is in front, flashing its taskbar entry when it is not.
+/// `flash: false` only asks, for a player who turned taskbar flashing off.
 #[tauri::command]
 pub(crate) fn game_notification_attention(
     core: tauri::State<'_, crate::Core>,
     activate: bool,
+    flash: Option<bool>,
 ) -> Result<bool, String> {
     if activate {
         core.0.focus_game()?;
         return Ok(true);
     }
     let focused = core.0.game_is_focused();
-    if !focused {
+    if !focused && flash.unwrap_or(true) {
         core.0.request_game_attention();
     }
     Ok(focused)
