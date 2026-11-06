@@ -1,0 +1,1 @@
+- You can turn off taskbar flashing under Settings → Notifications → Desktop.
