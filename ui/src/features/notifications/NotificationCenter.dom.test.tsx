@@ -71,10 +71,31 @@ it("shows a desktop popup in the background without a duplicate in-client or sys
   const view = render(<NotificationCenter />);
   await act(async () => {});
   expect(nativeMock.showNotificationPopup).toHaveBeenCalledOnce();
+  expect(nativeMock.requestAttention).toHaveBeenCalledOnce();
   expect(nativeMock.ensureNotificationPermission).not.toHaveBeenCalled();
   expect(nativeMock.sendNotification).not.toHaveBeenCalled();
   expect(view.container.querySelector(".notification-toast")).toBeNull();
   expect(useAppStore.getState().state.notifications.items[0].read).toBe(false);
+});
+it("keeps desktop popups when taskbar flashing is disabled", async () => {
+  const state = useAppStore.getState().state;
+  seedStore(() => ({ ...state, settings: { ...state.settings, notifications: {
+    ...state.settings.notifications, flashTaskbar: false,
+  } } }));
+  render(<NotificationCenter />);
+  await act(async () => {});
+  expect(nativeMock.showNotificationPopup).toHaveBeenCalledOnce();
+  expect(nativeMock.requestAttention).not.toHaveBeenCalled();
+});
+it("does not flash the game's taskbar entry for a full lobby when taskbar flashing is disabled", async () => {
+  const state = useAppStore.getState().state;
+  seedStore(() => ({ ...state, settings: { ...state.settings, notifications: {
+    ...state.settings.notifications, flashTaskbar: false,
+  } }, notifications: { items: [{ id: "full", kind: "gameFull", title: "Game full", body: "Ready", action: { type: "focusGame" }, text: null, read: false, createdAt: new Date().toISOString() }] } }));
+  render(<NotificationCenter />);
+  await act(async () => {});
+  expect(nativeMock.gameNotificationAttention).toHaveBeenCalledWith(false, false);
+  expect(nativeMock.requestAttention).not.toHaveBeenCalled();
 });
 it("uses the in-client card while focused unless desktop delivery while focused is enabled", async () => {
   vi.mocked(nativeMock.isWindowFocused).mockResolvedValue(true);

@@ -1361,6 +1361,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.toastPosition.topLeft": "Oben links",
   "settings.notifications.toastPosition.topRight": "Oben rechts",
   "settings.notifications.whenFocused": "Auch bei aktivem Fenster",
+  "settings.notifications.flashTaskbar": "Taskleiste blinken lassen",
+  "settings.notifications.flashTaskbarHint": "Hebt das Symbol in der Taskleiste bei Benachrichtigungen hervor, wenn der Client im Hintergrund ist.",
   "settings.notifications.matchFound": "Partie gefunden",
   "settings.notifications.privateMessages": "Private Nachrichten",
   "settings.notifications.mentions": "Erwähnungen",

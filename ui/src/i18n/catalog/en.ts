@@ -1664,6 +1664,8 @@ export const en = {
   "settings.notifications.toastPosition.topLeft": "Top left",
   "settings.notifications.toastPosition.topRight": "Top right",
   "settings.notifications.whenFocused": "Notify while focused",
+  "settings.notifications.flashTaskbar": "Flash taskbar",
+  "settings.notifications.flashTaskbarHint": "Highlight the taskbar icon when a notification arrives while the client is in the background.",
   "settings.notifications.matchFound": "Match found",
   "settings.notifications.privateMessages": "Private messages",
   "settings.notifications.mentions": "Mentions",

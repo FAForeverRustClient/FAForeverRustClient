@@ -870,6 +870,7 @@ export const INITIAL_STATE: AppState = {
       },
       "soundChoiceVersion": 3,
       "notifyWhenFocused": false,
+      "flashTaskbar": true,
       "toastPosition": "bottomLeft",
       "delivery": {},
       "mentionsRequireAt": false,

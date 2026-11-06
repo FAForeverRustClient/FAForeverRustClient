@@ -6893,6 +6893,8 @@ export type NotificationPreferences = {
 	 */
 	soundChoiceVersion: number,
 	notifyWhenFocused: boolean,
+	/**  Request attention for notifications while the client is in the background. */
+	flashTaskbar: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
 	delivery: Partial<{ [key in NotificationKind]: NotificationDelivery }>,
@@ -6977,6 +6979,7 @@ export type NotificationPreferencesPatch = {
 	historyLifetimeSeconds?: number,
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
+	flashTaskbar?: boolean,
 	toastPosition?: ToastPosition,
 	desktopStyle?: DesktopNotificationStyle,
 	desktopPosition?: ToastPosition,

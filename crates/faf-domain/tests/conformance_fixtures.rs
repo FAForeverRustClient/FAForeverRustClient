@@ -9461,6 +9461,7 @@ fn transition_cases() -> Vec<Case> {
                 SettingsEvent::NotificationsChanged {
                     preferences: Box::new(NotificationPreferences {
                         enabled: false,
+                        flash_taskbar: false,
                         ..NotificationPreferences::default()
                     }),
                 }

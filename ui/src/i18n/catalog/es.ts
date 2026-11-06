@@ -1260,6 +1260,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.historyLifetimeHint": "Una notificación sale sola del historial de la campana este tiempo después de llegar. 0 conserva cada una hasta que la borres.",
   "settings.notifications.mapPool": "Nuevos grupos de mapas",
   "settings.notifications.whenFocused": "Avisar con la ventana activa",
+  "settings.notifications.flashTaskbar": "Hacer parpadear la barra de tareas",
+  "settings.notifications.flashTaskbarHint": "Resalta el icono de la barra de tareas cuando llega una notificación con el cliente en segundo plano.",
   "settings.notifications.matchFound": "Partida encontrada",
   "settings.notifications.privateMessages": "Mensajes privados",
   "settings.notifications.mentions": "Menciones",
