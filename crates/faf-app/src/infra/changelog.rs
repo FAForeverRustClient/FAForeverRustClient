@@ -15,6 +15,7 @@ use faf_domain::protocol::changelog::{
     parse_rendered_entry, with_early_releases, ChangelogEntry, ChangelogRelease,
 };
 
+use super::release_metadata::{ReadMode, ReleaseMetadata};
 use crate::infra::env_or;
 use crate::ports::ChangelogPort;
 
@@ -49,12 +50,21 @@ pub struct ChangelogClient {
     config: ChangelogConfig,
     http: reqwest::Client,
     documents: cache::DocumentCache,
+    releases: ReleaseMetadata<Vec<ChangelogRelease>>,
 }
 
 impl ChangelogClient {
     pub fn new(config: ChangelogConfig) -> Self {
         Self {
             documents: cache::DocumentCache::new(config.cache_dir.clone()),
+            releases: ReleaseMetadata::new(
+                config.cache_dir.as_ref().map(|dir| {
+                    dir.join("release-index")
+                        .join(cache::filename(&config.index_url))
+                }),
+                MAX_DOCUMENT_BYTES as u64,
+                parse_releases,
+            ),
             config,
             http: super::http::shared_http_client(),
         }
@@ -65,8 +75,7 @@ impl ChangelogClient {
     }
 
     async fn fetch_text(&self, url: &str) -> Result<String, String> {
-        self.fetch_text_with_deadline(url, super::http::REQUEST_DEADLINE)
-            .await
+        Self::fetch_text_with_deadline(&self.http, url, super::http::REQUEST_DEADLINE).await
     }
 
     async fn dated_document(
@@ -77,18 +86,17 @@ impl ChangelogClient {
         if let Some(source) = self.documents.read(url).await {
             return Ok(source);
         }
-        let source = self.fetch_text_with_deadline(url, deadline).await?;
+        let source = Self::fetch_text_with_deadline(&self.http, url, deadline).await?;
         self.documents.store(url, &source).await;
         Ok(source)
     }
 
     async fn fetch_text_with_deadline(
-        &self,
+        http: &reqwest::Client,
         url: &str,
         deadline: std::time::Duration,
     ) -> Result<String, String> {
-        let response = self
-            .http
+        let response = http
             .get(url)
             .timeout(deadline)
             .send()
@@ -109,20 +117,37 @@ impl ChangelogClient {
 
         String::from_utf8(bytes).map_err(|_| "the changelog document was not valid UTF-8".into())
     }
+
+    async fn release_index(&self, mode: ReadMode) -> Result<Vec<ChangelogRelease>, String> {
+        let http = self.http.clone();
+        let url = self.config.index_url.clone();
+        self.releases
+            .get(mode, async move {
+                let html =
+                    Self::fetch_text_with_deadline(&http, &url, super::http::REQUEST_DEADLINE)
+                        .await?;
+                Ok((parse_releases(&html)?, html))
+            })
+            .await
+    }
+}
+
+fn parse_releases(html: &str) -> Result<Vec<ChangelogRelease>, String> {
+    let releases = parse_index(html);
+    if releases.is_empty() {
+        return Err("the changelog index listed no releases".into());
+    }
+    Ok(with_early_releases(releases))
 }
 
 #[async_trait]
 impl ChangelogPort for ChangelogClient {
     async fn list_releases(&self) -> Result<Vec<ChangelogRelease>, String> {
-        let html = self.fetch_text(&self.config.index_url).await?;
-        let releases = parse_index(&html);
-        if releases.is_empty() {
-            // Distinguished from a transport failure on purpose: the fetch
-            // worked and the page simply did not look like the changelog any
-            // more, which is a different thing to investigate.
-            return Err("the changelog index listed no releases".into());
-        }
-        Ok(with_early_releases(releases))
+        self.release_index(ReadMode::RequireFresh).await
+    }
+
+    async fn releases_for_unit_history(&self) -> Result<Vec<ChangelogRelease>, String> {
+        self.release_index(ReadMode::PreferCached).await
     }
 
     async fn load_entry(&self, release: ChangelogRelease) -> Result<ChangelogEntry, String> {

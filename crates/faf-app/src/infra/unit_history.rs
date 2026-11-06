@@ -19,28 +19,30 @@
 //! The rules that turn these into a history are in
 //! [`faf_domain::protocol::unit_history`].
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::SystemTime;
 
 use async_trait::async_trait;
 use faf_domain::protocol::blueprint::parse_blueprint;
 use faf_domain::protocol::unit_history::{
-    summarize, BaseGameBlueprint, ReleaseBlueprint, UnitSummary,
+    blueprint_paths, summarize, BaseGameBlueprint, ReleaseBlueprint, UnitSummary,
 };
 use sha2::{Digest, Sha256};
 
+use super::metadata_file::read_bounded_to_string;
+use super::release_metadata::{write_atomic, ReadMode, ReleaseMetadata};
 use crate::ports::UnitHistoryPort;
+
+mod git_pack;
+mod index;
 
 /// The largest blueprint in the repository is about 60 KB (a commander).
 const MAX_BLUEPRINT_BYTES: u64 = 1024 * 1024;
 /// The tag list is about 12 KB.
 const MAX_TAG_LIST_BYTES: u64 = 1024 * 1024;
-/// How long a tag list is trusted before it is asked for again. A release
-/// published while the client is open appears within this.
-const TAG_LIST_AGE: Duration = Duration::from_secs(60 * 60);
 const MISSING: &str = "missing";
 
 #[derive(Debug, Clone)]
@@ -69,8 +71,7 @@ impl UnitHistoryConfig {
 pub struct UnitHistoryClient {
     config: UnitHistoryConfig,
     http: reqwest::Client,
-    // The expiration time and the tags, shared by all open histories.
-    tags: tokio::sync::Mutex<Option<(Instant, BTreeSet<String>)>>,
+    tags: ReleaseMetadata<BTreeSet<String>>,
     units: Arc<Mutex<Option<ArchiveValue<Vec<UnitSummary>>>>>,
     projectiles: Arc<Mutex<Option<ArchiveValue<BTreeSet<String>>>>>,
 }
@@ -101,9 +102,13 @@ fn archive_stamp(paths: &[PathBuf]) -> Option<ArchiveStamp> {
 impl UnitHistoryClient {
     pub fn new(config: UnitHistoryConfig) -> Self {
         Self {
+            tags: ReleaseMetadata::new(
+                config.cache_dir.as_ref().map(|dir| dir.join("tags.txt")),
+                MAX_TAG_LIST_BYTES,
+                parse_cached_tags,
+            ),
             config,
             http: super::http::shared_http_client(),
-            tags: tokio::sync::Mutex::new(None),
             units: Arc::default(),
             projectiles: Arc::default(),
         }
@@ -113,16 +118,18 @@ impl UnitHistoryClient {
         Self::new(UnitHistoryConfig::faf())
     }
 
-    async fn fetch_tags(&self) -> Result<BTreeSet<String>, String> {
+    async fn fetch_tags(
+        http: reqwest::Client,
+        url: String,
+    ) -> Result<(BTreeSet<String>, String), String> {
         // `command=ls-refs`, a delimiter, `ref-prefix refs/tags/`, a flush:
         // each line framed by its own length in four hex digits.
         let mut body = pkt_line("command=ls-refs\n");
         body.extend(b"0001");
         body.extend(pkt_line("ref-prefix refs/tags/\n"));
         body.extend(b"0000");
-        let response = self
-            .http
-            .post(&self.config.git_upload_pack)
+        let response = http
+            .post(url)
             .header("Content-Type", "application/x-git-upload-pack-request")
             .header("Git-Protocol", "version=2")
             .body(body)
@@ -144,7 +151,45 @@ impl UnitHistoryClient {
         if tags.is_empty() {
             return Err("the game repository listed no release tags".into());
         }
-        Ok(tags)
+        let source = tags.iter().cloned().collect::<Vec<_>>().join("\n");
+        Ok((tags, source))
+    }
+
+    async fn fetch_indexed_blobs(
+        &self,
+        wanted: BTreeSet<String>,
+    ) -> Option<HashMap<String, String>> {
+        let mut body = pkt_line("command=fetch\n");
+        body.extend(b"0001");
+        body.extend(pkt_line("no-progress\n"));
+        body.extend(pkt_line("ofs-delta\n"));
+        for id in &wanted {
+            body.extend(pkt_line(&format!("want {id}\n")));
+        }
+        body.extend(pkt_line("done\n"));
+        body.extend(b"0000");
+        let response = self
+            .http
+            .post(&self.config.git_upload_pack)
+            .header("Content-Type", "application/x-git-upload-pack-request")
+            .header("Git-Protocol", "version=2")
+            .body(body)
+            .timeout(std::time::Duration::from_secs(8))
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?;
+        let bytes = super::vault_install::bounded_body(
+            response,
+            "the indexed unit blueprints",
+            git_pack::MAX_PACK_BYTES,
+        )
+        .await
+        .ok()?;
+        tokio::task::spawn_blocking(move || git_pack::unpack(&bytes, &wanted))
+            .await
+            .ok()?
     }
 
     async fn fetch_file(&self, tag: &str, path: &str) -> Result<Option<String>, String> {
@@ -250,8 +295,16 @@ impl DiskCache {
         self.root.join("blobs").join(format!("{digest}.bp"))
     }
 
+    fn indexed_reference(&self, id: &str) -> PathBuf {
+        self.root.join("git-blobs").join(format!("{id}.ref"))
+    }
+
     fn read(&self, tag: &str, unit: &str) -> Option<ReleaseBlueprint> {
-        let reference = std::fs::read_to_string(self.reference(tag, unit)).ok()?;
+        self.read_reference(&self.reference(tag, unit))
+    }
+
+    fn read_reference(&self, path: &Path) -> Option<ReleaseBlueprint> {
+        let reference = read_bounded_to_string(path, 128).ok()?;
         let reference = reference.trim();
         if reference == MISSING {
             return Some(ReleaseBlueprint::Missing);
@@ -259,23 +312,27 @@ impl DiskCache {
         if reference.len() != 64 || !reference.bytes().all(|c| c.is_ascii_hexdigit()) {
             return None;
         }
-        let mut text = String::new();
-        std::fs::File::open(self.blob(reference))
-            .ok()?
-            .take(MAX_BLUEPRINT_BYTES + 1)
-            .read_to_string(&mut text)
-            .ok()?;
+        self.read_blob(reference).map(ReleaseBlueprint::Found)
+    }
+
+    fn read_blob(&self, digest: &str) -> Option<String> {
+        let text = read_bounded_to_string(&self.blob(digest), MAX_BLUEPRINT_BYTES).ok()?;
         // A blob that does not hash to its name was damaged on disk.
-        (format!("{:x}", Sha256::digest(text.as_bytes())) == reference)
-            .then_some(ReleaseBlueprint::Found(text))
+        (format!("{:x}", Sha256::digest(text.as_bytes())) == digest).then_some(text)
     }
 
     fn store(&self, tag: &str, unit: &str, blueprint: &ReleaseBlueprint) -> std::io::Result<()> {
+        self.store_reference(&self.reference(tag, unit), blueprint)
+    }
+
+    fn store_reference(&self, path: &Path, blueprint: &ReleaseBlueprint) -> std::io::Result<()> {
         let reference = match blueprint {
             ReleaseBlueprint::Found(text) => {
                 let digest = format!("{:x}", Sha256::digest(text.as_bytes()));
                 let blob = self.blob(&digest);
-                if !blob.is_file() {
+                if !read_bounded_to_string(&blob, MAX_BLUEPRINT_BYTES)
+                    .is_ok_and(|stored| stored == *text)
+                {
                     write_atomic(&blob, text.as_bytes())?;
                 }
                 digest
@@ -283,42 +340,69 @@ impl DiskCache {
             ReleaseBlueprint::Missing => MISSING.to_owned(),
             ReleaseBlueprint::Failed(_) => return Ok(()),
         };
-        write_atomic(&self.reference(tag, unit), reference.as_bytes())
+        write_atomic(path, reference.as_bytes())
     }
 }
 
-fn read_cached_tags(path: &Path) -> Option<(BTreeSet<String>, Option<Instant>)> {
-    let file = std::fs::File::open(path).ok()?;
-    let metadata = file.metadata().ok()?;
-    let mut text = String::new();
-    file.take(MAX_TAG_LIST_BYTES + 1)
-        .read_to_string(&mut text)
-        .ok()?;
-    if text.len() as u64 > MAX_TAG_LIST_BYTES {
-        return None;
+fn plan_indexed(
+    path: &str,
+    releases: &[u32],
+    cache: Option<&DiskCache>,
+) -> (BTreeMap<u32, ReleaseBlueprint>, BTreeMap<String, Vec<u32>>) {
+    let mut resolved = BTreeMap::new();
+    let mut by_blob: BTreeMap<&str, Vec<u32>> = BTreeMap::new();
+    for (release, source) in index::lookup(path, releases) {
+        match source {
+            index::IndexedRelease::Missing => {
+                resolved.insert(release, ReleaseBlueprint::Missing);
+            }
+            index::IndexedRelease::Blob(id) => by_blob.entry(id).or_default().push(release),
+        }
     }
+    let mut pending = BTreeMap::new();
+    for (id, releases) in by_blob {
+        let cached = cache.and_then(|disk| {
+            disk.read_reference(&disk.indexed_reference(id))
+                .filter(|source| {
+                    matches!(source, ReleaseBlueprint::Found(text)
+                    if git_pack::blob_id(text.as_bytes()) == id)
+                })
+                .or_else(|| {
+                    // Reuse the cache written by older clients. Its contents
+                    // must match this Git object before sharing across tags.
+                    releases.iter().find_map(|release| {
+                        let paths = blueprint_paths(*release, path);
+                        let unit = unit_key(&paths)?;
+                        let source = disk.read(&release.to_string(), &unit)?;
+                        matches!(&source, ReleaseBlueprint::Found(text)
+                            if git_pack::blob_id(text.as_bytes()) == id)
+                        .then_some(source)
+                    })
+                })
+        });
+        if let Some(cached) = cached {
+            resolved.extend(
+                releases
+                    .into_iter()
+                    .map(|release| (release, cached.clone())),
+            );
+        } else {
+            pending.insert(id.to_owned(), releases);
+        }
+    }
+    (resolved, pending)
+}
+
+fn parse_cached_tags(text: &str) -> Result<BTreeSet<String>, String> {
     let tags: BTreeSet<_> = text
         .lines()
         .filter(|tag| is_plain_tag(tag))
         .map(str::to_owned)
         .collect();
-    let expires = metadata
-        .modified()
-        .ok()
-        .and_then(|modified| modified.elapsed().ok())
-        .and_then(|age| TAG_LIST_AGE.checked_sub(age))
-        .map(|remaining| Instant::now() + remaining);
-    (!tags.is_empty()).then_some((tags, expires))
-}
-
-fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    let directory = path.parent().ok_or(std::io::ErrorKind::InvalidInput)?;
-    std::fs::create_dir_all(directory)?;
-    let mut temporary = tempfile::NamedTempFile::new_in(directory)?;
-    temporary.write_all(bytes)?;
-    temporary.persist(path).map_err(|error| error.error)?;
-    Ok(())
+    if tags.is_empty() {
+        return Err("the saved tag list is empty".into());
+    }
+    Ok(tags)
 }
 
 /// Every `*_unit.bp` (or `*_proj.bp`) entry of a game archive, with its path
@@ -429,46 +513,59 @@ impl UnitHistoryPort for UnitHistoryClient {
     }
 
     async fn release_tags(&self) -> Result<BTreeSet<String>, String> {
-        let mut held = self.tags.lock().await;
-        if let Some((expires, tags)) = held.as_ref() {
-            if Instant::now() < *expires {
-                return Ok(tags.clone());
-            }
-        }
-        let cache_path = self
-            .config
-            .cache_dir
-            .as_ref()
-            .map(|dir| dir.join("tags.txt"));
-        let saved = match cache_path.clone() {
-            Some(path) => tokio::task::spawn_blocking(move || read_cached_tags(&path))
-                .await
-                .ok()
-                .flatten(),
-            None => None,
+        self.tags
+            .get(
+                ReadMode::PreferCached,
+                Self::fetch_tags(self.http.clone(), self.config.git_upload_pack.clone()),
+            )
+            .await
+    }
+
+    async fn indexed_blueprints(
+        &self,
+        installed_path: &str,
+        releases: &[u32],
+    ) -> BTreeMap<u32, ReleaseBlueprint> {
+        let path = installed_path.to_owned();
+        let releases = releases.to_vec();
+        let cache = self.config.cache_dir.clone().map(|root| DiskCache { root });
+        let Ok((mut resolved, pending, cache)) = tokio::task::spawn_blocking(move || {
+            let (resolved, pending) = plan_indexed(&path, &releases, cache.as_ref());
+            (resolved, pending, cache)
+        })
+        .await
+        else {
+            return BTreeMap::new();
         };
-        // Retain the original expiry when using the list after a restart.
-        if let Some((tags, Some(expires))) = &saved {
-            if Instant::now() < *expires {
-                *held = Some((*expires, tags.clone()));
-                return Ok(tags.clone());
-            }
+        if pending.is_empty() {
+            return resolved;
         }
-        match self.fetch_tags().await {
-            Ok(tags) => {
-                let expires = Instant::now() + TAG_LIST_AGE;
-                if let Some(path) = cache_path {
-                    let text = tags.iter().cloned().collect::<Vec<_>>().join("\n");
-                    let _ =
-                        tokio::task::spawn_blocking(move || write_atomic(&path, text.as_bytes()))
-                            .await;
+        let Some(mut blobs) = self
+            .fetch_indexed_blobs(pending.keys().cloned().collect())
+            .await
+        else {
+            return resolved;
+        };
+        tokio::task::spawn_blocking(move || {
+            for (id, releases) in pending {
+                let Some(text) = blobs.remove(&id) else {
+                    continue;
+                };
+                let reusable = git_pack::blob_id(text.as_bytes()) == id;
+                let blueprint = ReleaseBlueprint::Found(text);
+                if let Some(cache) = cache.as_ref().filter(|_| reusable) {
+                    let _ = cache.store_reference(&cache.indexed_reference(&id), &blueprint);
                 }
-                *held = Some((expires, tags.clone()));
-                Ok(tags)
+                resolved.extend(
+                    releases
+                        .into_iter()
+                        .map(|release| (release, blueprint.clone())),
+                );
             }
-            // The last list still names every release the cache can hold offline.
-            Err(reason) => saved.map(|(tags, _)| tags).ok_or(reason),
-        }
+            resolved
+        })
+        .await
+        .unwrap_or_default()
     }
 
     async fn release_blueprint(&self, tag: &str, paths: &[String]) -> ReleaseBlueprint {
@@ -707,62 +804,154 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_fresh_tag_list_survives_restart_and_an_old_list_refreshes() {
+    async fn cached_history_opens_while_release_metadata_refreshes() {
+        use crate::infra::{ChangelogClient, ChangelogConfig};
+        use crate::ports::ChangelogPort;
+        use std::time::Duration;
+        use tokio::sync::{watch, Semaphore};
+        use tokio::time::timeout;
+
         let cache = tempfile::tempdir().unwrap();
         let tag_file = cache.path().join("tags.txt");
         std::fs::write(&tag_file, "3837").unwrap();
+        let blueprint = ReleaseBlueprint::Found("UnitBlueprint { }".into());
+        let disk = DiskCache {
+            root: cache.path().to_path_buf(),
+        };
+        disk.store("3837", "UEL0201", &blueprint).unwrap();
+        let paths = ["units/UEL0201/UEL0201_unit.bp".to_owned()];
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let config = UnitHistoryConfig {
-            raw_base: String::new(),
-            git_upload_pack: format!("http://{}", listener.local_addr().unwrap()),
+        let base = format!("http://{}", listener.local_addr().unwrap());
+        let game_config = UnitHistoryConfig {
+            raw_base: base.clone(),
+            git_upload_pack: format!("{base}/tags"),
+            cache_dir: Some(cache.path().to_path_buf()),
+        };
+        let changelog_config = ChangelogConfig {
+            index_url: format!("{base}/index"),
             cache_dir: Some(cache.path().to_path_buf()),
         };
         let requests = Arc::new(AtomicU32::new(0));
         let observed = requests.clone();
+        let (respond, response_allowed) = watch::channel(false);
+        let waiting = Arc::new(Semaphore::new(0));
+        let started = waiting.clone();
         let server = tokio::spawn(async move {
             loop {
                 let (mut socket, _) = listener.accept().await.unwrap();
-                let mut request = [0_u8; 4096];
-                assert!(socket.read(&mut request).await.unwrap() > 0);
-                observed.fetch_add(1, Ordering::AcqRel);
-                let mut body =
-                    pkt_line("04d3760ac66358a70639835508dc4b58561fcbd9 refs/tags/3838\n");
-                body.extend(b"0000");
-                let response = format!(
-                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                    body.len()
-                );
-                socket.write_all(response.as_bytes()).await.unwrap();
-                socket.write_all(&body).await.unwrap();
+                let observed = observed.clone();
+                let mut response_allowed = response_allowed.clone();
+                let started = started.clone();
+                tokio::spawn(async move {
+                    let mut request = [0_u8; 4096];
+                    let length = socket.read(&mut request).await.unwrap();
+                    let line = String::from_utf8_lossy(&request[..length]);
+                    let count = observed.fetch_add(1, Ordering::AcqRel);
+                    let tag = if count == 0 {
+                        "3837"
+                    } else {
+                        started.add_permits(1);
+                        response_allowed.wait_for(|allowed| *allowed).await.unwrap();
+                        "3838"
+                    };
+                    let body = if line.starts_with("POST /tags ") {
+                        let mut body = pkt_line(&format!(
+                            "04d3760ac66358a70639835508dc4b58561fcbd9 refs/tags/{tag}\n"
+                        ));
+                        body.extend(b"0000");
+                        body
+                    } else {
+                        assert!(line.starts_with("GET /index "), "{line}");
+                        format!(
+                            r#"<h2 id="2026">Year 2026</h2>
+                            <li><a class="preview-title" href="/fa/changelog/{tag}">{tag} - Game Patch</a> <span>(Aug 14)</span></li>"#
+                        )
+                        .into_bytes()
+                    };
+                    let response = format!(
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    socket.write_all(response.as_bytes()).await.unwrap();
+                    socket.write_all(&body).await.unwrap();
+                });
             }
         });
 
-        let client = UnitHistoryClient::new(config.clone());
+        let changelog = ChangelogClient::new(changelog_config.clone());
+        let old = changelog.list_releases().await.unwrap();
+        assert!(old.iter().any(|release| release.id == "3837"));
+        let index_file = std::fs::read_dir(cache.path().join("release-index"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        let changelog = ChangelogClient::new(changelog_config.clone());
+        let game = UnitHistoryClient::new(game_config.clone());
+        assert_eq!(changelog.releases_for_unit_history().await.unwrap(), old);
         assert_eq!(
-            client.release_tags().await.unwrap(),
+            game.release_tags().await.unwrap(),
             BTreeSet::from(["3837".into()])
         );
-        assert_eq!(requests.load(Ordering::Acquire), 0);
-        let expired = SystemTime::now() - TAG_LIST_AGE - Duration::from_secs(60);
-        std::fs::OpenOptions::new()
-            .write(true)
-            .open(&tag_file)
-            .unwrap()
-            .set_modified(expired)
-            .unwrap();
-        let restarted = UnitHistoryClient::new(config.clone());
-        assert_eq!(
-            restarted.release_tags().await.unwrap(),
-            BTreeSet::from(["3838".into()])
-        );
         assert_eq!(requests.load(Ordering::Acquire), 1);
-        let restarted = UnitHistoryClient::new(config);
+
+        let expired = SystemTime::now() - Duration::from_secs(2 * 60 * 60);
+        for file in [&tag_file, &index_file] {
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(file)
+                .unwrap()
+                .set_modified(expired)
+                .unwrap();
+        }
+        let changelog = ChangelogClient::new(changelog_config.clone());
+        let game = UnitHistoryClient::new(game_config.clone());
+        let limit = Duration::from_secs(5);
+        for _ in 0..2 {
+            let (tags, releases, saved_blueprint) = timeout(limit, async {
+                tokio::join!(
+                    game.release_tags(),
+                    changelog.releases_for_unit_history(),
+                    game.release_blueprint("3837", &paths),
+                )
+            })
+            .await
+            .expect("cached history must not wait for either server response");
+            assert_eq!(tags.unwrap(), BTreeSet::from(["3837".into()]));
+            assert_eq!(releases.unwrap(), old);
+            assert_eq!(saved_blueprint, blueprint);
+        }
+        let (latest, ()) = timeout(limit, async {
+            tokio::join!(changelog.list_releases(), async {
+                waiting.acquire_many(2).await.unwrap().forget();
+                respond.send(true).unwrap();
+            })
+        })
+        .await
+        .unwrap();
+        let latest = latest.unwrap();
+        assert!(latest.iter().any(|release| release.id == "3838"));
+        assert_eq!(changelog.releases_for_unit_history().await.unwrap(), latest);
+
+        let new_tags = BTreeSet::from(["3838".into()]);
+        timeout(limit, async {
+            while game.release_tags().await.unwrap() != new_tags {
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+        })
+        .await
+        .unwrap();
+        let changelog = ChangelogClient::new(changelog_config);
+        let game = UnitHistoryClient::new(game_config);
+        assert_eq!(changelog.releases_for_unit_history().await.unwrap(), latest);
+        assert_eq!(game.release_tags().await.unwrap(), new_tags);
         assert_eq!(
-            restarted.release_tags().await.unwrap(),
-            BTreeSet::from(["3838".into()])
+            requests.load(Ordering::Acquire),
+            3,
+            "one request per refresh"
         );
-        assert_eq!(requests.load(Ordering::Acquire), 1);
         server.abort();
     }
 
@@ -780,7 +969,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_release_is_read_once_and_kept_including_a_missing_file() {
+    async fn cached_blueprints_reuse_missing_files_and_repair_damaged_blobs() {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let base = format!("http://{}", listener.local_addr().unwrap());
         let requests = Arc::new(AtomicU32::new(0));
@@ -830,7 +1019,7 @@ mod tests {
         );
         assert_eq!(requests.load(Ordering::Acquire), 4);
 
-        let restarted = UnitHistoryClient::new(config);
+        let restarted = UnitHistoryClient::new(config.clone());
         assert_eq!(restarted.release_blueprint("3700", &paths).await, found);
         assert_eq!(
             restarted.release_blueprint("3701", &paths).await,
@@ -839,7 +1028,29 @@ mod tests {
         assert_eq!(
             requests.load(Ordering::Acquire),
             4,
-            "both answers come from the disk"
+            "both answers come from disk"
+        );
+
+        let ReleaseBlueprint::Found(source) = &found else {
+            panic!("expected the cached blueprint");
+        };
+        let disk = DiskCache {
+            root: cache.path().to_path_buf(),
+        };
+        let digest = format!("{:x}", Sha256::digest(source.as_bytes()));
+        std::fs::write(disk.blob(&digest), "damaged").unwrap();
+        assert_eq!(restarted.release_blueprint("3700", &paths).await, found);
+        assert_eq!(
+            requests.load(Ordering::Acquire),
+            6,
+            "downloaded the valid copy"
+        );
+        let restarted = UnitHistoryClient::new(config);
+        assert_eq!(restarted.release_blueprint("3700", &paths).await, found);
+        assert_eq!(
+            requests.load(Ordering::Acquire),
+            6,
+            "the repaired copy came from disk"
         );
         server.abort();
     }

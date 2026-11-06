@@ -8,6 +8,11 @@ pub trait ChangelogPort: Send + Sync {
     /// Every release the project lists, newest first.
     async fn list_releases(&self) -> Result<Vec<ChangelogRelease>, String>;
 
+    /// The release metadata for unit histories, using a saved list while it refreshes.
+    async fn releases_for_unit_history(&self) -> Result<Vec<ChangelogRelease>, String> {
+        self.list_releases().await
+    }
+
     /// One release's note.
     ///
     /// Takes the whole release rather than an id, because the index is what
