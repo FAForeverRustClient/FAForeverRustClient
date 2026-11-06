@@ -156,7 +156,9 @@ export function NotificationCenter() {
     }
     const unreadIds = items.filter((item) => !item.read).map((item) => item.id);
     setFresh(new Set(unreadIds));
-    unreadIds.forEach(markRead);
+    if (unreadIds.length > 0) {
+      ipc.send({ kind: "Notifications", command: { type: "markReadMany", payload: { ids: unreadIds } } });
+    }
     setOpen(true);
   };
   const clearAll = useCallback(() => {

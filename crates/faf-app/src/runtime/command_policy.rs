@@ -404,6 +404,7 @@ fn nav(command: &NavCommand) -> CommandPolicy {
 fn notifications(command: &NotificationCommand) -> CommandPolicy {
     match command {
         NotificationCommand::MarkRead { .. }
+        | NotificationCommand::MarkReadMany { .. }
         | NotificationCommand::Dismiss { .. }
         | NotificationCommand::Clear => ORDINARY,
     }

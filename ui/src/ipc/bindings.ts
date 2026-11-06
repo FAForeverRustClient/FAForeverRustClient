@@ -6656,6 +6656,8 @@ export type NotificationAction = { type: "openChat"; payload: {
 
 export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,
+} } | { type: "markReadMany"; payload: {
+	ids: string[],
 } } | { type: "dismiss"; payload: {
 	id: string,
 } } | { type: "clear" };
@@ -6693,6 +6695,8 @@ export type NotificationEvent = { type: "added"; payload: {
 	notification: ClientNotification,
 } } | { type: "read"; payload: {
 	id: string,
+} } | { type: "readMany"; payload: {
+	ids: string[],
 } } | { type: "dismissed"; payload: {
 	id: string,
 } } | { type: "cleared" };

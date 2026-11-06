@@ -9270,6 +9270,15 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 NotificationEvent::Read { id: "n2".into() }.into(),
+                NotificationEvent::Added {
+                    notification: notification("n3", NotificationKind::FriendOnline),
+                }
+                .into(),
+                // A batch marks every id it names and skips the unknown one.
+                NotificationEvent::ReadMany {
+                    ids: vec!["n1".into(), "n3".into(), "n9".into()],
+                }
+                .into(),
                 NotificationEvent::Cleared.into(),
             ],
         ),

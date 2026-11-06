@@ -181,7 +181,7 @@ it("shows an urgent match immediately while preserving the displaced in-client c
   expect(view.container.textContent).toContain("Message 2");
 });
 
-it("marks everything read when the bell opens and keeps the new entries marked while it is open", async () => {
+it("marks the bell's unread entries in one command and keeps their new markers", async () => {
   const at = new Date().toISOString();
   const entry = (id: string, read: boolean) => ({ id, kind: "friendJoinedGame" as const, title: id, body: "", action: null, text: null, read, createdAt: at });
   seedStore((state) => ({ ...state, notifications: { items: [entry("new", false), entry("seen", true), entry("newer", false)] } }));
@@ -190,8 +190,7 @@ it("marks everything read when the bell opens and keeps the new entries marked w
   clearSentCommands();
   act(() => view.container.querySelector<HTMLButtonElement>(".notification-bell")!.click());
   expect(sentCommands()).toEqual([
-    { kind: "Notifications", command: { type: "markRead", payload: { id: "new" } } },
-    { kind: "Notifications", command: { type: "markRead", payload: { id: "newer" } } },
+    { kind: "Notifications", command: { type: "markReadMany", payload: { ids: ["new", "newer"] } } },
   ]);
   // The backend's answer: both are read now, and the badge goes.
   act(() => {
