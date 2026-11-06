@@ -767,8 +767,12 @@ pub(crate) fn notification_popup_interact(
                         open_main = true;
                         Ok(())
                     }
+                    // Putting a popup away means it was seen, not that it
+                    // should leave the bell: a click on a card with an action
+                    // button dismisses it, and deleting the entry there lost
+                    // most of what a player clicked away.
                     ("dismiss", _) if !preview => core.0.try_dispatch(AppCommand::Notifications(
-                        NotificationCommand::Dismiss { id: id.clone() },
+                        NotificationCommand::MarkRead { id: id.clone() },
                     )),
                     _ => Ok(()),
                 };

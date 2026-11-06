@@ -7,3 +7,4 @@
 - Manual and automatic cleanup preserve generated maps you just starred or kept.
 - Friend and foe changes report lobby send failures and leave the list intact.
 - Replay files and FAF links wait for a busy client, and failed link navigation retries automatically.
+- Dismissing a desktop notification keeps it in the bell, marked as read.
