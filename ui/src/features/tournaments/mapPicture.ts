@@ -8,7 +8,7 @@
 // own art for the same name. This adds what they do: the preview rendered when
 // this client generated the map, else the generator's placeholder.
 
-import type { TourneyMap, VaultMap } from "../../ipc/bindings";
+import type { TourneyMap, MapSummary } from "../../ipc/bindings";
 import {
   GENERATED_MAP_PLACEHOLDER_URL,
   extractGeneratedMapSeed,
@@ -19,7 +19,7 @@ import {
 import { tourneyMapImage } from "../../shared/rules/tourneyRules";
 
 /** The map's picture, or "" when there is none to show. */
-export function tourneyMapPicture(map: TourneyMap, assetBase: string, vault: VaultMap[]): string {
+export function tourneyMapPicture(map: TourneyMap, assetBase: string, vault: MapSummary[]): string {
   const picture = tourneyMapImage(map, assetBase, vault);
   if (picture !== "" || !isGeneratedMap(map.name)) return picture;
   return mapThumbnailCandidates(vault, map.name)[0] ?? GENERATED_MAP_PLACEHOLDER_URL;

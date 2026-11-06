@@ -14,9 +14,12 @@ describe("authoritative window updates", () => {
       const once = applyEvent(initial, update);
       const twice = applyEvent(once, update);
       expect(twice, update.kind).toEqual(once);
-      const slice = update.kind[0].toLowerCase() + update.kind.slice(1);
+      // An account change replaces the slices that held the previous account's activity.
+      const slices: string[] = update.kind === "AccountSession"
+        ? ["auth", "chat", "notifications"]
+        : [update.kind[0].toLowerCase() + update.kind.slice(1)];
       for (const other of Object.keys(initial) as Array<keyof AppState>) {
-        if (other !== slice) expect(once[other], `${update.kind}: ${other}`).toBe(initial[other]);
+        if (!slices.includes(other)) expect(once[other], `${update.kind}: ${other}`).toBe(initial[other]);
       }
     }
   });

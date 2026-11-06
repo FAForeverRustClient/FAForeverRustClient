@@ -21,7 +21,7 @@ import {
   isGeneratedMapPlaceholderUrl,
   mapPresentation,
 } from "../../shared/mapPresentation";
-import type { VaultMap } from "../../ipc/bindings";
+import type { MapSummary } from "../../ipc/bindings";
 
 /** Every kind, in the order the filter offers them. Twin of `TrainingKind::ALL`. */
 export const KINDS: TrainingKind[] = [
@@ -185,7 +185,7 @@ function youtubeId(url: string): string {
  * The generator placeholder is not a preview: an entry that resolved to it
  * found nothing, and saying so lets the caller fall back.
  */
-export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
+export function mapPreviewUrl(vault: MapSummary[], maps: string[]): string {
   const name = maps.find((map) => map.trim() !== "");
   if (!name) return "";
   const { thumbnailUrl } = mapPresentation(vault, name);
@@ -203,7 +203,7 @@ export function mapPreviewUrl(vault: VaultMap[], maps: string[]): string {
  * catalogue is the exact preview of the folder the author's replays were
  * recorded on, so nothing has to guess.
  */
-export function mapArtUrl(vault: VaultMap[], resource: TrainingResource): string {
+export function mapArtUrl(vault: MapSummary[], resource: TrainingResource): string {
   // The backend fills an empty `imageUrl` with the video's still, so a build
   // order on video carries one it never stated. That is a face cam, not ground.
   const stated = resource.imageUrl && !isVideoStill(resource.imageUrl) ? resource.imageUrl : "";
@@ -233,7 +233,7 @@ function isVideoStill(url: string): boolean {
  * picture of Seton's, and a guide that should carry its map says so with an
  * `imageUrl`.
  */
-export function artCandidates(vault: VaultMap[], resource: TrainingResource): string[] {
+export function artCandidates(vault: MapSummary[], resource: TrainingResource): string[] {
   const ordered =
     resource.kind === "buildOrder"
       ? [mapArtUrl(vault, resource)]

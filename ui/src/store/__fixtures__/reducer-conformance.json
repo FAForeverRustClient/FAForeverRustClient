@@ -6815,13 +6815,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggingIn"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -6851,17 +6865,31 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": {
-                "id": 7,
-                "name": "Ada",
-                "roles": []
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
               },
-              "signInLink": null,
-              "status": "loggedIn"
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -6880,13 +6908,373 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedOut"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedOut"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
+            },
+            "kind": "AccountSession"
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth switches accounts and clears private chat and alerts",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                }
+              },
+              "type": "loggedIn"
             },
             "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
+            },
+            "kind": "AccountSession"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Contact",
+                "message": {
+                  "content": "private message",
+                  "id": "m-Contact-private message",
+                  "kind": "message",
+                  "msgid": "srv-Contact-private message",
+                  "replyTo": "",
+                  "sender": "Contact",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "private message",
+                    "id": "m-Contact-private message",
+                    "kind": "message",
+                    "msgid": "srv-Contact-private message",
+                    "replyTo": "",
+                    "sender": "Contact",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Contact",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 1,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "notification": {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "private",
+                  "kind": "privateMessage",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification private"
+                }
+              },
+              "type": "added"
+            },
+            "kind": "Notifications"
+          },
+          "expected": {
+            "items": [
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "private",
+                "kind": "privateMessage",
+                "read": false,
+                "text": null,
+                "title": "Notification private"
+              }
+            ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "private",
+                  "kind": "privateMessage",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification private"
+                }
+              ]
+            },
+            "kind": "Notifications"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "notification": {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "update",
+                  "kind": "clientUpdate",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification update"
+                }
+              },
+              "type": "added"
+            },
+            "kind": "Notifications"
+          },
+          "expected": {
+            "items": [
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "update",
+                "kind": "clientUpdate",
+                "read": false,
+                "text": null,
+                "title": "Notification update"
+              },
+              {
+                "action": null,
+                "body": "",
+                "createdAt": "2026-01-01T00:00:00Z",
+                "id": "private",
+                "kind": "privateMessage",
+                "read": false,
+                "text": null,
+                "title": "Notification private"
+              }
+            ]
+          },
+          "update": {
+            "event": {
+              "items": [
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "update",
+                  "kind": "clientUpdate",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification update"
+                },
+                {
+                  "action": null,
+                  "body": "",
+                  "createdAt": "2026-01-01T00:00:00Z",
+                  "id": "private",
+                  "kind": "privateMessage",
+                  "read": false,
+                  "text": null,
+                  "title": "Notification private"
+                }
+              ]
+            },
+            "kind": "Notifications"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "loggedOut"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": null,
+            "signInLink": null,
+            "status": "loggedOut"
+          },
+          "update": {
+            "event": {
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedOut"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": [
+                  {
+                    "action": null,
+                    "body": "",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "id": "update",
+                    "kind": "clientUpdate",
+                    "read": false,
+                    "text": null,
+                    "title": "Notification update"
+                  }
+                ]
+              }
+            },
+            "kind": "AccountSession"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "player": {
+                  "id": 42,
+                  "name": "Second",
+                  "roles": []
+                }
+              },
+              "type": "loggedIn"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "player": {
+              "id": 42,
+              "name": "Second",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": {
+                  "id": 42,
+                  "name": "Second",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": [
+                  {
+                    "action": null,
+                    "body": "",
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "id": "update",
+                    "kind": "clientUpdate",
+                    "read": false,
+                    "text": null,
+                    "title": "Notification update"
+                  }
+                ]
+              }
+            },
+            "kind": "AccountSession"
           }
         }
       ]
@@ -6910,13 +7298,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggingIn"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -6938,13 +7340,27 @@
           },
           "update": {
             "event": {
-              "error": "the server did not answer",
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "failed"
+              "auth": {
+                "error": "the server did not answer",
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "failed"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -6963,13 +7379,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "offline",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedIn"
+              "auth": {
+                "error": null,
+                "mode": "offline",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -6988,13 +7418,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedOut"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedOut"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         }
       ]
@@ -7018,13 +7462,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggingIn"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -7054,17 +7512,31 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": {
-                "id": 7,
-                "name": "Ada",
-                "roles": []
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
               },
-              "signInLink": null,
-              "status": "loggedIn"
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -7086,13 +7558,27 @@
           },
           "update": {
             "event": {
-              "error": "You are banned from FAF forever.",
-              "mode": "offline",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedIn"
+              "auth": {
+                "error": "You are banned from FAF forever.",
+                "mode": "offline",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -7111,13 +7597,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedOut"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedOut"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         }
       ]
@@ -7169,13 +7669,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggingIn"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -7225,13 +7739,27 @@
           },
           "update": {
             "event": {
-              "error": "Login timed out waiting for the browser.",
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "failed"
+              "auth": {
+                "error": "Login timed out waiting for the browser.",
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "failed"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         }
       ]
@@ -7255,13 +7783,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggingIn"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -7283,13 +7825,27 @@
           },
           "update": {
             "event": {
-              "error": "bad state",
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "failed"
+              "auth": {
+                "error": "bad state",
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "failed"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         }
       ]
@@ -52264,7 +52820,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "scmp_009.v0001",
-                    "downloadUrl": "",
                     "folderName": "scmp_009.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52276,8 +52831,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -52337,7 +52895,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52349,8 +52906,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -52377,7 +52937,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "withdrawn_map.v0002",
-                    "downloadUrl": "",
                     "folderName": "withdrawn_map.v0002",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52389,8 +52948,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 33,
@@ -52452,7 +53014,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52464,8 +53025,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -52477,7 +53041,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "withdrawn_map.v0002",
-                "downloadUrl": "",
                 "folderName": "withdrawn_map.v0002",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52489,8 +53052,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 33,
@@ -52517,7 +53083,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "withdrawn_map.v0002",
-                    "downloadUrl": "",
                     "folderName": "withdrawn_map.v0002",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52529,8 +53094,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 33,
@@ -52542,7 +53110,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "scmp_009.v0001",
-                    "downloadUrl": "",
                     "folderName": "scmp_009.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52554,8 +53121,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -52618,7 +53188,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52630,8 +53199,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -52643,7 +53215,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "withdrawn_map.v0002",
-                "downloadUrl": "",
                 "folderName": "withdrawn_map.v0002",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52655,8 +53226,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 33,
@@ -52746,7 +53320,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "phenom spartiate v2",
-                    "downloadUrl": "",
                     "folderName": "phenom spartiate v2",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52758,8 +53331,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 44,
@@ -52821,7 +53397,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "phenom spartiate v2",
-                "downloadUrl": "",
                 "folderName": "phenom spartiate v2",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52833,8 +53408,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 44,
@@ -52861,7 +53439,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "scmp_009.v0001",
-                    "downloadUrl": "",
                     "folderName": "scmp_009.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52873,8 +53450,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -52886,7 +53466,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "phenom spartiate v2",
-                    "downloadUrl": "",
                     "folderName": "phenom spartiate v2",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -52898,8 +53477,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 44,
@@ -52961,7 +53543,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52973,8 +53554,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -52986,7 +53570,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "phenom spartiate v2",
-                "downloadUrl": "",
                 "folderName": "phenom spartiate v2",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -52998,8 +53581,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 44,
@@ -53026,7 +53612,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "old_map",
-                    "downloadUrl": "",
                     "folderName": "old_map",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -53038,8 +53623,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 55,
@@ -53102,7 +53690,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53114,8 +53701,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -53127,7 +53717,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "phenom spartiate v2",
-                "downloadUrl": "",
                 "folderName": "phenom spartiate v2",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53139,8 +53728,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 44,
@@ -53152,7 +53744,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "old_map",
-                "downloadUrl": "",
                 "folderName": "old_map",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53164,8 +53755,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 55,
@@ -53192,7 +53786,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "scmp_009.v0001",
-                    "downloadUrl": "",
                     "folderName": "scmp_009.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -53204,8 +53797,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -53268,7 +53864,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "scmp_009.v0001",
-                "downloadUrl": "",
                 "folderName": "scmp_009.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53280,8 +53875,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -53293,7 +53891,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "phenom spartiate v2",
-                "downloadUrl": "",
                 "folderName": "phenom spartiate v2",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53305,8 +53902,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 44,
@@ -53318,7 +53918,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "old_map",
-                "downloadUrl": "",
                 "folderName": "old_map",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -53330,8 +53929,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 55,
@@ -78771,7 +79373,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0001",
-                    "downloadUrl": "",
                     "folderName": "first.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -78783,8 +79384,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -78796,7 +79400,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "second.v0001",
-                    "downloadUrl": "",
                     "folderName": "second.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -78808,8 +79411,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 22,
@@ -78869,7 +79475,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0001",
-                "downloadUrl": "",
                 "folderName": "first.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -78881,8 +79486,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -78894,7 +79502,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "second.v0001",
-                "downloadUrl": "",
                 "folderName": "second.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -78906,8 +79513,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 22,
@@ -78934,7 +79544,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "resolved.v0001",
-                    "downloadUrl": "",
                     "folderName": "resolved.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -78946,8 +79555,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 99,
@@ -79009,7 +79621,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0001",
-                "downloadUrl": "",
                 "folderName": "first.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79021,8 +79632,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -79034,7 +79648,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "second.v0001",
-                "downloadUrl": "",
                 "folderName": "second.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79046,8 +79659,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 22,
@@ -79059,7 +79675,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "resolved.v0001",
-                "downloadUrl": "",
                 "folderName": "resolved.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79071,8 +79686,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 99,
@@ -79099,7 +79717,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0002",
-                    "downloadUrl": "",
                     "folderName": "first.v0002",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79111,8 +79728,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 12,
@@ -79124,7 +79744,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "third.v0001",
-                    "downloadUrl": "",
                     "folderName": "third.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79136,8 +79755,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 33,
@@ -79149,7 +79771,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "second.v0001",
-                    "downloadUrl": "",
                     "folderName": "second.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79161,8 +79782,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 22,
@@ -79224,7 +79848,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "resolved.v0001",
-                "downloadUrl": "",
                 "folderName": "resolved.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79236,8 +79859,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 99,
@@ -79249,7 +79875,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0002",
-                "downloadUrl": "",
                 "folderName": "first.v0002",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79261,8 +79886,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 12,
@@ -79274,7 +79902,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "third.v0001",
-                "downloadUrl": "",
                 "folderName": "third.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79286,8 +79913,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 33,
@@ -79314,7 +79944,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "third.v0001",
-                    "downloadUrl": "",
                     "folderName": "third.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79326,8 +79955,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 33,
@@ -79389,7 +80021,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "third.v0001",
-                "downloadUrl": "",
                 "folderName": "third.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79401,8 +80032,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 33,
@@ -79414,7 +80048,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "resolved.v0001",
-                "downloadUrl": "",
                 "folderName": "resolved.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79426,8 +80059,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 99,
@@ -79459,7 +80095,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0001",
-                    "downloadUrl": "",
                     "folderName": "first.v0001",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79471,8 +80106,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 11,
@@ -79532,7 +80170,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0001",
-                "downloadUrl": "",
                 "folderName": "first.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79544,8 +80181,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -79572,7 +80212,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0000",
-                    "downloadUrl": "",
                     "folderName": "first.v0000",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79584,8 +80223,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 10,
@@ -79647,7 +80289,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0001",
-                "downloadUrl": "",
                 "folderName": "first.v0001",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79659,8 +80300,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 11,
@@ -79672,7 +80316,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0000",
-                "downloadUrl": "",
                 "folderName": "first.v0000",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79684,8 +80327,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 10,
@@ -79712,7 +80358,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0002",
-                    "downloadUrl": "",
                     "folderName": "first.v0002",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79724,8 +80369,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 12,
@@ -79737,7 +80385,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0002",
-                    "downloadUrl": "",
                     "folderName": "first.v0002",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79749,8 +80396,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 12,
@@ -79762,7 +80412,6 @@
                     "createdAt": "2026-01-01T00:00:00Z",
                     "description": "",
                     "displayName": "first.v0000",
-                    "downloadUrl": "",
                     "folderName": "first.v0000",
                     "gamesPlayed": 0,
                     "height": 1024,
@@ -79774,8 +80423,11 @@
                     "ratingTenths": 0,
                     "recommended": false,
                     "reviews": 0,
-                    "thumbnailUrl": "",
-                    "thumbnailUrlLarge": "",
+                    "urls": {
+                      "downloadUrl": "",
+                      "thumbnailUrl": "",
+                      "thumbnailUrlLarge": ""
+                    },
                     "version": "1",
                     "versionGamesPlayed": 0,
                     "versionId": 10,
@@ -79837,7 +80489,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0000",
-                "downloadUrl": "",
                 "folderName": "first.v0000",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79849,8 +80500,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 10,
@@ -79862,7 +80516,6 @@
                 "createdAt": "2026-01-01T00:00:00Z",
                 "description": "",
                 "displayName": "first.v0002",
-                "downloadUrl": "",
                 "folderName": "first.v0002",
                 "gamesPlayed": 0,
                 "height": 1024,
@@ -79874,8 +80527,11 @@
                 "ratingTenths": 0,
                 "recommended": false,
                 "reviews": 0,
-                "thumbnailUrl": "",
-                "thumbnailUrlLarge": "",
+                "urls": {
+                  "downloadUrl": "",
+                  "thumbnailUrl": "",
+                  "thumbnailUrlLarge": ""
+                },
                 "version": "1",
                 "versionGamesPlayed": 0,
                 "versionId": 12,
@@ -103368,17 +104024,31 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "test",
-              "player": {
-                "id": 7,
-                "name": "Ada",
-                "roles": []
+              "auth": {
+                "error": null,
+                "mode": "test",
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
               },
-              "signInLink": null,
-              "status": "loggedIn"
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -103391,27 +104061,33 @@
           "expected": {
             "error": null,
             "mode": "test",
-            "player": {
-              "id": 7,
-              "name": "Ada",
-              "roles": []
-            },
+            "player": null,
             "signInLink": null,
             "status": "loggingIn"
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "test",
-              "player": {
-                "id": 7,
-                "name": "Ada",
-                "roles": []
+              "auth": {
+                "error": null,
+                "mode": "test",
+                "player": null,
+                "signInLink": null,
+                "status": "loggingIn"
               },
-              "signInLink": null,
-              "status": "loggingIn"
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -103433,13 +104109,27 @@
           },
           "update": {
             "event": {
-              "error": "the test server refused the token",
-              "mode": "test",
-              "player": null,
-              "signInLink": null,
-              "status": "failed"
+              "auth": {
+                "error": "the test server refused the token",
+                "mode": "test",
+                "player": null,
+                "signInLink": null,
+                "status": "failed"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -103469,17 +104159,31 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "test",
-              "player": {
-                "id": 7,
-                "name": "Ada",
-                "roles": []
+              "auth": {
+                "error": null,
+                "mode": "test",
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
               },
-              "signInLink": null,
-              "status": "loggedIn"
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         },
         {
@@ -103498,13 +104202,27 @@
           },
           "update": {
             "event": {
-              "error": null,
-              "mode": "account",
-              "player": null,
-              "signInLink": null,
-              "status": "loggedOut"
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "player": null,
+                "signInLink": null,
+                "status": "loggedOut"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
             },
-            "kind": "Auth"
+            "kind": "AccountSession"
           }
         }
       ]
@@ -103885,6 +104603,163 @@
         "adapter": "go",
         "expected": "go",
         "title": "[exp-java-adapter]"
+      }
+    ],
+    "mapCatalogueUrls": [
+      {
+        "expected": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "map.v0001",
+          "downloadUrl": "https://content.faforever.com/maps/map.v0001.zip",
+          "folderName": "map.v0001",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 1,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "thumbnailUrl": "https://content.faforever.com/maps/previews/small/map.v0001.png",
+          "thumbnailUrlLarge": "https://content.faforever.com/maps/previews/large/map.v0001.png",
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 2,
+          "width": 1024
+        },
+        "input": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "map.v0001",
+          "folderName": "map.v0001",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 1,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 2,
+          "width": 1024
+        },
+        "name": "canonical catalogue URL templates"
+      },
+      {
+        "expected": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "Map (one), [two] & café.v0002",
+          "downloadUrl": "https://content.faforever.com/maps/Map (one), [two] & café.v0002.zip",
+          "folderName": "Map (one), [two] & café.v0002",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 1,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "thumbnailUrl": "https://content.faforever.com/maps/previews/small/Map (one), [two] & café.v0002.png",
+          "thumbnailUrlLarge": "https://content.faforever.com/maps/previews/large/Map (one), [two] & café.v0002.png",
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 2,
+          "width": 1024
+        },
+        "input": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "Map (one), [two] & café.v0002",
+          "folderName": "Map (one), [two] & café.v0002",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 1,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 2,
+          "width": 1024
+        },
+        "name": "raw folder punctuation and Unicode"
+      },
+      {
+        "expected": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "custom.v0001",
+          "downloadUrl": "https://other.invalid/archive.zip",
+          "folderName": "custom.v0001",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 3,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "thumbnailUrl": "",
+          "thumbnailUrlLarge": "https://other.invalid/art?size=large",
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 4,
+          "width": 1024
+        },
+        "input": {
+          "author": "Rackover",
+          "authorId": 4711,
+          "createdAt": "2026-01-01T00:00:00Z",
+          "description": "",
+          "displayName": "custom.v0001",
+          "folderName": "custom.v0001",
+          "gamesPlayed": 0,
+          "height": 1024,
+          "hidden": false,
+          "mapId": 3,
+          "mapType": "skirmish",
+          "maxPlayers": 8,
+          "ranked": false,
+          "ratingTenths": 0,
+          "recommended": false,
+          "reviews": 0,
+          "urls": {
+            "downloadUrl": "https://other.invalid/archive.zip",
+            "thumbnailUrl": "",
+            "thumbnailUrlLarge": "https://other.invalid/art?size=large"
+          },
+          "version": "1",
+          "versionGamesPlayed": 0,
+          "versionId": 4,
+          "width": 1024
+        },
+        "name": "custom and empty URL overrides"
       }
     ],
     "playerNoteLookups": [

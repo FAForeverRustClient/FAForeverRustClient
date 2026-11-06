@@ -23,7 +23,7 @@ import type {
   Tourney,
   TourneyFaction,
   TourneyMatch,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
@@ -53,7 +53,7 @@ export interface VetoHandlers {
 interface VetoPanelProps {
   event: Tourney;
   entry: TourneyMatch;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;
   profiles: PlayerSummary[];

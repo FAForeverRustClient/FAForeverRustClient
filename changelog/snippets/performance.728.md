@@ -1,0 +1,2 @@
+- Cached unit histories open after a restart without waiting for GitHub.
+- Opening a unit's history for the first time uses fewer downloads.

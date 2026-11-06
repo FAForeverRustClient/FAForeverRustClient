@@ -90,6 +90,26 @@ const cardOf = (name: string) => {
 };
 
 describe("Map vault, mounted", () => {
+  it("shows compact favourites with descriptions, large previews and exact download URLs", async () => {
+    const user = userEvent.setup();
+    const { downloadUrl, thumbnailUrl, thumbnailUrlLarge, ...metadata } = vaultMap(93, "Compact Favourite", {
+      description: "The original description stays available.",
+    });
+    seedStore((state) => ({
+      ...state,
+      maps: { ...state.maps, vault: [{ ...metadata, urls: { downloadUrl, thumbnailUrl, thumbnailUrlLarge } }], vaultStatus: { type: "ready" } },
+      settings: { ...state.settings, browsing: { ...state.settings.browsing, mapVaultPreset: "favorites", favoriteMaps: [metadata.folderName] } },
+    }));
+    render(<MapsView />);
+    expect(cardOf(metadata.displayName)).toBeTruthy();
+    expect(screen.getByText(metadata.description)).toBeTruthy();
+    const images = screen.getAllByRole("img");
+    expect(images.some((image) => image.getAttribute("src") === thumbnailUrlLarge)).toBe(true);
+    clearSentCommands();
+    await user.click(screen.getByRole("button", { name: "Install map" }));
+    expect(sentMaps("installMap")).toEqual([{ kind: "Maps", command: { type: "installMap", payload: { folderName: metadata.folderName, downloadUrl } } }]);
+  });
+
   it("asks for the catalogue, the installed list and the first page when it opens", () => {
     render(<MapsView />);
     expect(sentMaps("loadVault")).toHaveLength(1);

@@ -10,7 +10,7 @@
 // the context of the conversation you are already in, and it cannot be read at
 // all while you are typing.
 
-import type { ChatChannel, Game, LobbyStatus, SocialState, VaultMap } from "../../ipc/bindings";
+import type { ChatChannel, Game, LobbyStatus, SocialState, MapSummary } from "../../ipc/bindings";
 import { Button } from "../../design-system/Button";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -33,7 +33,7 @@ interface Props {
   channels: ChatChannel[];
   openGames: Game[];
   liveGames: Game[];
-  mapVault: VaultMap[];
+  mapVault: MapSummary[];
   /** Seconds since the epoch, ticked by the view so the game time advances. */
   now: number;
   /** Open a private conversation with somebody in the lineup. */

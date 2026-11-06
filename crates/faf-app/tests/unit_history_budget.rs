@@ -50,7 +50,21 @@ impl UnitHistoryPort for History {
     async fn release_tags(&self) -> Result<BTreeSet<String>, String> {
         Ok((3800..3830).map(|id| id.to_string()).collect())
     }
-    async fn release_blueprint(&self, _: &str, paths: &[String]) -> ReleaseBlueprint {
+    async fn indexed_blueprints(
+        &self,
+        _: &str,
+        _: &[u32],
+    ) -> std::collections::BTreeMap<u32, ReleaseBlueprint> {
+        std::collections::BTreeMap::from([
+            (3800, ReleaseBlueprint::Missing),
+            (3801, ReleaseBlueprint::Missing),
+        ])
+    }
+    async fn release_blueprint(&self, tag: &str, paths: &[String]) -> ReleaseBlueprint {
+        assert!(
+            !matches!(tag, "3800" | "3801"),
+            "indexed releases must not be fetched again"
+        );
         let id = paths[0].split('/').nth(1).unwrap().to_owned();
         {
             let mut active = self.active.lock().unwrap();
@@ -76,6 +90,9 @@ struct Archive;
 #[async_trait]
 impl ChangelogPort for Archive {
     async fn list_releases(&self) -> Result<Vec<ChangelogRelease>, String> {
+        Err("unit history must use the cached release list".into())
+    }
+    async fn releases_for_unit_history(&self) -> Result<Vec<ChangelogRelease>, String> {
         Ok((3800..3830)
             .map(|id| ChangelogRelease {
                 id: id.to_string(),

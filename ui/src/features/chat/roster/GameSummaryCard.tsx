@@ -8,7 +8,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 
-import type { SocialState, VaultMap } from "../../../ipc/bindings";
+import type { MapSummary, SocialState } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
@@ -45,7 +45,7 @@ export const STATUS_LABEL = {
 interface Props {
   presence: GamePresence;
   social: SocialState;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Seconds since the epoch, from whichever tick the caller runs. */
   now: number;
   /** Skipped by a closed popover: this is the expensive half of the card. */
@@ -370,7 +370,7 @@ export function GameMapPreviewDialog({
   onClose,
 }: {
   presence: GamePresence;
-  vault: VaultMap[];
+  vault: MapSummary[];
   onClose: () => void;
 }) {
   const { t } = useTranslation();

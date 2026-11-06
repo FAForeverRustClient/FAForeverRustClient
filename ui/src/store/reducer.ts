@@ -33,6 +33,7 @@ export function applyEvent(state: AppState, update: FrontendUpdate): AppState {
   switch (update.kind) {
     case "Session": return { ...state, session: update.event };
     case "Auth": return { ...state, auth: update.event };
+    case "AccountSession": return { ...state, ...update.event };
     case "Nav": return { ...state, nav: update.event };
     case "Notifications": return { ...state, notifications: update.event };
     case "Clan": return { ...state, clan: update.event };

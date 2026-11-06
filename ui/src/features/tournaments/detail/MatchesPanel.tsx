@@ -17,7 +17,7 @@ import type {
   Tourney,
   TourneyAdmin,
   TourneyMatch,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -39,7 +39,7 @@ const BEST_OF = [1, 3, 5, 7];
 interface MatchesPanelProps {
   event: Tourney;
   profiles: PlayerSummary[];
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   busyMatchId: string | null;
   /** Reporting, hosting, the replays and the vetoes. */

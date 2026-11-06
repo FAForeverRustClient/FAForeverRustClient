@@ -21,7 +21,7 @@ import { useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
-import type { VaultMap } from "../../ipc/bindings";
+import type { MapSummary } from "../../ipc/bindings";
 import { MapThumbnail } from "./MapThumbnail";
 import "./launch-progress.css";
 
@@ -47,7 +47,7 @@ interface Props {
   onClose: () => void;
   title: string;
   context?: LaunchContext | null;
-  vault?: VaultMap[];
+  vault?: MapSummary[];
   /** The head's picture when there is no map to show. */
   icon?: IconName;
   /** Tints the head's icon: a failure. */

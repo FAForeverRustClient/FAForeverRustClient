@@ -23,6 +23,8 @@ fn boxed<T: Clone>(value: &T) -> Box<T> {
 pub enum FrontendUpdate {
     Session(Box<SessionState>),
     Auth(Box<AuthState>),
+    /// Auth changes together with the reset chat and notification slices.
+    AccountSession(Box<AccountSessionUpdate>),
     Nav(Box<NavState>),
     Notifications(Box<NotificationState>),
     Clan(Box<ClanState>),
@@ -116,6 +118,13 @@ impl FrontendUpdate {
         );
         match event {
             AppEvent::Session(_) => Some(Self::Session(boxed(session))),
+            AppEvent::Auth(event) if event.resets_account_activity() => {
+                Some(Self::AccountSession(Box::new(AccountSessionUpdate {
+                    auth: auth.clone(),
+                    chat: chat.clone(),
+                    notifications: notifications.clone(),
+                })))
+            }
             AppEvent::Auth(_) => Some(Self::Auth(boxed(auth))),
             AppEvent::Nav(_) => Some(Self::Nav(boxed(nav))),
             AppEvent::Notifications(_) => Some(Self::Notifications(boxed(notifications))),
@@ -215,6 +224,14 @@ impl FrontendUpdate {
         "Events",
         "Coop",
     ];
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountSessionUpdate {
+    pub auth: AuthState,
+    pub chat: ChatState,
+    pub notifications: NotificationState,
 }
 
 /// Preference-group assignments, not another implementation of normalization.

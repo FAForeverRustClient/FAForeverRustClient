@@ -62,6 +62,7 @@ struct Fixture {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HelperFixture {
+    map_catalogue_urls: Vec<MapCatalogueUrlCase>,
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     replay_read_keys: Vec<ReplayReadKeyCase>,
@@ -93,6 +94,47 @@ struct HelperFixture {
     tourney_match_plans: Vec<TourneyMatchPlanCase>,
     training_filters: TrainingFilterFixture,
     training_form_problems: TrainingFormProblemFixture,
+}
+
+#[derive(Serialize)]
+struct MapCatalogueUrlCase {
+    name: &'static str,
+    input: CatalogueMap,
+    expected: VaultMap,
+}
+
+fn map_catalogue_url_cases() -> Vec<MapCatalogueUrlCase> {
+    let mut cases = Vec::new();
+    for (name, folder) in [
+        ("canonical catalogue URL templates", "map.v0001"),
+        (
+            "raw folder punctuation and Unicode",
+            "Map (one), [two] & café.v0002",
+        ),
+    ] {
+        let mut metadata = serde_json::to_value(conformance_vault_map(1, 2, folder)).unwrap();
+        for key in ["downloadUrl", "thumbnailUrl", "thumbnailUrlLarge"] {
+            metadata.as_object_mut().unwrap().remove(key);
+        }
+        // The production Rust decoder supplies the canonical URLs, not a
+        // hand-written expectation that could agree with an outdated TS twin.
+        let input: CatalogueMap = serde_json::from_value(metadata).unwrap();
+        cases.push(MapCatalogueUrlCase {
+            name,
+            expected: (*input).clone(),
+            input,
+        });
+    }
+    let mut expected = conformance_vault_map(3, 4, "custom.v0001");
+    expected.thumbnail_url = String::new();
+    expected.thumbnail_url_large = "https://other.invalid/art?size=large".into();
+    expected.download_url = "https://other.invalid/archive.zip".into();
+    cases.push(MapCatalogueUrlCase {
+        name: "custom and empty URL overrides",
+        input: expected.clone().into(),
+        expected,
+    });
+    cases
 }
 
 /// What the two training forms refuse, and why.
@@ -3493,6 +3535,7 @@ fn helper_fixture() -> HelperFixture {
     ];
 
     HelperFixture {
+        map_catalogue_urls: map_catalogue_url_cases(),
         upload_busy: statuses
             .into_iter()
             .map(|status| UploadBusyCase {
@@ -3841,7 +3884,7 @@ fn cases() -> Vec<Case> {
                 MapsEvent::VaultProgress { progress: maps::CatalogueProgress { pages: 2, total_pages: Some(5) } }.into(),
                 MapsEvent::VaultCancelled.into(),
                 MapsEvent::VaultLoading.into(),
-                MapsEvent::VaultLoaded { maps: vec![] }.into(),
+                MapsEvent::VaultLoaded { maps: vec![]}.into(),
                 ModsEvent::VaultLoading.into(),
                 ModsEvent::VaultProgress { progress: maps::CatalogueProgress { pages: 1, total_pages: None } }.into(),
                 ModsEvent::VaultCancelled.into(),
@@ -4499,6 +4542,24 @@ fn cases() -> Vec<Case> {
                 AuthEvent::LoginStarted.into(),
                 AuthEvent::LoggedIn { player: player() }.into(),
                 AuthEvent::LoggedOut.into(),
+            ],
+        ),
+        case(
+            "auth switches accounts and clears private chat and alerts",
+            vec![
+                AuthEvent::LoggedIn { player: player() }.into(),
+                ChatEvent::MessageReceived {
+                    channel: "Contact".into(),
+                    message: chat_message("Contact", "private message"),
+                }.into(),
+                NotificationEvent::Added {
+                    notification: notification("private", NotificationKind::PrivateMessage),
+                }.into(),
+                NotificationEvent::Added {
+                    notification: notification("update", NotificationKind::ClientUpdate),
+                }.into(),
+                AuthEvent::LoggedOut.into(),
+                AuthEvent::LoggedIn { player: Player::new(42, "Second") }.into(),
             ],
         ),
         case(
@@ -6940,20 +7001,20 @@ fn cases() -> Vec<Case> {
             "a withdrawn map looked up by folder joins the index once",
             vec![
                 MapsEvent::VaultLoaded {
-                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 // Twice, and with the catalogue's own record in the second
                 // answer: neither may duplicate what the index already holds.
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")],
+                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultFoldersResolved {
                     maps: vec![
                         conformance_vault_map(3, 33, "withdrawn_map.v0002"),
                         conformance_vault_map(1, 11, "scmp_009.v0001"),
-                    ],
+                    ].into_iter().map(Into::into).collect(),
                 }
                 .into(),
             ],
@@ -6963,22 +7024,22 @@ fn cases() -> Vec<Case> {
             vec![
                 MapsEvent::VaultLoading.into(),
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")],
+                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultLoaded {
                     maps: vec![
                         conformance_vault_map(1, 11, "scmp_009.v0001"),
                         conformance_vault_map(4, 44, "phenom spartiate v2"),
-                    ],
+                    ].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(5, 55, "old_map")],
+                    maps: vec![conformance_vault_map(5, 55, "old_map")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultLoaded {
-                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
             ],
@@ -8789,15 +8850,15 @@ fn transition_cases() -> Vec<Case> {
             ],
         ),
         case("map catalogue deltas replace versions, remove hidden maps and preserve folder lookups", vec![
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")] }.into(),
-            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")] }.into(),
-            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }] }.into(),
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")].into_iter().map(Into::into).collect()}.into(),
         ]),
         case("a map catalogue delta keeps a looked-up older version of a changed map and lists each version once", vec![
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")] }.into(),
-            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")] }.into(),
-            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")].into_iter().map(Into::into).collect()}.into(),
         ]),
         case("a mod catalogue delta that lists a mod twice holds it once", vec![
             ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old")] }.into(),

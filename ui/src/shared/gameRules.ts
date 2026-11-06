@@ -6,7 +6,7 @@
 // list asks the same question of the same `Game` (issue 357), and a second
 // copy of "is this rated" would be a second answer the moment either moved.
 
-import type { Game, VaultMap, VaultMod } from "../ipc/bindings";
+import type { Game, MapSummary, VaultMod } from "../ipc/bindings";
 import { findVaultMapByFolder } from "./mapPresentation";
 import { formatRelativeDuration } from "./format/durations";
 import { t } from "../i18n";
@@ -42,7 +42,7 @@ function modsByUid(mods: VaultMod[]): Map<string, VaultMod> {
  */
 export function isCustomGameRanked(
   game: Game,
-  vaultMaps: VaultMap[],
+  vaultMaps: MapSummary[],
   vaultMods: VaultMod[],
 ): boolean {
   if (isCoopGame(game)) {
@@ -123,7 +123,7 @@ export function simModsKeepGameRanked(game: Game, vaultMods: VaultMod[]): boolea
  */
 export function showsUnrankedTag(
   game: Game,
-  vaultMaps: VaultMap[],
+  vaultMaps: MapSummary[],
   vaultMods: VaultMod[],
 ): boolean {
   return !isCoopGame(game) && !isCustomGameRanked(game, vaultMaps, vaultMods);

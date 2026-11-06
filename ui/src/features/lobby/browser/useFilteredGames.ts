@@ -3,7 +3,7 @@
 // in the order the toolbar sorts them. Matchmaker games are in neither list.
 
 import { useMemo } from "react";
-import type { CustomGameBrowserPreferences, Game, VaultMap, VaultMod } from "../../../ipc/bindings";
+import type { CustomGameBrowserPreferences, Game, MapSummary, VaultMod } from "../../../ipc/bindings";
 import { isCoopGame, isCustomGameRanked } from "../../../shared/gameRules";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import type { GameFilterRule } from "./GameFiltersModal";
@@ -28,7 +28,7 @@ export function useFilteredGames({
   search: string;
   gameBrowser: CustomGameBrowserPreferences;
   foes: string[];
-  mapVault: VaultMap[];
+  mapVault: MapSummary[];
   modVault: VaultMod[];
 }) {
   const sort: SortMode = gameBrowser.sort;

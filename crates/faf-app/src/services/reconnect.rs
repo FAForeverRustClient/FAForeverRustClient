@@ -130,7 +130,8 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
     loop {
         tokio::time::sleep(TICK).await;
 
-        let Some(watch) = sink.with_state(observe) else {
+        let account = sink.scoped_to_account();
+        let Some(watch) = account.with_state(observe) else {
             // Signed out, or in the credential-free test mode, whose fake
             // ports connect on demand and never drop.
             lobby = Retry::default();
@@ -140,7 +141,7 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
 
         if lobby.tick(watch.lobby, ctx.lobby.auto_reconnect_armed()) == Step::Connect {
             tracing::info!(attempt = lobby.attempts, "reconnecting to the lobby");
-            let (ctx, sink) = (ctx.clone(), sink.clone());
+            let (ctx, sink) = (ctx.clone(), account.clone());
             // Not `LobbyCommand::Connect`, which arms the flag this just
             // read: a retry racing a Disconnect would re-arm it.
             tokio::spawn(async move {
@@ -150,7 +151,7 @@ async fn run(ctx: Arc<ServiceCtx>, sink: EventSink) {
 
         if chat.tick(watch.chat, ctx.chat.auto_reconnect_armed()) == Step::Connect {
             tracing::info!(attempt = chat.attempts, "reconnecting to chat");
-            let (ctx, sink, username) = (ctx.clone(), sink.clone(), watch.username);
+            let (ctx, sink, username) = (ctx.clone(), account, watch.username);
             // Not `ChatCommand::Connect`, for the same reason as the lobby's.
             tokio::spawn(async move {
                 services::chat::reconnect(username, &ctx, &sink).await;

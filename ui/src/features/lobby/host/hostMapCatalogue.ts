@@ -2,7 +2,7 @@
 // functions over the store's map lists. `HostGameModal` memoises each step on
 // what it depends on; see the comment there for why it is three steps.
 
-import type { InstalledMap, VaultMap } from "../../../ipc/bindings";
+import type { InstalledMap, MapSummary } from "../../../ipc/bindings";
 import { t as translate } from "../../../i18n";
 import {
   findVaultMapByFolder,
@@ -101,11 +101,11 @@ export function formatMapDimensions(width: number, height: number): string {
 
 /** The vault with a by-name index over it, rebuilt only when the vault loads. */
 export interface VaultIndex {
-  maps: VaultMap[];
-  byName: Map<string, VaultMap>;
+  maps: MapSummary[];
+  byName: Map<string, MapSummary>;
 }
 
-export function buildVaultIndex(vault: VaultMap[]): VaultIndex {
+export function buildVaultIndex(vault: MapSummary[]): VaultIndex {
   return {
     maps: vault,
     byName: new Map(vault.map((map) => [map.displayName.toLowerCase(), map])),

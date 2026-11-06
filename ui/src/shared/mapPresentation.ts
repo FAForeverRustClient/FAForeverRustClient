@@ -1,7 +1,8 @@
-import type { CoopFaction, CoopMission, MapInstallStatus, VaultMap } from "../ipc/bindings";
+import type { CoopFaction, CoopMission, MapInstallStatus, MapSummary } from "../ipc/bindings";
 import { t } from "../i18n";
 import { plainError } from "./plainError";
 import { useAppStore } from "../store/store";
+import { mapThumbnailUrl } from "./mapCatalogue";
 
 /** Preview used when a generated map has no rendered map image yet. */
 export const GENERATED_MAP_PLACEHOLDER_URL = "/assets/mapgen-placeholder.png";
@@ -132,12 +133,12 @@ export function officialMapFor(mapName: string): OfficialMapInfo | undefined {
 }
 
 type VaultMapLookup = {
-  byBaseName: Map<string, VaultMap>;
-  byDisplayName: Map<string, VaultMap>;
-  byFolderName: Map<string, VaultMap>;
+  byBaseName: Map<string, MapSummary>;
+  byDisplayName: Map<string, MapSummary>;
+  byFolderName: Map<string, MapSummary>;
 };
 
-const VAULT_MAP_LOOKUPS = new WeakMap<VaultMap[], VaultMapLookup>();
+const VAULT_MAP_LOOKUPS = new WeakMap<MapSummary[], VaultMapLookup>();
 
 function secureUrl(url: string): string {
   return url.trim().replace(/^http:\/\//i, "https://");
@@ -207,7 +208,7 @@ function findCoopMission(mapName: string, missions?: CoopMission[]): CoopMission
   });
 }
 
-function vaultMapLookup(vault: VaultMap[]): VaultMapLookup {
+function vaultMapLookup(vault: MapSummary[]): VaultMapLookup {
   const cached = VAULT_MAP_LOOKUPS.get(vault);
   if (cached) return cached;
 
@@ -309,7 +310,7 @@ function fallbackDisplayName(mapName: string): string {
     .replace(/\b\w/g, (letter: string) => letter.toLocaleUpperCase());
 }
 
-export function findVaultMap(vault: VaultMap[], mapName: string): VaultMap | undefined {
+export function findVaultMap(vault: MapSummary[], mapName: string): MapSummary | undefined {
   return findVaultMapByFolder(vault, mapName)
     ?? vaultMapLookup(vault).byDisplayName.get(mapName.trim().toLocaleLowerCase());
 }
@@ -323,14 +324,14 @@ export function findVaultMap(vault: VaultMap[], mapName: string): VaultMap | und
  * off the wire as a folder, and a coincidental title collision would quietly
  * mark somebody's game unranked.
  */
-export function findVaultMapByFolder(vault: VaultMap[], mapName: string): VaultMap | undefined {
+export function findVaultMapByFolder(vault: MapSummary[], mapName: string): MapSummary | undefined {
   const lookup = vaultMapLookup(vault);
   return lookup.byFolderName.get(normalizeMapName(mapName))
     ?? lookup.byBaseName.get(baseMapName(mapName));
 }
 
 export function mapThumbnailCandidates(
-  vault: VaultMap[],
+  vault: MapSummary[],
   mapName: string,
   large = false,
   missions?: CoopMission[],
@@ -387,11 +388,13 @@ export function mapThumbnailCandidates(
     : preferCanonicalPreview
       ? [coopMission?.thumbnailUrlSmall]
       : [coopMission?.thumbnailUrlSmall, coopMission?.thumbnailUrlLarge];
+  const smallVaultPreview = vaultMap ? mapThumbnailUrl(vaultMap) : undefined;
+  const largeVaultPreview = vaultMap ? mapThumbnailUrl(vaultMap, true) : undefined;
   const vaultPreviewUrls = large
-    ? [vaultMap?.thumbnailUrlLarge, vaultMap?.thumbnailUrl]
+    ? [largeVaultPreview, smallVaultPreview]
     : preferCanonicalPreview
-      ? [vaultMap?.thumbnailUrl]
-      : [vaultMap?.thumbnailUrl, vaultMap?.thumbnailUrlLarge];
+      ? [smallVaultPreview]
+      : [smallVaultPreview, largeVaultPreview];
 
   // A base-game map's own preview outranks any vault art, whatever the caller
   // asked for. The vault can hold a record whose folder collides with a
@@ -451,7 +454,7 @@ export function inferCoopFaction(mapName: string): CoopFaction {
   return "custom";
 }
 
-export function mapPresentation(vault: VaultMap[], mapName: string, missions?: CoopMission[]): MapPresentation {
+export function mapPresentation(vault: MapSummary[], mapName: string, missions?: CoopMission[]): MapPresentation {
   const vaultMap = findVaultMap(vault, mapName);
   const coopMission = findCoopMission(mapName, missions);
   const officialEntry = officialMapFor(mapName);
@@ -586,7 +589,7 @@ export function mapSizeOf(width: number, height: number): MapSize | null {
  * nothing is better than one guessing 10 km because that is the common case.
  */
 export function mapSize(
-  vault: VaultMap[],
+  vault: MapSummary[],
   mapName: string,
   decodedSize?: number,
 ): MapSize | null {
@@ -623,7 +626,7 @@ export function sizeLabel(map: { width?: number; height?: number }): string {
   return kilometresArea(kilometresLabel(w), kilometresLabel(h));
 }
 
-export function ratingLabel(map: VaultMap): string {
+export function ratingLabel(map: MapSummary): string {
   return map.reviews > 0 ? `${(map.ratingTenths / 10).toFixed(1)} (${map.reviews})` : t("maps.vault.notRated");
 }
 
@@ -636,6 +639,6 @@ export function isOfficialMap(folderName: string): boolean {
     : (number >= 1 && number <= 12) || number === 14 || number === 17;
 }
 
-export function mapInstalled(map: VaultMap, installedFolders: Set<string>): boolean {
+export function mapInstalled(map: MapSummary, installedFolders: Set<string>): boolean {
   return isOfficialMap(map.folderName) || installedFolders.has(map.folderName.toLocaleLowerCase());
 }

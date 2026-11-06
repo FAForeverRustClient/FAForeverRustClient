@@ -402,8 +402,13 @@ describe("the frontend reducer matches the Rust one", () => {
         const slice = `${step.event.kind[0].toLowerCase()}${step.event.kind.slice(1)}` as keyof AppState;
         const context = `after step ${index + 1}: ${JSON.stringify(step.event)}`;
         expect(state[slice], context).toEqual(step.expected);
+        if (update.kind === "AccountSession") {
+          expect(state.chat, context).toEqual(update.event.chat);
+          expect(state.notifications, context).toEqual(update.event.notifications);
+        }
         for (const otherSlice of Object.keys(before) as Array<keyof AppState>) {
-          if (otherSlice !== slice) {
+          const accountReset = update.kind === "AccountSession" && (otherSlice === "chat" || otherSlice === "notifications");
+          if (otherSlice !== slice && !accountReset) {
             expect(state[otherSlice], `${context}; unexpected change in ${otherSlice}`).toEqual(
               before[otherSlice],
             );

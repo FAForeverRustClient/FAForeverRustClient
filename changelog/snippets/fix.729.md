@@ -1,0 +1,3 @@
+- Switching accounts clears account-specific chat and notifications.
+- An older cancellation can no longer undo a newer cancellation for the same request.
+- Desktop notification popups have a gray close button in the top-right corner.

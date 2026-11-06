@@ -3,7 +3,7 @@
 
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
-import type { VaultMap } from "../../../ipc/bindings";
+import type { MapSummary } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -12,7 +12,7 @@ import { formatMapDimensions, type HostMap } from "./hostMapCatalogue";
 
 interface Props {
   chosen: HostMap | undefined;
-  vault: VaultMap[];
+  vault: MapSummary[];
   canUninstall: boolean;
   onEnlarge: () => void;
   onUninstall: (map: HostMap) => void;

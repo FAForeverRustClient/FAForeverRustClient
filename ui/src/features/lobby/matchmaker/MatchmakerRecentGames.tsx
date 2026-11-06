@@ -13,7 +13,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
-import type { ReplayPlayer, VaultMap, VaultReplay } from "../../../ipc/bindings";
+import type { ReplayPlayer, MapSummary, VaultReplay } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { formatAgeOrDate } from "../../../shared/format/dates";
@@ -97,7 +97,7 @@ const COLUMN_FLOOR_PX = [60, 88, 36, 80, 40, 56, 42, 76];
 /** The replay buttons' column, in designed order. */
 const REPLAY_COLUMN = 7;
 
-export function MatchmakerRecentGames({ playerName, vault }: { playerName: string; vault: VaultMap[] }) {
+export function MatchmakerRecentGames({ playerName, vault }: { playerName: string; vault: MapSummary[] }) {
   const { t } = useTranslation();
   const games = useAppStore((state) => state.state.replays.recentMatchmaker);
   const status = useAppStore((state) => state.state.replays.recentMatchmakerStatus);

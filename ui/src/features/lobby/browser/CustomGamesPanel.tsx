@@ -8,7 +8,7 @@ import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
-import type { Game, JoinState, LobbyStatus, VaultMap } from "../../../ipc/bindings";
+import type { Game, JoinState, LobbyStatus, MapSummary } from "../../../ipc/bindings";
 import type { GameViewMode } from "../../../shared/gameRules";
 import { plainError } from "../../../shared/plainError";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -27,7 +27,7 @@ interface Props {
   /** Every open custom game, before the search and filters. */
   totalGames: number;
   selected: Game | null;
-  vault: VaultMap[];
+  vault: MapSummary[];
   viewMode: GameViewMode;
   status: LobbyStatus;
   join: JoinState;

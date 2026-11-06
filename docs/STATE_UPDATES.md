@@ -2,7 +2,7 @@
 
 ## Ownership and transport
 
-Rust owns `AppState` and all state transitions. Services still emit `AppEvent` values, and backend subscribers still see those events. The window's generated `FrontendUpdate` contract carries either a post-reduce state slice, a post-reduce settings group, or an explicitly retained compact event delta.
+Rust owns `AppState` and all state transitions. Services still emit `AppEvent` values, and backend subscribers still see those events. The window's generated `FrontendUpdate` contract carries a post-reduce state replacement, a post-reduce settings group, or an explicitly retained compact event delta. An authentication boundary replaces auth, chat, and notifications together so a new account cannot render with the previous account's activity.
 
 `EventSink::emit` captures replacements while holding the same state guard as reduction and revision assignment. It releases that guard before broadcasting and keeps the existing delivery-order lock. A queued replacement therefore contains the state of its own revision, rather than a later state read by the shell. The shell moves retained delta payloads into their window envelope without cloning large images or catalogues a second time.
 
@@ -30,7 +30,7 @@ The source inventory drops from 3,550 to 2,937 lines under `ui/src/store/reducer
 
 ## Automated verification
 
-- Rust-generated scenarios contain actual authoritative updates for migrated slices and expected state after each step. The frontend verifies the whole owning slice and preserves every unrelated slice.
+- Rust-generated scenarios contain actual authoritative updates for migrated slices and expected state after each step. The frontend verifies the affected slices and preserves every unrelated slice.
 - Compact-delta serialization is checked against the original event, and generated ordering cases continue to cover the remaining reducers.
 - Domain tests cover normalized group assignments, path and generated-map handling, bounded notification history, immutable queued snapshots, and moving a large preview payload without resending its cache on status changes.
 - The runtime test `window_replacements_capture_the_state_at_their_own_revision` verifies two queued replacements have their own consecutive revisions and state values.

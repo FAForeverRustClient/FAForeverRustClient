@@ -3,7 +3,7 @@
 import { memo, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
-import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
+import type { Game, MapSummary, VaultMod } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { featuredModLabel } from "../../../shared/featuredMods";
@@ -58,7 +58,7 @@ export const GameTile = memo(function GameTile({
   onContextMenu,
 }: {
   game: Game;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Read once by the browser rather than subscribed to by every row. */
   vaultMods: VaultMod[];
   /** The friend list, lower-cased once for the whole list. */

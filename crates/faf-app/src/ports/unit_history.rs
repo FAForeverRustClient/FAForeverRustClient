@@ -1,6 +1,6 @@
 //! Unit history boundary: unit blueprints as each game release had them.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::PathBuf;
 
 use async_trait::async_trait;
@@ -13,8 +13,18 @@ pub trait UnitHistoryPort: Send + Sync {
     async fn list_units(&self, install_dir: Option<PathBuf>) -> Result<Vec<UnitSummary>, String>;
 
     /// The FA repository's release tags. A release without one has no
-    /// blueprints to read.
+    /// blueprints to read. A saved list can be used during a refresh.
     async fn release_tags(&self) -> Result<BTreeSet<String>, String>;
+
+    /// Resolved releases from the bundled Git index. The caller reads omitted
+    /// releases through the ordinary per-release path.
+    async fn indexed_blueprints(
+        &self,
+        _installed_path: &str,
+        _releases: &[u32],
+    ) -> BTreeMap<u32, ReleaseBlueprint> {
+        BTreeMap::new()
+    }
 
     /// The blueprint at one tag, trying `paths` in order. Answered from disk
     /// once it has been read, including a file that is not there: a tag never

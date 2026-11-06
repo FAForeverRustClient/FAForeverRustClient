@@ -43,7 +43,8 @@ it("renders remote message text as text and sends only the clicked id and intera
   // No action button: the card itself does what it is about.
   fireEvent.click(view.container.querySelector(".desktop-notification-main")!);
   expect(bridge.interact).toHaveBeenCalledWith("match", "activate");
-  expect(view.queryByRole("button", { name: "Dismiss notification" })).toBeNull();
+  fireEvent.click(view.getByRole("button", { name: /^Dismiss notification$/ }));
+  expect(bridge.interact).toHaveBeenLastCalledWith("match", "dismiss");
 });
 it("dismisses from the card and acts from the action button, each reachable by keyboard", async () => {
   const next = batch(1, "A game with friends");
@@ -60,7 +61,11 @@ it("dismisses from the card and acts from the action button, each reachable by k
   expect(view.getByRole("button", { name: "View game" })).toBe(document.activeElement);
   await user.keyboard("{Enter}");
   expect(bridge.interact).toHaveBeenLastCalledWith("match", "activate");
-  expect(bridge.interact).toHaveBeenCalledTimes(2);
+  await user.tab();
+  expect(view.getByRole("button", { name: /^Dismiss notification$/ })).toBe(document.activeElement);
+  await user.keyboard("{Enter}");
+  expect(bridge.interact).toHaveBeenLastCalledWith("match", "dismiss");
+  expect(bridge.interact).toHaveBeenCalledTimes(3);
 });
 it("shows why an action failed inside the card that was clicked", async () => {
   bridge.interact.mockImplementationOnce(() => Promise.reject(new Error("No running game is available")));
