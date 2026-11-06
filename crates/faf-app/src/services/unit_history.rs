@@ -5,9 +5,8 @@
 //! changelog's index, which the Game section has usually loaded already), the
 //! release tags (a release without one has nothing to read), and one
 //! blueprint per release. The blueprints are read twelve at a time with the
-//! progress reported, then the base game's copy and the fragmenting
-//! projectiles are read, and the pure part of the work is done off the async
-//! runtime.
+//! progress reported, alongside reads of the base game's copy and the
+//! fragmenting projectiles. The history is built off the async runtime.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -226,10 +225,10 @@ async fn releases(ctx: &ServiceCtx, out: &EventSink) -> Result<Vec<ChangelogRele
 
 async fn history(id: &str, ctx: &ServiceCtx, out: &EventSink) -> Result<UnitHistory, String> {
     let unit = unit(id, ctx, out).await?;
-    let tags = ctx.ports.unit_history.release_tags().await?;
+    let (tags, releases) =
+        tokio::try_join!(ctx.ports.unit_history.release_tags(), releases(ctx, out))?;
     // Oldest first: release numbers grow with the date.
-    let mut releases: Vec<(u32, ChangelogRelease)> = releases(ctx, out)
-        .await?
+    let mut releases: Vec<(u32, ChangelogRelease)> = releases
         .into_iter()
         .filter(|release| !release.is_rolling() && tags.contains(&release.id))
         .filter_map(|release| release_number(&release.id).map(|number| (number, release)))
@@ -263,26 +262,28 @@ async fn history(id: &str, ctx: &ServiceCtx, out: &EventSink) -> Result<UnitHist
             }
         })
         .collect();
-    let mut reads = stream::iter(jobs).buffer_unordered(DOWNLOADS);
-    let mut blueprints: Vec<Option<ReleaseBlueprint>> = vec![None; releases.len()];
-    let mut fetched = 0;
-    let mut reported = Instant::now();
-    while let Some((index, blueprint)) = reads.next().await {
-        blueprints[index] = Some(blueprint);
-        fetched += 1;
-        if reported.elapsed() >= PROGRESS_INTERVAL {
-            reported = Instant::now();
-            out.emit(UnitHistoryEvent::HistoryProgress {
-                id: id.to_owned(),
-                fetched,
-                total,
-            });
+    let release_blueprints = async {
+        let mut reads = stream::iter(jobs).buffer_unordered(DOWNLOADS);
+        let mut blueprints: Vec<Option<ReleaseBlueprint>> = vec![None; total as usize];
+        let mut fetched = 0;
+        let mut reported = Instant::now();
+        while let Some((index, blueprint)) = reads.next().await {
+            blueprints[index] = Some(blueprint);
+            fetched += 1;
+            if reported.elapsed() >= PROGRESS_INTERVAL {
+                reported = Instant::now();
+                out.emit(UnitHistoryEvent::HistoryProgress {
+                    id: id.to_owned(),
+                    fetched,
+                    total,
+                });
+            }
         }
-    }
-    drop(reads);
-
+        blueprints
+    };
     let install_dir = ctx.ports.process.game_install_dir();
-    let (base, fragmenting) = tokio::join!(
+    let (blueprints, base, fragmenting) = tokio::join!(
+        release_blueprints,
         port.base_game(&unit),
         port.fragmenting_projectiles(install_dir)
     );
