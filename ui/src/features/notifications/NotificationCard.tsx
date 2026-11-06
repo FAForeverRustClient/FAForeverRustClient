@@ -15,16 +15,20 @@ export function NotificationCard({ item, artwork, history = false, use24HourTime
   item: ClientNotification; artwork: string | null; history?: boolean; use24HourTime?: boolean;
   duration?: number; onActivate: () => void; onDismiss: () => void; onExpire?: () => void; recovery?: ReactNode;
 }) {
-  const title = <span className="notification-title"><NotificationArtwork url={artwork} /><strong>{notificationTitle(item)}</strong></span>;
+  const title = <strong className="notification-title">{notificationTitle(item)}</strong>;
   const content = <>
-    <button className={history ? "notification-content" : undefined} type="button" onClick={onActivate}>
-      {history ? <span className="notification-item-head">{title}<time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time></span> : title}
-      <span className="notification-message-row">
-        <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
+    <div className="notification-entry">
+      <button className="notification-content" type="button" onClick={onActivate}>
+        <NotificationArtwork url={artwork} />
+        <span className="notification-text">
+          {title}
+          <span className="notification-body" title={notificationBodyDetail(item) ?? undefined}>{renderFormattedText(notificationBody(item))}</span>
+          {history && <time dateTime={item.createdAt}>{formatTime(item.createdAt, "", use24HourTime)}</time>}
+        </span>
         {actionContent(item.action)}
-      </span>
-    </button>
-    <button className="notification-dismiss" type="button" onClick={onDismiss} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}><Icon name="close" size={12} /></button>
+      </button>
+      <button className="notification-dismiss" type="button" onClick={onDismiss} aria-label={t("notifications.dismiss", { title: notificationTitle(item) })}><Icon name="close" size={history ? 14 : 18} /></button>
+    </div>
     {recovery}
   </>;
   return history

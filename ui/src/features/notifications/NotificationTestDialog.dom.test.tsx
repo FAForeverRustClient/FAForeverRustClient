@@ -50,7 +50,8 @@ it("shows all three real card layouts and simulates dangerous actions without co
   await flush();
   expect(within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option")).toHaveLength(27);
   choose("notifications.test.event", "partyInvite");
-  fireEvent.click(document.querySelector(".desktop-notification-main")!);
+  // The invite has an action button, which acts; the rest of the card dismisses.
+  fireEvent.click(document.querySelector(".desktop-notification-action")!);
   expect(screen.getByRole("log").textContent).toContain(text("notifications.test.result.activated"));
   fireEvent.click(screen.getByRole("button", { name: text("notifications.test.surface.toast") }));
   expect(document.querySelector(".notification-test-gallery .notification-toast")).not.toBeNull();

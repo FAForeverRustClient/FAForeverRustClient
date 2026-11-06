@@ -1,0 +1,5 @@
+- Close buttons in the bell appear when you point at the card or use the keyboard.
+- The icons on a game card's Watch live and Join buttons sit level with their labels.
+- Notification action buttons stay vertically centered beside the message.
+- Notification timestamps sit below the message, leaving more room for long titles.
+- Desktop popups have no close button: a click on the card dismisses it and its button does the action, the title stays on one line, and the FAF mark shows only on cards without a picture.
