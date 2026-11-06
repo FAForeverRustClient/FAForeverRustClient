@@ -60,7 +60,7 @@
   z-index: 90;
   bottom: 46px;
   left: max(12px, calc(var(--sidebar-width) - 10px));
-  width: min(390px, calc(100vw - 24px));
+  width: min(420px, calc(100vw - 80px));
   max-height: min(560px, calc(100vh - 70px));
   overflow: hidden;
   background: var(--color-surface);
@@ -74,9 +74,15 @@
   flex: none;
   align-items: center;
   justify-content: space-between;
-  min-height: 44px;
-  padding: 0 var(--space-3);
+  min-height: 42px;
+  padding: 0 14px;
   border-bottom: 1px solid var(--color-border);
+}
+
+.notification-panel > header strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .notification-panel > header button {
@@ -105,59 +111,79 @@
 .notification-item,
 .notification-toast {
   position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 28px;
+  display: flex;
+  flex-direction: column;
   border-bottom: 1px solid var(--color-border);
 }
 
-.notification-item::before,
-.notification-toast::before {
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+  min-width: 0;
+}
+
+.notification-entry::before {
   position: absolute;
-  top: 17px;
+  top: 50%;
   left: 10px;
   width: 6px;
   height: 6px;
   content: "";
   background: var(--color-accent);
   border-radius: 50%;
+  transform: translateY(-50%);
   pointer-events: none;
 }
 
-.notification-item::before {
+.notification-item .notification-entry::before {
   opacity: 0;
 }
 
-.notification-item:not(.is-read)::before,
-.notification-toast::before {
+.notification-item:not(.is-read) .notification-entry::before,
+.notification-toast .notification-entry::before {
   opacity: 1;
 }
 
-.notification-item.is-server::before,
-.notification-toast.is-server::before {
+.notification-item.is-server .notification-entry::before,
+.notification-toast.is-server .notification-entry::before {
   background: var(--color-ok);
 }
 
-.notification-item.is-warning::before,
-.notification-toast.is-warning::before {
+.notification-item.is-warning .notification-entry::before,
+.notification-toast.is-warning .notification-entry::before {
   background: var(--color-warn);
 }
 
-.notification-item.is-error::before,
-.notification-toast.is-error::before {
+.notification-item.is-error .notification-entry::before,
+.notification-toast.is-error .notification-entry::before {
   background: var(--color-error);
 }
 
 .notification-item.is-read {
   opacity: 0.72;
+  transition: opacity 120ms ease;
 }
 
-.notification-content,
-.notification-toast > button:first-child {
+.notification-item.is-read:hover,
+.notification-item.is-read:focus-within {
+  opacity: 1;
+}
+
+.notification-content {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
+  width: 100%;
   min-width: 0;
-  padding: 12px 4px 12px 22px;
+  padding: 12px 0 12px 24px;
   color: var(--color-muted);
   font: inherit;
   font-size: 12px;
@@ -168,92 +194,93 @@
   cursor: pointer;
 }
 
-/* Title, time and message, beside the picture when there is one. */
+/* Title, time and message, beside the picture and action when there are any. */
 .notification-text {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: 2px;
   min-width: 0;
 }
 
-.notification-content:hover {
-  background: var(--color-surface-hover);
+.notification-artwork + .notification-text {
+  justify-content: center;
+  min-height: 40px;
 }
 
-.notification-item-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
+.notification-item:hover,
+.notification-item:focus-within,
+.notification-toast:hover,
+.notification-toast:focus-within {
+  background: var(--color-surface-hover);
 }
 
 .notification-content strong,
 .notification-toast strong {
   color: var(--color-text);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
 .notification-content time {
-  flex: none;
+  margin-top: 2px;
   color: var(--color-subtle);
-  font-size: 12px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.3;
   white-space: nowrap;
 }
 
-/* The message itself, which is the reason the notification exists. It used to
-   inherit the card's muted colour while the action hint below it was full
-   contrast, bold and uppercase: the loudest thing on the card was the label
-   for a click the whole card already performs, and the quietest was what
-   somebody had actually said. */
+/* Keep the message secondary to the title without shrinking its text. */
 .notification-body {
-  flex: 1 1 140px;
   min-width: 0;
-  color: var(--color-text);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
-/* The message with its action at the end of the line, where the message keeps
-   a readable width beside it. A label too long for that wraps under the
-   message instead, still at the right. */
-.notification-message-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-1) var(--space-2);
-}
-
-/* The card's action, drawn as the client's ghost button (issue 653) so it
-   reads as something to press. Smaller than a dialog's, and not stretched
-   across the card. */
-.notification-action {
+/* The card's action, drawn as a compact ghost chip (issue 653) and vertically
+   centered against the row. Qualified with `.btn-ghost` so `styles.css`
+   (imported after App in main.tsx) does not override its height, padding or
+   border. */
+.btn-ghost.notification-action {
   flex: none;
+  align-self: center;
+  min-height: 28px;
+  max-width: min(128px, 40%);
   margin-left: auto;
-  /* The raised pairing look of `.btn-ghost`: its plain outline at 8 % all but
-     disappears against a card. */
+  padding: 5px 9px;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
   background: var(--color-surface-raised);
   border-color: var(--color-border-strong);
-  min-height: 26px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: var(--radius-sm);
 }
 
-.notification-content:hover .notification-action,
-.notification-toast:hover .notification-action {
+.notification-content:hover .btn-ghost.notification-action,
+.notification-toast:hover .btn-ghost.notification-action {
   background: var(--color-surface-hover);
+  border-color: var(--color-muted);
 }
 
 /* A stream's platform, as its icon and its name (issue 155). */
-.notification-action.notification-stream {
+.btn-ghost.notification-action.notification-stream {
   gap: 5px;
 }
 
 .notification-dismiss {
-  align-self: start;
+  align-self: center;
   display: grid;
-  width: 24px;
-  height: 24px;
-  margin: 8px 4px 0 0;
+  width: 28px;
+  height: 28px;
+  margin: 0;
   padding: 0;
   color: var(--color-subtle);
   background: transparent;
@@ -264,6 +291,7 @@
   /* On hover or keyboard focus only, like the desktop card's: always shown, it
      sat above the action and read as the thing to do with the entry. */
   opacity: 0;
+  pointer-events: none;
   transition: opacity 120ms ease;
 }
 
@@ -272,11 +300,20 @@
 .notification-toast:hover .notification-dismiss,
 .notification-toast:focus-within .notification-dismiss {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .notification-dismiss:hover {
   color: var(--color-text);
-  background: var(--color-surface-hover);
+  background: var(--color-surface-raised);
+}
+
+@media (hover: none) {
+  .notification-dismiss { opacity: 1; pointer-events: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-item, .notification-dismiss { transition: none; }
 }
 
 .notification-empty {
@@ -300,7 +337,7 @@
   gap: var(--space-2);
   /* Room for a message beside an action as long as "Start when replay
      ready". */
-  width: min(380px, calc(100vw - 24px));
+  width: min(380px, calc(100vw - 80px));
   pointer-events: none;
 }
 
@@ -335,8 +372,36 @@
   box-shadow: var(--shadow-popover);
 }
 
-.notification-toast > button:first-child {
-  padding: 12px 4px 12px 22px;
+.notification-toast .notification-entry {
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 0;
+  padding-right: 0;
+  border-radius: inherit;
+}
+
+.notification-toast .notification-content {
+  padding-right: var(--space-2);
+  border-radius: inherit;
+}
+
+/* Reserve a column for closing, separate from the vertically centered action. */
+.notification-toast .notification-dismiss {
+  align-self: start;
+  margin: 6px 8px 0 0;
+  color: var(--color-muted);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  opacity: 0.75;
+  pointer-events: auto;
+}
+
+.notification-toast:hover .notification-dismiss,
+.notification-toast:focus-within .notification-dismiss,
+.notification-toast .notification-dismiss:hover {
+  color: var(--color-muted);
+  background: transparent;
+  opacity: 1;
 }
 
 @media (max-width: 900px) {
@@ -346,7 +411,7 @@
 }
 .notification-badge.is-error { background: var(--color-surface); color: var(--color-error-text); border: 1px solid var(--color-error); }
 .notification-badge.is-warning { background: var(--color-surface); color: var(--color-warn-text); border: 1px solid var(--color-warn); }
-.notification-recovery { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-3) var(--space-3) 22px; grid-column: 1 / -1; }
+.notification-recovery { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 14px 12px 24px; }
 .notification-title { min-width: 0; overflow-wrap: anywhere; }
-.notification-artwork { flex: none; width: 36px; height: 36px; object-fit: contain; border-radius: var(--radius-sm); }
+.notification-artwork { flex: none; width: 40px; height: 40px; object-fit: cover; background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .notification-artwork[hidden] { display: none; }

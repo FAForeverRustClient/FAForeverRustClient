@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { act, fireEvent, render } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { NotificationPopup } from "./NotificationPopup";
 import type { NotificationPopupBatch } from "../../ipc/native";
@@ -39,10 +40,27 @@ it("renders remote message text as text and sends only the clicked id and intera
   await act(async () => {});
   expect(view.container.querySelector("img")).toBeNull();
   expect(view.container.textContent).toContain("<img src=x onerror=alert(1)>");
+  // No action button: the card itself does what it is about.
   fireEvent.click(view.container.querySelector(".desktop-notification-main")!);
   expect(bridge.interact).toHaveBeenCalledWith("match", "activate");
-  fireEvent.click(view.getByRole("button", { name: "Dismiss notification" }));
-  expect(bridge.interact).toHaveBeenCalledWith("match", "dismiss");
+  expect(view.queryByRole("button", { name: "Dismiss notification" })).toBeNull();
+});
+it("dismisses from the card and acts from the action button, each reachable by keyboard", async () => {
+  const next = batch(1, "A game with friends");
+  next.cards[0].actionLabel = "View game";
+  bridge.snapshot.mockResolvedValue(next);
+  const view = render(<NotificationPopup />);
+  await act(async () => {});
+  const user = userEvent.setup();
+  await user.tab();
+  expect(view.getByRole("button", { name: "Match found. Dismiss notification" })).toBe(document.activeElement);
+  await user.keyboard("{Enter}");
+  expect(bridge.interact).toHaveBeenLastCalledWith("match", "dismiss");
+  await user.tab();
+  expect(view.getByRole("button", { name: "View game" })).toBe(document.activeElement);
+  await user.keyboard("{Enter}");
+  expect(bridge.interact).toHaveBeenLastCalledWith("match", "activate");
+  expect(bridge.interact).toHaveBeenCalledTimes(2);
 });
 it("shows why an action failed inside the card that was clicked", async () => {
   bridge.interact.mockImplementationOnce(() => Promise.reject(new Error("No running game is available")));
