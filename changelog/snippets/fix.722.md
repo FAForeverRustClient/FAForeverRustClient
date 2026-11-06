@@ -1,0 +1,1 @@
+- A found match plays the Alert tone by default instead of the long FAF match sample, which is still available in the sound list, and notification test previews close on their own unless held.

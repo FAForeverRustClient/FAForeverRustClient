@@ -7023,11 +7023,10 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  **Two rows are not [`NotificationSound::Chime`]: a found match plays
- *  [`NotificationSound::FafMatch`] and a filled lobby plays
- *  [`NotificationSound::Alert`].** Everything else keeps the tone the client
- *  played before this existed, so installing an update changes those two
- *  sounds and not the rest.
+ *  **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
+ *  lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+ *  tone the client played before this existed, so installing an update changes
+ *  those two sounds and not the rest.
  *
  *  That is a reversal. The original note here argued that shipping choices
  *  nobody made was the wrong answer to "all notifications sound the same", and
@@ -7039,6 +7038,10 @@ export type NotificationSound =
  *  that. A lobby filling up expires the same way -- the game launches without
  *  whoever was looking elsewhere -- and was asked for by name. The remaining
  *  ten rows are still one tone and still a preference.
+ *
+ *  A found match first defaulted to [`NotificationSound::FafMatch`], the Java
+ *  client's sample. It is long and harsh next to the synthesised tones, so it
+ *  stays on offer and stops being what everybody hears by default.
  *
  *  [`NotificationSound::Silent`] is available on every row, which is how a kind
  *  is seen and not heard.
