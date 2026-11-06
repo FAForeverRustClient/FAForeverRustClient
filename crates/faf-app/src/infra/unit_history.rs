@@ -69,6 +69,7 @@ impl UnitHistoryConfig {
 pub struct UnitHistoryClient {
     config: UnitHistoryConfig,
     http: reqwest::Client,
+    // The expiration time and the tags, shared by all open histories.
     tags: tokio::sync::Mutex<Option<(Instant, BTreeSet<String>)>>,
     units: Arc<Mutex<Option<ArchiveValue<Vec<UnitSummary>>>>>,
     projectiles: Arc<Mutex<Option<ArchiveValue<BTreeSet<String>>>>>,
@@ -286,6 +287,30 @@ impl DiskCache {
     }
 }
 
+fn read_cached_tags(path: &Path) -> Option<(BTreeSet<String>, Option<Instant>)> {
+    let file = std::fs::File::open(path).ok()?;
+    let metadata = file.metadata().ok()?;
+    let mut text = String::new();
+    file.take(MAX_TAG_LIST_BYTES + 1)
+        .read_to_string(&mut text)
+        .ok()?;
+    if text.len() as u64 > MAX_TAG_LIST_BYTES {
+        return None;
+    }
+    let tags: BTreeSet<_> = text
+        .lines()
+        .filter(|tag| is_plain_tag(tag))
+        .map(str::to_owned)
+        .collect();
+    let expires = metadata
+        .modified()
+        .ok()
+        .and_then(|modified| modified.elapsed().ok())
+        .and_then(|age| TAG_LIST_AGE.checked_sub(age))
+        .map(|remaining| Instant::now() + remaining);
+    (!tags.is_empty()).then_some((tags, expires))
+}
+
 fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let directory = path.parent().ok_or(std::io::ErrorKind::InvalidInput)?;
@@ -405,46 +430,44 @@ impl UnitHistoryPort for UnitHistoryClient {
 
     async fn release_tags(&self) -> Result<BTreeSet<String>, String> {
         let mut held = self.tags.lock().await;
-        if let Some((read, tags)) = held.as_ref() {
-            if read.elapsed() < TAG_LIST_AGE {
+        if let Some((expires, tags)) = held.as_ref() {
+            if Instant::now() < *expires {
                 return Ok(tags.clone());
             }
         }
-        let cached = self
+        let cache_path = self
             .config
             .cache_dir
             .as_ref()
             .map(|dir| dir.join("tags.txt"));
+        let saved = match cache_path.clone() {
+            Some(path) => tokio::task::spawn_blocking(move || read_cached_tags(&path))
+                .await
+                .ok()
+                .flatten(),
+            None => None,
+        };
+        // Retain the original expiry when using the list after a restart.
+        if let Some((tags, Some(expires))) = &saved {
+            if Instant::now() < *expires {
+                *held = Some((*expires, tags.clone()));
+                return Ok(tags.clone());
+            }
+        }
         match self.fetch_tags().await {
             Ok(tags) => {
-                if let Some(path) = cached {
+                let expires = Instant::now() + TAG_LIST_AGE;
+                if let Some(path) = cache_path {
                     let text = tags.iter().cloned().collect::<Vec<_>>().join("\n");
                     let _ =
                         tokio::task::spawn_blocking(move || write_atomic(&path, text.as_bytes()))
                             .await;
                 }
-                *held = Some((Instant::now(), tags.clone()));
+                *held = Some((expires, tags.clone()));
                 Ok(tags)
             }
-            // Offline, the last list read still names every tag that existed
-            // then, which is every release the cache can hold.
-            Err(reason) => {
-                let stale = match cached {
-                    Some(path) => tokio::fs::read_to_string(path).await.ok(),
-                    None => None,
-                };
-                let tags: BTreeSet<String> = stale
-                    .iter()
-                    .flat_map(|text| text.lines())
-                    .filter(|tag| is_plain_tag(tag))
-                    .map(str::to_owned)
-                    .collect();
-                if tags.is_empty() {
-                    Err(reason)
-                } else {
-                    Ok(tags)
-                }
-            }
+            // The last list still names every release the cache can hold offline.
+            Err(reason) => saved.map(|(tags, _)| tags).ok_or(reason),
         }
     }
 
@@ -681,6 +704,66 @@ mod tests {
         assert!(parse_ls_refs(b"zzzz").is_err());
         assert!(parse_ls_refs(b"00ffshort").is_err());
         assert_eq!(pkt_line("command=ls-refs\n"), b"0014command=ls-refs\n");
+    }
+
+    #[tokio::test]
+    async fn a_fresh_tag_list_survives_restart_and_an_old_list_refreshes() {
+        let cache = tempfile::tempdir().unwrap();
+        let tag_file = cache.path().join("tags.txt");
+        std::fs::write(&tag_file, "3837").unwrap();
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let config = UnitHistoryConfig {
+            raw_base: String::new(),
+            git_upload_pack: format!("http://{}", listener.local_addr().unwrap()),
+            cache_dir: Some(cache.path().to_path_buf()),
+        };
+        let requests = Arc::new(AtomicU32::new(0));
+        let observed = requests.clone();
+        let server = tokio::spawn(async move {
+            loop {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut request = [0_u8; 4096];
+                assert!(socket.read(&mut request).await.unwrap() > 0);
+                observed.fetch_add(1, Ordering::AcqRel);
+                let mut body =
+                    pkt_line("04d3760ac66358a70639835508dc4b58561fcbd9 refs/tags/3838\n");
+                body.extend(b"0000");
+                let response = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                socket.write_all(response.as_bytes()).await.unwrap();
+                socket.write_all(&body).await.unwrap();
+            }
+        });
+
+        let client = UnitHistoryClient::new(config.clone());
+        assert_eq!(
+            client.release_tags().await.unwrap(),
+            BTreeSet::from(["3837".into()])
+        );
+        assert_eq!(requests.load(Ordering::Acquire), 0);
+        let expired = SystemTime::now() - TAG_LIST_AGE - Duration::from_secs(60);
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(&tag_file)
+            .unwrap()
+            .set_modified(expired)
+            .unwrap();
+        let restarted = UnitHistoryClient::new(config.clone());
+        assert_eq!(
+            restarted.release_tags().await.unwrap(),
+            BTreeSet::from(["3838".into()])
+        );
+        assert_eq!(requests.load(Ordering::Acquire), 1);
+        let restarted = UnitHistoryClient::new(config);
+        assert_eq!(
+            restarted.release_tags().await.unwrap(),
+            BTreeSet::from(["3838".into()])
+        );
+        assert_eq!(requests.load(Ordering::Acquire), 1);
+        server.abort();
     }
 
     #[test]
