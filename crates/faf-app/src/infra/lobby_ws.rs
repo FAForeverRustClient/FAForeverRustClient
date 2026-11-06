@@ -50,7 +50,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::infra::session::TokenStore;
 use crate::infra::{env_or, fetch_access_url, validated_ws_url};
-use crate::ports::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
+use crate::ports::{LobbyPort, LobbySendError, LobbyUpdate, ServerNoticeStyle};
 
 const MAX_SERVER_MESSAGE_CHARS: usize = 4_000;
 // Protocol identifier sent in the lobby handshake. This value is stored by
@@ -189,12 +189,16 @@ impl LobbyClient {
     }
 
     fn send(&self, request: Outgoing) -> bool {
+        self.try_send(request).is_ok()
+    }
+
+    fn try_send(&self, request: Outgoing) -> Result<(), LobbySendError> {
         let guard = self.outgoing.lock().unwrap();
         let Some(tx) = guard.as_ref() else {
-            return false;
+            return Err(LobbySendError::Disconnected);
         };
         match tx.try_send(request) {
-            Ok(()) => true,
+            Ok(()) => Ok(()),
             Err(mpsc::error::TrySendError::Full(request)) => {
                 // Every caller logs a `false` as "disconnected", which is not
                 // what happened here, so this says what did.
@@ -206,9 +210,9 @@ impl LobbyClient {
                     },
                     "lobby frame dropped: the outgoing queue is full"
                 );
-                false
+                Err(LobbySendError::Busy)
             }
-            Err(_) => false,
+            Err(mpsc::error::TrySendError::Closed(_)) => Err(LobbySendError::Disconnected),
         }
     }
 }
@@ -341,22 +345,30 @@ impl LobbyPort for LobbyClient {
         sent
     }
 
-    fn host(&self, config: HostGameConfig) {
-        if !self.send_frame(host_frame(config)) {
-            tracing::warn!("host request ignored because the lobby is disconnected");
-        }
+    fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError> {
+        self.try_send(Outgoing::Frame(host_frame(config)))
     }
 
-    fn matchmake(&self, queue_name: String, start: bool) {
+    fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
+        let outgoing = self.outgoing.lock().unwrap();
+        let tx = outgoing.as_ref().ok_or(LobbySendError::Disconnected)?;
+        // Reserve before sending the first frame. A saturated queue must
+        // never leave the player searching only some of the requested queues.
+        let permits = tx
+            .try_reserve_many(queue_names.len())
+            .map_err(|error| match error {
+                mpsc::error::TrySendError::Full(()) => LobbySendError::Busy,
+                mpsc::error::TrySendError::Closed(()) => LobbySendError::Disconnected,
+            })?;
         let state = if start { "start" } else { "stop" };
-        let frame = json!({
-            "command": "game_matchmaking",
-            "queue_name": queue_name,
-            "state": state,
-        });
-        if !self.send_frame(frame) {
-            tracing::warn!("matchmaker request ignored because the lobby is disconnected");
+        for (permit, queue_name) in permits.zip(queue_names) {
+            permit.send(Outgoing::Frame(json!({
+                "command": "game_matchmaking",
+                "queue_name": queue_name,
+                "state": state,
+            })));
         }
+        Ok(())
     }
 
     fn leave_party(&self) {
@@ -377,23 +389,47 @@ impl LobbyPort for LobbyClient {
         }));
     }
 
-    fn accept_party_invite(&self, player_id: i32) {
-        let _ = self.send_frame(json!({
+    fn accept_party_invite(&self, player_id: i32) -> Result<(), LobbySendError> {
+        self.try_send(Outgoing::Frame(json!({
             "command": "accept_party_invite",
             "sender_id": player_id,
-        }));
+        })))
     }
 
     fn set_party_factions(&self, factions: Vec<String>) {
         let _ = self.send_frame(party_factions_frame(factions));
     }
 
-    fn set_relation(&self, player_id: i32, relation: Relation, member: bool) {
-        let _ = self.send_frame(relation_frame(player_id, relation, member));
-    }
-
-    fn set_contact_relation(&self, contact: faf_domain::state::Contact, member: bool) {
-        let _ = self.send(Outgoing::ContactRelation(contact, member));
+    fn set_contact_relation(
+        &self,
+        contact: faf_domain::state::Contact,
+        member: bool,
+        remove: Option<Relation>,
+    ) -> bool {
+        let outgoing = self.outgoing.lock().unwrap();
+        let Some(tx) = outgoing.as_ref() else {
+            return false;
+        };
+        let Ok(permits) = tx.try_reserve_many(1 + usize::from(remove.is_some())) else {
+            return false;
+        };
+        let removal = remove.map(|relation| {
+            Outgoing::ContactRelation(
+                faf_domain::state::Contact {
+                    relation,
+                    ..contact.clone()
+                },
+                false,
+            )
+        });
+        for (permit, change) in permits.zip(
+            removal
+                .into_iter()
+                .chain(std::iter::once(Outgoing::ContactRelation(contact, member))),
+        ) {
+            permit.send(change);
+        }
+        true
     }
 
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
@@ -2591,6 +2627,85 @@ fn host_frame(config: HostGameConfig) -> Value {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn outgoing_lobby_refusals_distinguish_saturation_and_reserve_whole_searches() {
+        use super::{LobbyClient, LobbyPort, LobbySendError, Outgoing, TokenStore};
+        use tokio::sync::mpsc;
+
+        let lobby = LobbyClient::faf(TokenStore::new());
+        let queues = ["ladder1v1".into(), "tmm2v2".into()];
+        assert_eq!(
+            lobby.accept_party_invite(7),
+            Err(LobbySendError::Disconnected)
+        );
+        assert_eq!(
+            lobby.matchmake(&queues, true),
+            Err(LobbySendError::Disconnected)
+        );
+
+        let (tx, mut rx) = mpsc::channel(2);
+        *lobby.outgoing.lock().unwrap() = Some(tx);
+        lobby.accept_party_invite(7).unwrap();
+        assert_eq!(lobby.matchmake(&queues, true), Err(LobbySendError::Busy));
+        let Outgoing::Frame(invite) = rx.try_recv().unwrap() else {
+            panic!("party frame")
+        };
+        assert_eq!(invite["command"], "accept_party_invite");
+        assert!(
+            rx.try_recv().is_err(),
+            "a refused batch must leave no partial search"
+        );
+
+        lobby.matchmake(&queues, true).unwrap();
+        assert_eq!(lobby.accept_party_invite(7), Err(LobbySendError::Busy));
+        for queue in &queues {
+            let Outgoing::Frame(search) = rx.try_recv().unwrap() else {
+                panic!("search frame")
+            };
+            assert_eq!(search["queue_name"].as_str(), Some(queue.as_str()));
+            assert_eq!(search["state"], "start");
+        }
+        drop(rx);
+        assert_eq!(
+            lobby.matchmake(&queues, true),
+            Err(LobbySendError::Disconnected)
+        );
+    }
+
+    #[test]
+    fn contact_switch_needs_space_for_both_frames() {
+        use super::{LobbyClient, LobbyPort, Outgoing, Relation, TokenStore};
+        use faf_domain::state::Contact;
+        use tokio::sync::mpsc;
+
+        let lobby = LobbyClient::faf(TokenStore::new());
+        let contact = Contact {
+            player_id: 7,
+            login: Some("OfflineFixture".into()),
+            relation: Relation::Foe,
+        };
+        let (tx, mut rx) = mpsc::channel(2);
+        assert!(tx
+            .try_send(Outgoing::Frame(serde_json::Value::Null))
+            .is_ok());
+        *lobby.outgoing.lock().unwrap() = Some(tx);
+
+        assert!(!lobby.set_contact_relation(contact.clone(), true, Some(Relation::Friend)));
+        assert!(matches!(rx.try_recv().unwrap(), Outgoing::Frame(_)));
+        assert!(rx.try_recv().is_err());
+
+        assert!(lobby.set_contact_relation(contact, true, Some(Relation::Friend)));
+        let Outgoing::ContactRelation(old, false) = rx.try_recv().unwrap() else {
+            panic!("expected removal of the old friend relation");
+        };
+        let Outgoing::ContactRelation(new, true) = rx.try_recv().unwrap() else {
+            panic!("expected the new foe relation");
+        };
+        assert_eq!(old.relation, Relation::Friend);
+        assert_eq!(new.relation, Relation::Foe);
+        assert_eq!(new.player_id, old.player_id);
+    }
+
     #[test]
     fn contacts_preserve_unresolved_ids_and_never_turn_lookups_into_online_profiles() {
         let mut directory = super::PlayerDirectory::default();

@@ -11,6 +11,11 @@ import type { FrontendUpdate, AppState, FrontendMessage, VersionedSnapshot } fro
  */
 export const RECOVERY_COOLDOWN_MS = 750;
 
+/** Time an individual snapshot request can hold up recovery. */
+export const RECOVERY_TIMEOUT_MS = 15_000;
+
+export class SnapshotRecoveryTimeoutError extends Error {}
+
 /**
  * The wait before retrying a snapshot that failed, doubled per failure.
  *
@@ -187,16 +192,16 @@ export class RevisionedMirror {
 
   private scheduleRecovery(delay: number): void {
     if (delay <= 0) {
-      this.startRecovery();
+      void this.startRecovery();
       return;
     }
     this.recoveryTimer = setTimeout(() => {
       this.recoveryTimer = null;
-      this.startRecovery();
+      void this.startRecovery();
     }, delay);
   }
 
-  private startRecovery(): void {
+  private async startRecovery(): Promise<void> {
     const resnapshot = this.resnapshot;
     if (!resnapshot || this.recoveryInFlight || this.disposed) return;
     // The gap that asked for this may have been closed since, by an ordered
@@ -207,35 +212,41 @@ export class RevisionedMirror {
     }
     this.recoveryInFlight = true;
     this.lastRecoveryAt = Date.now();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timeout = setTimeout(() => reject(new SnapshotRecoveryTimeoutError()), RECOVERY_TIMEOUT_MS);
+    });
     let failure: { error: unknown } | null = null;
-    void resnapshot()
-      .then((snapshot) => {
-        this.failedAttempts = 0;
-        this.replace(snapshot);
-      })
-      .catch((error: unknown) => {
-        failure = { error };
-      })
-      .finally(() => {
-        this.recoveryInFlight = false;
-        this.lastRecoveryAt = Date.now();
-        // Disposed while it was in flight: no retry, and no error for a page
-        // that has already moved on.
-        if (this.disposed) return;
-        if (failure === null) {
-          // `replace` may have left a newer gap behind, one that arrived while
-          // this snapshot was being built.
-          if (this.hasRevisionGap()) this.scheduleRecovery(RECOVERY_COOLDOWN_MS);
-          return;
-        }
-        this.failedAttempts += 1;
-        if (this.failedAttempts >= RECOVERY_MAX_ATTEMPTS) {
-          // Out of retries: say so, and leave the next gap to start afresh.
-          this.failedAttempts = 0;
-          this.onRecoveryError?.(failure.error);
-          return;
-        }
-        if (this.hasRevisionGap()) this.scheduleRecovery(recoveryRetryDelay(this.failedAttempts));
-      });
+    try {
+      // IPC cannot cancel a pending reply. After the deadline wins, a late
+      // reply from this attempt can no longer replace the mirror.
+      this.replace(await Promise.race([resnapshot(), deadline]));
+    } catch (error) {
+      failure = { error };
+    } finally {
+      clearTimeout(timeout);
+      this.recoveryInFlight = false;
+      this.lastRecoveryAt = Date.now();
+    }
+
+    if (this.disposed) return;
+    if (!this.hasRevisionGap()) {
+      this.failedAttempts = 0;
+      return;
+    }
+    if (failure === null) {
+      // A newer gap arrived while the snapshot was being built.
+      this.failedAttempts = 0;
+      this.scheduleRecovery(RECOVERY_COOLDOWN_MS);
+      return;
+    }
+    this.failedAttempts += 1;
+    if (this.failedAttempts >= RECOVERY_MAX_ATTEMPTS) {
+      // Out of retries: report the failure and let the next gap start afresh.
+      this.failedAttempts = 0;
+      this.onRecoveryError?.(failure.error);
+      return;
+    }
+    this.scheduleRecovery(recoveryRetryDelay(this.failedAttempts));
   }
 }

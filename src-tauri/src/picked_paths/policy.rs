@@ -165,7 +165,10 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
             | LobbyCommand::LeaveParty
             | LobbyCommand::KickPartyMember { player_id: _ }
             | LobbyCommand::InviteToParty { player_id: _ }
-            | LobbyCommand::AcceptPartyInvite { player_id: _ }
+            | LobbyCommand::AcceptPartyInvite {
+                player_id: _,
+                notification_id: _,
+            }
             | LobbyCommand::SetPartyFactions { factions: _ }
             | LobbyCommand::SetPlayMode { mode: _ }
             | LobbyCommand::SetPlayerVetoes { vetoes: _ }

@@ -64,7 +64,7 @@ pub use guides::{DeviceCode, GuidesPort};
 pub use ice::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
 pub use leaderboard::LeaderboardPort;
 pub use linux_runtime::{LinuxRuntimePort, NoLinuxRuntime, RuntimeCheck, RuntimeProgress};
-pub use lobby::{LobbyPort, LobbyUpdate, ServerNoticeStyle};
+pub use lobby::{LobbyPort, LobbySendError, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort, VaultInstallProgress, VaultInstallStep};
 pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};

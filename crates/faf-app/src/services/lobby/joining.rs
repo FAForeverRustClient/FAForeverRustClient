@@ -6,7 +6,7 @@ use faf_domain::state::{
     IceAdapter, JoinState, LobbyEvent, MatchmakingState, SettingsEvent,
 };
 
-use crate::ports::ModPrepFailure;
+use crate::ports::{LobbySendError, ModPrepFailure};
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher;
 use crate::services::notifications;
@@ -255,11 +255,37 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             } else {
                 config
             };
-            ctx.lobby.set_hosted(super::HostedGame {
+            let hosted = super::HostedGame {
                 title: config.title.clone(),
                 prepared,
+            };
+            let sent = operations.while_live(operation, || {
+                // A launch can answer immediately. It sees the host details
+                // only for a request the transport actually accepted.
+                let mut pending = ctx.lobby.hosted.lock().unwrap();
+                ctx.ports.lobby.host(config)?;
+                *pending = Some(hosted);
+                Ok::<_, LobbySendError>(())
             });
-            ctx.ports.lobby.host(config);
+            match sent {
+                Some(Ok(())) => {}
+                Some(Err(error)) => {
+                    operations.while_live(operation, || {
+                        let reason = error.reason().to_owned();
+                        out.emit(LobbyEvent::LaunchFailed {
+                            reason: reason.clone(),
+                        });
+                        notifications::add_required_failure(
+                            out,
+                            notifications::Text::new("notifications.msg.hostFailed"),
+                            "Could not host game",
+                            reason,
+                            None,
+                        );
+                    });
+                }
+                None => return,
+            }
             crate::services::settings::persist(ctx, out).await;
         }
         Err(reason) => {

@@ -6,6 +6,7 @@ import { seedStore } from "../../testing/mounted";
 import { clearSentCommands, sentCommands } from "../../testing/sentCommands";
 import { playNotificationSound } from "./notificationSound";
 import { useAppStore } from "../../store/store";
+import type { ClientNotification } from "../../ipc/bindings";
 
 vi.mock("../../ipc/client");
 const nativeMock = vi.hoisted(() => ({
@@ -15,7 +16,8 @@ const nativeMock = vi.hoisted(() => ({
   ensureNotificationPermission: vi.fn(() => Promise.resolve(true)),
   sendNotification: vi.fn(),
   gameNotificationAttention: vi.fn(() => Promise.resolve(false)),
-  onNotificationInteraction: vi.fn(() => Promise.resolve(() => undefined)),
+  nextNotificationActivation: vi.fn<(_acknowledgedId?: string) => Promise<ClientNotification | null>>(() => Promise.resolve(null)),
+  onNotificationActivation: vi.fn<(_handler: () => void) => Promise<() => void>>(() => Promise.resolve(() => undefined)),
 }));
 vi.mock("../../ipc/native", () => ({ native: nativeMock }));
 vi.mock("./notificationSound", () => ({ soundForKind: vi.fn(() => "silent"), playNotificationSound: vi.fn() }));
@@ -25,11 +27,45 @@ beforeEach(() => {
   vi.mocked(nativeMock.isWindowFocused).mockResolvedValue(false);
   vi.mocked(nativeMock.showNotificationPopup).mockResolvedValue(undefined);
   vi.mocked(nativeMock.gameNotificationAttention).mockResolvedValue(false);
+  nativeMock.nextNotificationActivation.mockReset().mockResolvedValue(null);
   seedStore((state) => ({ ...state, settings: { ...state.settings, notifications: {
     ...state.settings.notifications, desktopStyle: "popup", sound: false,
   } }, notifications: { items: [{ id: "match", kind: "matchFound", title: "Match found", body: "A match is ready", action: { type: "openMatchmaking" }, text: null, read: false, createdAt: new Date().toISOString() }] } }));
 });
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+it("handles and acknowledges a popup clicked before the main window mounted", async () => {
+  const item = useAppStore.getState().state.notifications.items[0];
+  seedStore((state) => ({ ...state, notifications: { items: [] } }));
+  clearSentCommands();
+  nativeMock.nextNotificationActivation.mockResolvedValueOnce(item);
+  render(<NotificationCenter />);
+  await act(async () => {});
+  expect(sentCommands()).toEqual([
+    { kind: "Nav", command: { type: "select", payload: { tab: "play" } } },
+    { kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "matchmaking" } } },
+    { kind: "Notifications", command: { type: "markRead", payload: { id: item.id } } },
+  ]);
+  expect(nativeMock.nextNotificationActivation.mock.calls).toEqual([[], [item.id]]);
+});
+
+it("checks again when a popup is clicked during an empty queue response", async () => {
+  const item = useAppStore.getState().state.notifications.items[0];
+  let finishFirst!: (item: ClientNotification | null) => void;
+  const first = new Promise<ClientNotification | null>((resolve) => { finishFirst = resolve; });
+  nativeMock.nextNotificationActivation.mockReturnValueOnce(first).mockResolvedValueOnce(item);
+  render(<NotificationCenter />);
+  await act(async () => {});
+  const wake = nativeMock.onNotificationActivation.mock.calls[0][0];
+  await act(async () => {
+    wake();
+    wake();
+    finishFirst(null);
+    await first;
+  });
+  expect(nativeMock.nextNotificationActivation.mock.calls).toEqual([[], [], [item.id]]);
+});
+
 it("shows a desktop popup in the background without a duplicate in-client or system popup", async () => {
   const view = render(<NotificationCenter />);
   await act(async () => {});

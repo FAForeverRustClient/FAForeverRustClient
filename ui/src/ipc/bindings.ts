@@ -4865,6 +4865,8 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 /**  Accept an incoming party invitation from its sender. */
 { type: "acceptPartyInvite"; payload: {
 	playerId: number,
+	/**  A bell or popup action is consumed only after local send admission. */
+	notificationId?: string | null,
 } } |
 /**
  *  Update the local party member's accepted factions. The server echoes the

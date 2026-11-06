@@ -52,10 +52,8 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
         await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "custom" } } });
         break;
       case "acceptPartyInvite":
-        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId } } });
-        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "play" } } });
-        await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "matchmaking" } } });
-        break;
+        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId, notificationId: item.id } } });
+        return;
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
@@ -216,15 +214,38 @@ export function NotificationCenter() {
   useEffect(() => {
     let disposed = false;
     let stop: (() => void) | undefined;
-    void native.onNotificationInteraction(({ id, interaction }) => {
-      const item = useAppStore.getState().state.notifications.items.find((candidate) => candidate.id === id);
-      if (!item) return;
-      hideToast(id);
-      if (interaction === "dismiss") dismiss(id);
-      // Native activation already focused the owned game. Avoid doing it twice.
-      else if (item.action?.type === "focusGame") markRead(id);
-      else ipc.run(runAction(item, setGamePreviewId));
-    }).then((unlisten) => { if (disposed) unlisten(); else stop = unlisten; }).catch(() => undefined);
+    let draining = false;
+    let wakePending = false;
+    const drain = async () => {
+      if (disposed) return;
+      wakePending = true;
+      if (draining) return;
+      draining = true;
+      try {
+        // A wake-up can race a response that says the queue was empty.
+        while (!disposed && wakePending) {
+          wakePending = false;
+          let item = await native.nextNotificationActivation();
+          while (!disposed && item) {
+            hideToast(item.id);
+            try {
+              await runAction(item, setGamePreviewId);
+            } catch (error) {
+              ipc.run(Promise.reject(error instanceof Error ? error : new Error(String(error))));
+            }
+            item = await native.nextNotificationActivation(item.id);
+          }
+        }
+      } finally {
+        draining = false;
+      }
+    };
+    // Register first, then fetch clicks held while the main window rebuilt.
+    void native.onNotificationActivation(() => ipc.run(drain())).then((unlisten) => {
+      if (disposed) { unlisten(); return; }
+      stop = unlisten;
+      ipc.run(drain());
+    }).catch(() => undefined);
     return () => { disposed = true; stop?.(); };
   }, [hideToast]);
 
