@@ -74,7 +74,7 @@ impl CacheIndex {
     }
 }
 
-fn filename(url: &str) -> String {
+pub(super) fn filename(url: &str) -> String {
     format!("{:x}.txt", Sha256::digest(url.as_bytes()))
 }
 
