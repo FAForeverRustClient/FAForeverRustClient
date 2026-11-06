@@ -4,7 +4,7 @@ import { restoreFocus } from "../../../design-system/overlayStack";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Modal } from "../../../design-system/Modal";
-import type { Game, VaultMap } from "../../../ipc/bindings";
+import type { Game, MapSummary } from "../../../ipc/bindings";
 import { rememberTileGridWidth } from "../../../shared/tileGridWidth";
 import { useGameBrowserColumns } from "./gameBrowserColumns";
 import { useAppStore } from "../../../store/store";
@@ -21,7 +21,7 @@ interface Props {
   games: Game[];
   totalGames: number;
   selectedId: number | null;
-  vault: VaultMap[];
+  vault: MapSummary[];
   viewMode: GameViewMode;
   onSelect: (id: number) => void;
   onJoin: (game: Game) => void;

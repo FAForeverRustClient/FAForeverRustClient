@@ -6,7 +6,7 @@
 // have scrolled into, has the width for the maps and the run side by side, and
 // Escape gives the bracket back.
 
-import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
+import type { PlayerSummary, Tourney, TourneyMatch, MapSummary } from "../../../ipc/bindings";
 import { Modal } from "../../../design-system/Modal";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { matchLabel } from "./matchLabels";
@@ -16,7 +16,7 @@ import { VetoPanel, type VetoHandlers } from "./VetoPanel";
 interface VetoOverlayProps {
   event: Tourney;
   entry: TourneyMatch;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   profiles: PlayerSummary[];
   busy: boolean;

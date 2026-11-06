@@ -8,7 +8,7 @@ import type {
   LocalReplay,
   LocalReplayPlayer,
   LocalReplayTeam,
-  VaultMap,
+  MapSummary,
   VaultReplay,
 } from "../../ipc/bindings";
 import type { MessageKey, MessageValues } from "../../i18n";
@@ -19,7 +19,7 @@ type Translate = (key: MessageKey, values?: MessageValues) => string;
 
 export function localReplayToVaultReplay(
   local: LocalReplay,
-  mapVault: VaultMap[],
+  mapVault: MapSummary[],
   missions: CoopMission[] = [],
 ): VaultReplay {
   const presentation = local.map ? mapPresentation(mapVault, local.map, missions) : null;

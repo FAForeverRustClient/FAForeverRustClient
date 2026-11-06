@@ -27,7 +27,7 @@ import type {
   TourneyLoadStatus,
   TourneyMatch,
   TourneySeries,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -161,7 +161,7 @@ interface TournamentDetailPaneProps {
   articles: Article[];
   /** Where the tournament service lives, for its own image paths. */
   assetBase: string;
-  vault: VaultMap[];
+  vault: MapSummary[];
   vaultStatus: MapListStatus;
   chatRooms: ChatRoom[];
   openRoomId: string | null;

@@ -332,26 +332,25 @@ pub(super) async fn handle_update<'a>(
             }
         }
         LobbyUpdate::Banned { text } => {
-            // One notification, where every reconnect used to add another.
+            // Close the account session first. Only this notice belongs in
+            // the offline session that replaces it.
+            let Some(offline) = out.transition_account(AuthEvent::Banned {
+                message: text.clone(),
+            }) else {
+                return;
+            };
             notifications::add_required_text(
-                out,
+                &offline,
                 NotificationKind::Error,
                 notifications::Text::new("notifications.msg.serverBanned"),
                 "Banned from FAF",
-                text.clone(),
+                text,
                 None,
             );
-            // Nothing that would only be refused again keeps trying: the
-            // lobby's own retries ended with the session, and neither
-            // watchdog may start them over. Chat is closed too, which is the
-            // moderators' call on the thread and what the Java client does.
+            // The session change cancels both sockets. The watchdog must
+            // also leave them alone until the user signs in again.
             ctx.lobby.auto_reconnect.disarm();
-            ctx.ports.lobby.disconnect();
             ctx.chat.disarm_reconnect();
-            ctx.ports.chat.disconnect();
-            // What is left is an offline session: the local replays and the
-            // settings, as for anybody who cannot sign in.
-            out.emit(AuthEvent::Banned { message: text });
         }
         LobbyUpdate::ConnectionRejected { reason } => {
             notifications::add_required_text(

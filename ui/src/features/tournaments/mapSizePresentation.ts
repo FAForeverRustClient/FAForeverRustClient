@@ -7,7 +7,7 @@
 // then the vault record the map's name resolves to. A secret map stays
 // without one: its size would narrow down which map it is.
 
-import type { MapSpec, TourneyMap, VaultMap } from "../../ipc/bindings";
+import type { MapSpec, TourneyMap, MapSummary } from "../../ipc/bindings";
 import { isGeneratedMap, kilometresLabel, officialMapFor } from "../../shared/mapPresentation";
 import { matchVaultMap } from "../../shared/rules/tourneyRules";
 
@@ -36,7 +36,7 @@ export function specSizeOf(width: number, height: number): string {
 }
 
 /** Width and height in generator units of the map a name refers to, where known. */
-export function mapDimensionsByName(name: string, vault: VaultMap[]): { width: number; height: number } | null {
+export function mapDimensionsByName(name: string, vault: MapSummary[]): { width: number; height: number } | null {
   const official = officialMapFor(name);
   if (official !== undefined) return official;
   const record = matchVaultMap({ name }, vault);
@@ -49,7 +49,7 @@ export function mapDimensionsByName(name: string, vault: VaultMap[]): { width: n
  * one the client knows. A size off the website's list (`15x15`, `10x20`) is
  * still a size worth showing. "" where nobody knows, or it is secret.
  */
-export function tourneyMapSize(map: TourneyMap, vault: VaultMap[], generatedSize?: number): string {
+export function tourneyMapSize(map: TourneyMap, vault: MapSummary[], generatedSize?: number): string {
   const stored = map.spec?.size.trim() ?? "";
   if (stored !== "") return stored;
   if (map.masked) return "";
@@ -70,7 +70,7 @@ export function tourneyMapSize(map: TourneyMap, vault: VaultMap[], generatedSize
  * Never for a generated map: the vault holds none, and asking for one by name
  * was a request per map that could only come back empty.
  */
-export function needsSizeLookup(map: TourneyMap, vault: VaultMap[]): boolean {
+export function needsSizeLookup(map: TourneyMap, vault: MapSummary[]): boolean {
   return (
     !map.masked &&
     !isGeneratedMap(map.name) &&
@@ -84,7 +84,7 @@ export function needsSizeLookup(map: TourneyMap, vault: VaultMap[]): boolean {
  * is one the editor offers. For a map being added from the vault or opened in
  * the editor, so the organiser sees it chosen and saves it with the rest.
  */
-export function withKnownSize(spec: MapSpec | null, name: string, vault: VaultMap[]): MapSpec | null {
+export function withKnownSize(spec: MapSpec | null, name: string, vault: MapSummary[]): MapSpec | null {
   if (spec !== null && spec.size.trim() !== "") return spec;
   const dimensions = mapDimensionsByName(name, vault);
   const size = dimensions === null ? "" : specSizeOf(dimensions.width, dimensions.height);

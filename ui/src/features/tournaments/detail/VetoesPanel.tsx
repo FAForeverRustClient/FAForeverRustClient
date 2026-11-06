@@ -8,7 +8,7 @@
 
 import { memo, useContext, useState } from "react";
 import { Icon } from "../../../design-system/Icon";
-import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
+import type { PlayerSummary, Tourney, TourneyMatch, MapSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { byPlayOrder, matchLabel } from "../bracket/matchLabels";
 import { TeamName } from "../bracket/matchParts";
@@ -20,7 +20,7 @@ import { MatchChatContext, mayOpenMatchChat } from "../bracket/matchChat";
 interface VetoesPanelProps {
   event: Tourney;
   profiles: PlayerSummary[];
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   busyMatchId: string | null;
   veto: VetoHandlers;

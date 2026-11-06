@@ -18,7 +18,7 @@ import type {
   MapListStatus,
   Tourney,
   TourneyAdmin,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
@@ -35,7 +35,7 @@ import { MapImportDialog, type MapImport } from "./MapImportDialog";
 
 interface MapDbPanelProps {
   event: Tourney;
-  vault: VaultMap[];
+  vault: MapSummary[];
   vaultStatus: MapListStatus;
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;

@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
-import type { MapPool, Tourney, TourneyMap, VaultMap } from "../../../ipc/bindings";
+import type { MapPool, Tourney, TourneyMap, MapSummary } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
@@ -29,7 +29,7 @@ import { formatMoment } from "../tourneyPresentation";
 
 interface MapsPanelProps {
   event: Tourney;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   /** Open Manage, where the maps and pools are edited. Organisers only. */
   onManage: () => void;

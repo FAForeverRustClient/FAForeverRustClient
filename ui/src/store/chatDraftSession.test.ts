@@ -56,4 +56,37 @@ describe("chat draft account boundaries without mounted chat views", () => {
     useAppStore.getState().apply({ kind: "Chat", event: { type: "disconnected" } });
     for (const key of keys) expect(readDraft(key)).toBe("private unfinished line");
   });
+
+  it("replaces chat and unread alerts in the same update that switches accounts", () => {
+    const { apply, state } = useAppStore.getState();
+    apply({ kind: "Chat", event: { type: "messageReceived", payload: {
+      channel: "Contact",
+      message: {
+        id: "private", sender: "Contact", content: "private message",
+        timestamp: "2026-01-01T00:00:00Z", kind: "message", msgid: "", replyTo: "",
+      },
+    } } });
+    apply({ kind: "Notifications", event: { items: [{
+      id: "private-alert", kind: "privateMessage", title: "Message from Contact", body: "private message",
+      createdAt: "2026-01-01T00:00:00Z", read: false, action: null, text: null,
+    }] } });
+    expect(useAppStore.getState().state.chat.channels).toHaveLength(1);
+    expect(useAppStore.getState().state.notifications.items).toHaveLength(1);
+
+    const observed: [number | undefined, number, number][] = [];
+    const unsubscribe = useAppStore.subscribe(({ state: next }) => {
+      observed.push([next.auth.player?.id, next.chat.channels.length, next.notifications.items.length]);
+    });
+    try {
+      apply({ kind: "AccountSession", event: {
+        auth: { ...state.auth, player: { ...player, id: 2 } },
+        chat: initial.state.chat,
+        notifications: initial.state.notifications,
+      } });
+      expect(observed).toEqual([[2, 0, 0]]);
+      for (const key of keys) expect(readDraft(key)).toBe("");
+    } finally {
+      unsubscribe();
+    }
+  });
 });

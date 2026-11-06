@@ -15,6 +15,7 @@ import {
   mapSize,
 } from "../../shared/mapPresentation";
 import { useAppStore } from "../../store/store";
+import { mapDownloadUrl } from "../../shared/mapCatalogue";
 import { replayMapPresentation } from "./coopReplayMap";
 import { useGeneratedMapArt } from "../../shared/markedMapPreview";
 import {
@@ -117,7 +118,7 @@ export function useReplayMapPreparation({ replay, localMatch }: Options) {
     ? () =>
         ipc.send({
           kind: "Maps",
-          command: { type: "installMap", payload: { folderName: vaultMap.folderName, downloadUrl: vaultMap.downloadUrl } },
+          command: { type: "installMap", payload: { folderName: vaultMap.folderName, downloadUrl: mapDownloadUrl(vaultMap) } },
         })
     : null;
   // What the heatmap draws its cells over, and what to press when there is

@@ -3,7 +3,7 @@
 import { memo } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
-import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
+import type { Game, MapSummary, VaultMod } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
 import { mapPresentation, mapVersionOf } from "../../../shared/mapPresentation";
 import { t } from "../../../i18n";
@@ -31,7 +31,7 @@ export const GameBrowserRow = memo(function GameBrowserRow({
   onContextMenu,
 }: {
   game: Game;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Read once by the browser rather than subscribed to by every row. */
   vaultMods: VaultMod[];
   /** The friend list, lower-cased once for the whole list. */

@@ -13,7 +13,7 @@
 // whole query locally for a set the server cannot see. And the "Recently
 // downloaded" sort (#453) is a third such set, see `mapsByDownload`.
 
-import type { MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { MapVaultQuery, MapSummary } from "../../ipc/bindings";
 import { isWithinDateRange, isWithinNumberRange } from "../../shared/filterRanges";
 import { findVaultMapByFolder, mapInstalled } from "../../shared/mapPresentation";
 import { matchesVaultGlob, ratingLowerBound, vaultSearchText } from "../../shared/vaultResults";
@@ -34,7 +34,7 @@ export interface VaultResultRules {
   installedFolders: Set<string>;
 }
 
-export function visibleVaultMaps(source: VaultMap[], rules: VaultResultRules): VaultMap[] {
+export function visibleVaultMaps(source: MapSummary[], rules: VaultResultRules): MapSummary[] {
   const visible = rules.showHidden || rules.ownMaps
     ? source
     : source.filter((map) => !map.hidden);
@@ -51,12 +51,12 @@ export function visibleVaultMaps(source: VaultMap[], rules: VaultResultRules): V
  * not know, so the search box, author, dates, ratings, sizes and sort used to
  * do nothing there while looking as if they had.
  *
- * Every clause has its field on `VaultMap`, so nothing in the form goes
+ * Every clause has its field on `MapSummary`, so nothing in the form goes
  * unapplied. The one approximation is the rating sort, whose server-side
  * property is not carried by the record: see `ratingLowerBound`. The page
  * number is ignored; the caller pages the result.
  */
-export function mapsMatchingQuery(source: readonly VaultMap[], query: MapVaultQuery): VaultMap[] {
+export function mapsMatchingQuery(source: readonly MapSummary[], query: MapVaultQuery): MapSummary[] {
   const search = vaultSearchText(query.search.trim());
   const author = vaultSearchText(query.author.trim());
   const minRating = query.minRatingTenths;
@@ -83,10 +83,10 @@ export function mapsMatchingQuery(source: readonly VaultMap[], query: MapVaultQu
   return sortMaps(matches, query);
 }
 
-function sortMaps(maps: VaultMap[], query: MapVaultQuery): VaultMap[] {
+function sortMaps(maps: MapSummary[], query: MapVaultQuery): MapSummary[] {
   const direction = query.sortDescending ? -1 : 1;
   // Each key computed once per map rather than once per comparison.
-  const keys = new Map<VaultMap, number>();
+  const keys = new Map<MapSummary, number>();
   if (query.sortBy !== "name") {
     for (const map of maps) keys.set(map, mapSortKey(map, query.sortBy));
   }
@@ -99,7 +99,7 @@ function sortMaps(maps: VaultMap[], query: MapVaultQuery): VaultMap[] {
   });
 }
 
-function mapSortKey(map: VaultMap, sortBy: MapVaultQuery["sortBy"]): number {
+function mapSortKey(map: MapSummary, sortBy: MapVaultQuery["sortBy"]): number {
   switch (sortBy) {
     case "rating":
       return ratingLowerBound(map.ratingTenths, map.reviews);
@@ -126,11 +126,11 @@ function mapSortKey(map: VaultMap, sortBy: MapVaultQuery["sortBy"]): number {
  * choice, and it would hide most of what was downloaded.
  */
 export function mapsByDownload(
-  source: VaultMap[],
+  source: MapSummary[],
   installed: readonly { folderName: string; installedAt?: string | null }[],
   query: MapVaultQuery,
-): VaultMap[] {
-  const downloadedAt = new Map<VaultMap, number>();
+): MapSummary[] {
+  const downloadedAt = new Map<MapSummary, number>();
   for (const map of installed) {
     const record = findVaultMapByFolder(source, map.folderName);
     if (!record) continue;

@@ -6,7 +6,8 @@ import { native } from "../../ipc/native";
 import { ConfirmDialog } from "../../design-system/ConfirmDialog";
 import { FactsStrip } from "../../design-system/FactsStrip";
 import { VaultFeaturedBadge } from "../../design-system/VaultFeaturedBadge";
-import type { VaultMap } from "../../ipc/bindings";
+import type { MapSummary } from "../../ipc/bindings";
+import { mapDownloadUrl, mapThumbnailUrl } from "../../shared/mapCatalogue";
 import { clientIntlTag, formatShortDate } from "../../shared/format/dates";
 import { openReviews } from "../../shared/openReviews";
 import { ReportDialog } from "../../shared/components/ReportDialog";
@@ -44,7 +45,7 @@ function cleanDescription(value: string): string {
  * would be the same repeated word the ranked chip it replaces was (#416), so
  * the empty state is silence; the detail panel still says "Not rated".
  */
-export function MapRating({ map }: { map: Pick<VaultMap, "ratingTenths" | "reviews"> | undefined }) {
+export function MapRating({ map }: { map: Pick<MapSummary, "ratingTenths" | "reviews"> | undefined }) {
   useLocale();
   if (!map || map.reviews <= 0) return null;
   const score = (map.ratingTenths / 10).toFixed(1);
@@ -69,7 +70,7 @@ export function MapCard({
   favorite,
   onToggleFavorite,
 }: {
-  map: VaultMap;
+  map: MapSummary;
   active: boolean;
   installed: boolean;
   busy: boolean;
@@ -171,7 +172,7 @@ export function MapCard({
               </Button>
             </>
           ) : (
-            <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
+            <Button variant="primary" disabled={busy || !mapDownloadUrl(map)} onClick={onInstall}>
               {t(busy ? "maps.vault.installing" : "maps.vault.install")}
             </Button>
           )}
@@ -196,7 +197,7 @@ export function MapDetailPanel({
   onToggleFavorite,
   onAnalyse,
 }: {
-  map: VaultMap;
+  map: MapSummary;
   installed: boolean;
   busy: boolean;
   favorite: boolean;
@@ -237,7 +238,7 @@ export function MapDetailPanel({
         aria-label={t("maps.preview.enlarge", { name: map.displayName })}
       >
         <MapPreview map={map} large />
-        {(map.thumbnailUrlLarge || map.thumbnailUrl) && (
+        {(mapThumbnailUrl(map, true) || mapThumbnailUrl(map)) && (
           <span className="map-detail-preview-hint">
             <Icon name="search" size={13} /> {t("maps.vault.openPreview")}
           </span>
@@ -402,7 +403,7 @@ export function MapDetailPanel({
               {t(builtIn ? "maps.vault.builtIn" : "maps.vault.installed")}
             </Button>
           ) : (
-            <Button variant="primary" disabled={busy || !map.downloadUrl} onClick={onInstall}>
+            <Button variant="primary" disabled={busy || !mapDownloadUrl(map)} onClick={onInstall}>
               <Icon name="download" size={15} />
               {t(busy ? "maps.vault.installing" : "maps.vault.installMap")}
             </Button>

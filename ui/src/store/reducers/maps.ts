@@ -214,7 +214,7 @@ export function reduceMaps(state: MapsState, event: MapsEvent): MapsState {
     // other features read and a stale flag there outlives this page.
     case "mapVisibilityChanged": {
       const { versionId, hidden } = event.payload;
-      const mark = (map: MapsState["browse"][number]) =>
+      const mark = <T extends MapsState["vault"][number]>(map: T): T =>
         map.versionId === versionId ? { ...map, hidden } : map;
       return {
         ...state,

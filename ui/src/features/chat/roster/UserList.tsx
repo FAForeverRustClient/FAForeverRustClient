@@ -24,7 +24,7 @@
 // keyboard has no double-click (see `opensConversationOnClick`).
 
 import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, VaultMap } from "../../../ipc/bindings";
+import type { ChatPreferences, ChatUser, Game, PlayerProfile, SocialState, MapSummary } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { ipc } from "../../../ipc/client";
 import { useAppStore } from "../../../store/store";
@@ -57,7 +57,7 @@ interface Props {
   social: SocialState;
   openGames: Game[];
   liveGames: Game[];
-  mapVault: VaultMap[];
+  mapVault: MapSummary[];
   preferences: ChatPreferences;
   onOpenConversation: (nick: string) => void;
   onContextMenu: (nick: string, event: React.MouseEvent) => void;
@@ -378,7 +378,7 @@ const RosterRow = memo(function RosterRow({
   sortedRating: number | null | undefined;
   social: SocialState;
   presence: GamePresence | null;
-  mapVault: VaultMap[];
+  mapVault: MapSummary[];
   preferences: ChatPreferences;
   self: string;
   onOpenConversation: (nick: string) => void;

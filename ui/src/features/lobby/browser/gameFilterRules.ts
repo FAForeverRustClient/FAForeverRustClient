@@ -7,7 +7,7 @@
 // should be is arithmetic, so it lives here and is tested here rather than
 // being reachable only by clicking.
 
-import type { Game, VaultMap } from "../../../ipc/bindings";
+import type { Game, MapSummary } from "../../../ipc/bindings";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import type { FilterConstraint, FilterField, GameFilterRule } from "./GameFiltersModal";
 
@@ -77,7 +77,7 @@ export function rulesWithPending(
 }
 
 /** Whether a game matches one rule, whichever list the rule is in. */
-export function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[]) {
+export function matchesRule(game: Game, rule: GameFilterRule, vault: MapSummary[]) {
   if (rule.field === "rating") {
     const target = Number(rule.value);
     if (!Number.isFinite(target)) return false;
@@ -131,7 +131,7 @@ export function matchesRule(game: Game, rule: GameFilterRule, vault: VaultMap[])
 export function shownDespiteFilters(
   game: Game,
   allowRules: readonly GameFilterRule[],
-  vault: VaultMap[],
+  vault: MapSummary[],
   passesFilters: () => boolean,
 ): boolean {
   return allowRules.some((rule) => matchesRule(game, rule, vault)) || passesFilters();

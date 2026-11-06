@@ -36,8 +36,8 @@ mod updates;
 use faf_domain::state::{HostGameConfig, JoinState, LobbyCommand, LobbyEvent};
 
 use crate::runtime::{
-    AutoReconnect, Cancellable, EventSink, LatestRequest, LobbyOperations, RunningGame, ServiceCtx,
-    SingleFlight,
+    account::AccountConnection, AutoReconnect, Cancellable, EventSink, LatestRequest,
+    LobbyOperations, RunningGame, ServiceCtx,
 };
 
 pub use connection::reconnect;
@@ -67,7 +67,7 @@ pub struct LobbyContext {
     /// Single-flight guard for the lobby connection while `Connect` owns an
     /// active/connecting socket. A redundant request is dropped, so overlapping
     /// connections cannot race and clobber each other's state.
-    active: SingleFlight,
+    active: AccountConnection,
     /// The lobby's joins, hosts and launch orders: which one is current,
     /// whether it was called off, and which join holds the single-flight join
     /// slot. See [`LobbyOperations`].

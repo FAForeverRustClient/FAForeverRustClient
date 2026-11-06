@@ -1418,6 +1418,82 @@ async fn the_chat_socket_is_single_flight_before_and_after_a_drop() {
     );
 }
 
+#[tokio::test]
+async fn switching_accounts_replaces_the_chat_connection_without_a_window() {
+    let chat = Arc::new(FakeChat::default());
+    let connects = Arc::new(AtomicUsize::new(0));
+    let gates = Gates::default();
+    let app = start(Ports {
+        auth: Arc::new(HeldAuth {
+            gates: gates.clone(),
+            logouts: Arc::default(),
+        }),
+        chat: Arc::new(CountingChat {
+            inner: chat,
+            connects: connects.clone(),
+        }),
+        ..fake_ports()
+    });
+    gates.open("login");
+    completes(
+        &app,
+        "first account signs in",
+        AuthCommand::Login { remember: false }.into(),
+    )
+    .await;
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Ada".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, "first chat connection", |state| {
+        state.chat.username == "Ada"
+    })
+    .await;
+    completes(
+        &app,
+        "a private chat message",
+        ChatCommand::SendMessage {
+            channel: "Contact".into(),
+            content: "private message".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await;
+    until(&app, "the private message", |state| {
+        state.chat.channel("Contact").is_some()
+    })
+    .await;
+
+    // No renderer is available to dispatch a disconnect in between logins.
+    completes(&app, "first account signs out", AuthCommand::Logout.into()).await;
+    assert!(app.snapshot().chat.channels.is_empty());
+    completes(
+        &app,
+        "second account signs in",
+        AuthCommand::LoginTest.into(),
+    )
+    .await;
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "TestCommander".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, "second chat connection", |state| {
+        state.chat.username == "TestCommander"
+    })
+    .await;
+    assert!(app.snapshot().chat.channel("Contact").is_none());
+    assert_eq!(connects.load(Ordering::SeqCst), 2);
+}
+
 /// A sign-in that waits at a gate, as an interactive login waits for the
 /// browser, and a restore that does the same.
 struct HeldAuth {
