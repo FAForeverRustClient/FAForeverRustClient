@@ -348,13 +348,11 @@ fn announce(release: &ClientRelease, current: &str, out: &EventSink, required: b
         text.with("version", &release.version),
         format!("Version {} is available", release.version),
         if current.is_empty() {
-            "Open Settings to download it.".to_string()
+            "Update now to download it and restart the client.".to_string()
         } else {
-            format!("You are running {current}. Open Settings to download it.")
+            format!("You are running {current}. Update now to download it and restart the client.")
         },
-        Some(NotificationAction::OpenSettings {
-            section: Some("updates".to_string()),
-        }),
+        Some(NotificationAction::UpdateClient),
     );
 }
 

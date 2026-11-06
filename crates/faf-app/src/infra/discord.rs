@@ -11,6 +11,13 @@
 //! open. So there is one long-lived task that reconnects on a timer and
 //! republishes whatever the latest presence was; nothing else in the client
 //! ever waits on it or learns that it failed.
+//!
+//! A click on "Join" while the client is closed starts it through the
+//! `discord-<application id>` URL scheme, which the installer registers next
+//! to `faf` (`plugins.deep-link` in `tauri.conf.json`; the Java client's
+//! library registers the same key at every start). The started client hears
+//! about the click once it is connected here, so nothing reads the link
+//! itself, and a second start only raises the window of the first.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -27,6 +34,11 @@ use crate::ports::{DiscordPort, DiscordRequest};
 /// machine without Discord is not probing ten socket paths in a tight loop,
 /// short enough that starting Discord mid-session is noticed promptly.
 const RECONNECT_DELAY: Duration = Duration::from_secs(15);
+
+/// How long Discord may take to accept the handshake. It answers in well under
+/// a second; a pipe that stays silent this long is not Discord, or a Discord
+/// that is still starting, and the reconnect timer tries again.
+const READY_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Discord uses the first free socket, so a client has to try each.
 const SOCKET_COUNT: u8 = 10;
@@ -142,6 +154,17 @@ async fn session(
         .await
         .map_err(|e| format!("handshake failed: {e}"))?;
 
+    // Nothing is sent before Discord's READY. It checks the application id
+    // before it listens to the connection, and a frame that arrives in the
+    // meantime is dropped without an answer: the subscriptions sent straight
+    // after the handshake were lost that way, so a click on "Join" never
+    // reached the client and Discord's button kept loading (#698). Discord's
+    // own library subscribes from its READY callback for the same reason.
+    let mut buffer = Vec::with_capacity(discord::MAX_FRAME_BYTES);
+    tokio::time::timeout(READY_TIMEOUT, wait_for_ready(&mut reader, &mut buffer))
+        .await
+        .map_err(|_| "Discord did not answer the handshake".to_string())??;
+
     // Without these, secrets are published but clicking them does nothing.
     for event in [
         discord::EVENT_JOIN,
@@ -159,7 +182,8 @@ async fn session(
     // already has, not wait for their next game.
     let mut published = publish(&mut writer, presence, &next_nonce()).await?;
 
-    let mut buffer = Vec::with_capacity(discord::MAX_FRAME_BYTES);
+    // Whatever followed READY in the same read is still in `buffer`.
+    handle_frames(&mut buffer, requests).await?;
     let mut chunk = [0u8; 4096];
     loop {
         tokio::select! {
@@ -178,6 +202,46 @@ async fn session(
                 }
             }
         }
+    }
+}
+
+/// Read until Discord's READY, leaving anything after it in `buffer`.
+///
+/// A refused handshake is a close frame (a wrong application id, say) and
+/// ends the session like any other; the reconnect timer tries again.
+async fn wait_for_ready<R: tokio::io::AsyncRead + Unpin>(
+    reader: &mut R,
+    buffer: &mut Vec<u8>,
+) -> Result<(), String> {
+    let mut chunk = [0u8; 4096];
+    loop {
+        match discord::decode(buffer) {
+            Decoded::Frame {
+                opcode,
+                payload,
+                consumed,
+            } => {
+                buffer.drain(..consumed);
+                if opcode == Opcode::Close {
+                    return Err(format!("Discord refused the handshake: {payload}"));
+                }
+                if let Some(Inbound::Ready { .. }) = discord::parse_inbound(&payload) {
+                    tracing::info!("Discord rich presence connected");
+                    return Ok(());
+                }
+                continue;
+            }
+            Decoded::Invalid(reason) => return Err(reason.to_string()),
+            Decoded::Incomplete => {}
+        }
+        let read = reader
+            .read(&mut chunk)
+            .await
+            .map_err(|e| format!("read failed: {e}"))?;
+        if read == 0 {
+            return Err("Discord closed the connection".into());
+        }
+        buffer.extend_from_slice(&chunk[..read]);
     }
 }
 
@@ -246,10 +310,8 @@ fn interpret(payload: &str) -> Option<DiscordRequest> {
         // secret can still join directly; this only skips the "ask first"
         // flow, which without a UI to surface it would be answered by nobody.
         Inbound::JoinRequest { .. } => None,
-        Inbound::Ready { user: _ } => {
-            tracing::info!("Discord rich presence connected");
-            None
-        }
+        // Read by `wait_for_ready` before anything else is sent.
+        Inbound::Ready { user: _ } => None,
         Inbound::Error { code, message } => {
             tracing::warn!(code, %message, "Discord returned an error");
             None
@@ -382,6 +444,39 @@ mod tests {
         handle_frames(&mut buffer, &tx).await.unwrap();
         assert_eq!(rx.try_recv(), Ok(DiscordRequest::Join { game_id: 1 }));
         assert_eq!(rx.try_recv(), Ok(DiscordRequest::Spectate { game_id: 2 }));
+    }
+
+    #[tokio::test]
+    async fn ready_is_awaited_and_what_follows_it_is_kept() {
+        // READY and a click on "Join" in one read: the click must still be
+        // there for the session loop once the subscriptions are out.
+        let mut wire = discord::encode(
+            Opcode::Frame,
+            r#"{"cmd":"DISPATCH","evt":"READY","data":{"user":{"username":"Ada"}}}"#,
+        );
+        let join = discord::encode(
+            Opcode::Frame,
+            r#"{"evt":"ACTIVITY_JOIN","data":{"secret":"{\"gameId\":3}"}}"#,
+        );
+        wire.extend(&join);
+
+        let mut buffer = Vec::new();
+        wait_for_ready(&mut wire.as_slice(), &mut buffer)
+            .await
+            .unwrap();
+        assert_eq!(buffer, join);
+    }
+
+    #[tokio::test]
+    async fn a_refused_handshake_is_not_waited_out() {
+        let wire = discord::encode(
+            Opcode::Close,
+            r#"{"code":4000,"message":"Invalid Client ID"}"#,
+        );
+        let mut buffer = Vec::new();
+        assert!(wait_for_ready(&mut wire.as_slice(), &mut buffer)
+            .await
+            .is_err());
     }
 
     #[tokio::test]

@@ -844,6 +844,7 @@ fn history_of(player_id: i32) -> AppCommand {
             period: RatingHistoryPeriod::All,
             page: 1,
             page_size: 100,
+            latest_games: None,
         },
     }
     .into()
@@ -944,6 +945,26 @@ async fn an_older_history_never_replaces_a_newer_one() {
         0,
         "a stale history kept paging"
     );
+}
+
+/// "Last N games" pages only as far as the newest N (#709). The gated card
+/// pages one game at a time, so the newest one is the first page, and asking
+/// for the second would be reading history nobody looks at.
+#[tokio::test]
+async fn the_latest_games_stop_paging_once_they_are_loaded() {
+    let (app, _gates) = with_gated_card();
+    let mut latest = history_of(7);
+    if let AppCommand::PlayerCard(PlayerCardCommand::LoadHistory { query }) = &mut latest {
+        query.latest_games = Some(1);
+    }
+    run(&app, latest).await;
+
+    assert_eq!(
+        history_timestamps(&app),
+        vec!["history 7 p1 #1".to_string()]
+    );
+    let card = app.snapshot().player_card;
+    assert_eq!(card.history_status, PlayerCardStatus::Ready);
 }
 
 /// History loads page after page. Opening another player between two pages

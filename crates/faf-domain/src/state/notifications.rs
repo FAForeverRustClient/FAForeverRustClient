@@ -187,6 +187,10 @@ pub enum NotificationAction {
     OpenStream {
         url: String,
     },
+    /// Download the client release on offer and install it (#682), or install
+    /// it straight away when it is already downloaded. Opening Settings, as
+    /// this notice used to, landed on a page with no download button on it.
+    UpdateClient,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
