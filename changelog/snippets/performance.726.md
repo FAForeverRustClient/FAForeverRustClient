@@ -1,0 +1,1 @@
+- A unit's history opens faster: identical blueprints are read once, downloads run in parallel, and the list of releases is reused after a restart.
