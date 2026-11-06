@@ -1,0 +1,1 @@
+- The client log says why a notification did not appear as a desktop popup.
