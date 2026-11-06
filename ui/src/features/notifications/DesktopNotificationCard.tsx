@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Icon } from "../../design-system/Icon";
 import type { NotificationPopupCard } from "../../ipc/native";
 import { TimedToast } from "./TimedToast";
 import "./desktopNotificationCard.css";
@@ -7,9 +6,12 @@ import "./desktopNotificationCard.css";
 /**
  * Shared by the native popup and the local notification gallery.
  *
- * A popup has an explicit close button. Its action stays independent so
- * players can dismiss the card without bringing the client forward. Clicking
- * the body keeps the usual shortcut for acting on or dismissing the card.
+ * No close button. A card with an action has it as a button of its own, and
+ * a click anywhere else on the card puts it away: the action brings the
+ * client forward, and a card has to be dismissable without being pulled out
+ * of a game. A card without one does what it is about when clicked (opening
+ * the conversation a message came from), which closes it too. Either way it
+ * also goes by itself once its time is up.
  */
 export function DesktopNotificationCard({ card, duration, dismissLabel, onInteract, failure }: {
   card: NotificationPopupCard; duration: number; dismissLabel: string;
@@ -32,8 +34,5 @@ export function DesktopNotificationCard({ card, duration, dismissLabel, onIntera
       </span>
     </button>
     {hasAction && <button className="desktop-notification-action" type="button" onClick={() => onInteract("activate")}>{card.actionLabel}</button>}
-    <button className="desktop-notification-dismiss" type="button" aria-label={dismissLabel} onClick={() => onInteract("dismiss")}>
-      <Icon name="close" size={18} />
-    </button>
   </TimedToast>;
 }
