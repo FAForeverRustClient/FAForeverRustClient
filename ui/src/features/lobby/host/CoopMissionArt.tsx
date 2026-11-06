@@ -7,7 +7,7 @@
 // mission the user clicks. The installed map folder does carry the art.
 
 import { useEffect, useMemo, useState } from "react";
-import type { CoopMission, CoopScenario, VaultMap } from "../../../ipc/bindings";
+import type { CoopMission, CoopScenario, MapSummary } from "../../../ipc/bindings";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { inferCoopFaction, mapThumbnailCandidates } from "../../../shared/mapPresentation";
 import { useLocalMapPreview } from "../../../shared/hooks/useLocalMapPreview";
@@ -27,7 +27,7 @@ function secureImageUrl(url: string): string {
 }
 
 /** Remote candidates for a mission, best size first. */
-export function coopPreviewCandidates(mission: CoopMission, vault: VaultMap[]): string[] {
+export function coopPreviewCandidates(mission: CoopMission, vault: MapSummary[]): string[] {
   return [
     ...new Set(
       [
@@ -45,7 +45,7 @@ export function coopPreviewCandidates(mission: CoopMission, vault: VaultMap[]): 
 interface Props {
   mission: CoopMission;
   scenario?: CoopScenario;
-  vault: VaultMap[];
+  vault: MapSummary[];
   className?: string;
 }
 

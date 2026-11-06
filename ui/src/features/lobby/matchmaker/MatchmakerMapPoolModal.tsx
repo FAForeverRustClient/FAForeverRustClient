@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { ipc } from "../../../ipc/client";
-import type { MapListStatus, MatchmakerMapPool, MatchmakerPoolMap, PlayerVeto, VaultMap } from "../../../ipc/bindings";
+import type { MapListStatus, MatchmakerMapPool, MatchmakerPoolMap, PlayerVeto, MapSummary } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
 import { t } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -72,7 +72,7 @@ interface Props {
   queueTitle: string;
   pools: MatchmakerMapPool[];
   status: MapListStatus;
-  vault: VaultMap[];
+  vault: MapSummary[];
   serverVetoes: PlayerVeto[];
   playerRating: number | null;
   onClose: () => void;

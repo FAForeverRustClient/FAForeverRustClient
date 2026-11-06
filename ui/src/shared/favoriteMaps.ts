@@ -7,6 +7,7 @@
 import { ipc } from "../ipc/client";
 import { useAppStore } from "../store/store";
 import { findVaultMapByFolder, isGeneratedMap, isOfficialMap } from "./mapPresentation";
+import { mapDownloadUrl } from "./mapCatalogue";
 
 /** Is this folder name among the favourites? Case-insensitive, like the list. */
 export function useIsFavoriteMap(folderName: string): boolean {
@@ -64,7 +65,7 @@ function installFavorite(folderName: string, downloadUrl?: string) {
         folderName: vaultMap?.folderName ?? folderName,
         downloadUrl:
           downloadUrl
-          || vaultMap?.downloadUrl
+          || (vaultMap ? mapDownloadUrl(vaultMap) : "")
           || `https://content.faforever.com/maps/${encodeURIComponent(key)}.zip`,
       },
     },

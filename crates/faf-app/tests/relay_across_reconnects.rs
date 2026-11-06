@@ -125,7 +125,7 @@ async fn relay_messages_reach_the_adapter_after_a_reconnect_mid_game() {
     tokio::spawn(app_loop.run());
     let mut events = app.subscribe();
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();

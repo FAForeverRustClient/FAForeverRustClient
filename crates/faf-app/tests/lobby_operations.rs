@@ -194,7 +194,7 @@ async fn a_join_cancelled_during_preparation_is_not_revived_by_the_next_join() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -307,7 +307,7 @@ async fn a_late_refusal_for_a_called_off_join_leaves_the_newer_join_alone() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -404,7 +404,7 @@ async fn a_disconnect_calls_off_a_join_still_preparing() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -582,7 +582,7 @@ async fn a_launch_for_a_join_called_off_after_its_request_does_not_start() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -669,7 +669,7 @@ async fn a_refusal_for_a_called_off_attempt_leaves_a_retry_of_the_same_game() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -751,7 +751,7 @@ async fn a_refusal_for_another_attempt_leaves_the_launched_retry_alone() {
         seen: Vec::new(),
     };
 
-    app.dispatch(AuthCommand::Login { remember: false }.into())
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     app.dispatch(LobbyCommand::Connect.into()).await.unwrap();

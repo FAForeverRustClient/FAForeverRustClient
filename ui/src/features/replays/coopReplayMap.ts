@@ -27,7 +27,7 @@
 // Only a game that is none of those, renamed and unreadable, is left saying
 // merely that it was a mission.
 
-import type { CoopMission, VaultMap } from "../../ipc/bindings";
+import type { CoopMission, MapSummary } from "../../ipc/bindings";
 import { t } from "../../i18n";
 import {
   isSeedlessGeneratedMap,
@@ -114,7 +114,7 @@ export function replayMapKey(
  * what is still known about it: that it was a mission.
  */
 export function replayMapPresentation(
-  vault: VaultMap[],
+  vault: MapSummary[],
   missions: CoopMission[],
   replay: { map: string; title: string; modName: string },
   resolved?: string,

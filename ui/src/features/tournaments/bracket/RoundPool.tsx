@@ -6,7 +6,7 @@ import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
 import { Icon } from "../../../design-system/Icon";
-import type { MapPool, Tourney, VaultMap } from "../../../ipc/bindings";
+import type { MapPool, Tourney, MapSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import {
   matchVaultMap,
@@ -64,7 +64,7 @@ export function PoolPanel({
   onClose,
 }: {
   event: Tourney;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   roundKey: string;
   /** The pool to show, where the caller resolved it (a fallback included). */

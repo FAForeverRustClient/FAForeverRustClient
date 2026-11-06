@@ -148,7 +148,7 @@ fn harness_with_install(
 async fn join_and_collect(h: &Harness) -> Vec<LobbyEvent> {
     let mut events = h.app.subscribe();
     h.app
-        .dispatch(AuthCommand::Login { remember: false }.into())
+        .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
@@ -264,7 +264,7 @@ async fn cancelling_a_join_stops_the_progress_dialog_coming_back() {
 
     let mut events = h.app.subscribe();
     h.app
-        .dispatch(AuthCommand::Login { remember: false }.into())
+        .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();

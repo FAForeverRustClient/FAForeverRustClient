@@ -212,12 +212,6 @@ export function App() {
     }
   }, [auth.mode, auth.status, hydrated, playerName]);
 
-  useEffect(() => {
-    if (!hydrated || auth.status !== "loggedOut") return;
-    ipc.send({ kind: "Lobby", command: { type: "disconnect" } });
-    ipc.send({ kind: "Chat", command: { type: "disconnect" } });
-  }, [auth.status, hydrated]);
-
   if (startupError) return <StartupView error={startupError} />;
   const content = !hydrated
     ? <StartupView />

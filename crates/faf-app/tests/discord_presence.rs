@@ -123,9 +123,12 @@ impl Harness {
             published,
             lobby,
         };
+        // Signed in before connecting, as the window does: a command belongs
+        // to the account session it was queued in, and the sign-in starts a
+        // new one.
         harness
             .app
-            .dispatch(AuthCommand::Login { remember: false }.into())
+            .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
             .await
             .unwrap();
         harness

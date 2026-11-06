@@ -23,7 +23,9 @@ use faf_domain::state::{
 };
 
 use crate::ports::ChatUpdate;
-use crate::runtime::{AutoReconnect, EventSink, LatestRequest, ServiceCtx, SingleFlight};
+use crate::runtime::{
+    account::AccountConnection, AutoReconnect, EventSink, LatestRequest, ServiceCtx,
+};
 use crate::services::notifications;
 
 /// The chat connection's operational context: its single-flight guard,
@@ -38,7 +40,7 @@ pub struct ChatContext {
     /// active/connecting socket, the same guard the lobby connection keeps. A
     /// redundant request is dropped, so overlapping connections cannot race
     /// and clobber each other's state.
-    active: SingleFlight,
+    active: AccountConnection,
     /// Whether [`reconnect`](crate::services::reconnect) should bring this
     /// socket back after an unexpected drop, so a user who hung up stays hung
     /// up while a laptop resume does not.
@@ -188,22 +190,43 @@ pub async fn reconnect(username: String, ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
-    // Single-flight: only one connection may be active at a time,
-    // same guard shape as the lobby service.
-    if !ctx.chat.active.try_start() {
-        return; // a connection is already active/connecting
-    }
+    let out = out.scoped_to_account();
+    let session = out.account_token();
+    let Some(_active) = ctx.chat.active.acquire(&session).await else {
+        return;
+    };
     // Read once the guard is held, the last moment a Disconnect could have
     // landed between the watchdog's tick and this retry.
     if only_if_armed && !ctx.chat.auto_reconnect.armed() {
-        ctx.chat.active.finish();
+        return;
+    }
+    if out.with_state(|state| {
+        state.auth.status == faf_domain::state::AuthStatus::LoggedIn
+            && state.auth.mode == faf_domain::state::AuthMode::Account
+            && state
+                .auth
+                .player
+                .as_ref()
+                .is_some_and(|player| !player.name.eq_ignore_ascii_case(&username))
+    }) {
         return;
     }
 
     out.emit(ChatEvent::Connecting);
-    let mut updates = ctx.ports.chat.connect(username).await;
+    let mut updates = tokio::select! {
+        biased;
+        () = session.cancelled() => {
+            ctx.ports.chat.disconnect();
+            return;
+        }
+        updates = ctx.ports.chat.connect(username) => updates,
+    };
 
-    while let Some(update) = updates.recv().await {
+    while let Some(update) = tokio::select! {
+        biased;
+        () = session.cancelled() => None,
+        update = updates.recv() => update,
+    } {
         let connected = matches!(&update, ChatUpdate::Status(ChatStatus::Connected, _));
         let mut quiet_history = false;
         if let ChatUpdate::Message { channel, message } = &update {
@@ -278,7 +301,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 if notify {
                     // The body is what they wrote, so only the title has an entry.
                     notifications::add_text(
-                        out,
+                        &out,
                         if private {
                             NotificationKind::PrivateMessage
                         } else {
@@ -313,7 +336,14 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         }
     }
 
-    ctx.chat.active.finish();
+    if session.is_cancelled() {
+        ctx.ports.chat.disconnect();
+        ctx.chat
+            .typing_sent
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clear();
+    }
     out.emit(ChatEvent::Disconnected);
 }
 

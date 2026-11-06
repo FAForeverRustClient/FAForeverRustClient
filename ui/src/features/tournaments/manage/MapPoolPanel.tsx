@@ -19,7 +19,7 @@
 import { useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Modal } from "../../../design-system/Modal";
-import type { MapPool, PoolDraft, Tourney, VaultMap } from "../../../ipc/bindings";
+import type { MapPool, PoolDraft, Tourney, MapSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { roundKeyLabel as roundLabel } from "../bracket/matchLabels";
 import {
@@ -31,7 +31,7 @@ import { tourneyMapPicture } from "../mapPicture";
 
 interface MapPoolPanelProps {
   event: Tourney;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;
   busy: boolean;

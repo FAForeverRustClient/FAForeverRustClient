@@ -3,7 +3,7 @@ import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
 import { Pagination } from "../../../design-system/Pagination";
-import type { CoopMission, LocalReplay, ReplayTeam, VaultMap } from "../../../ipc/bindings";
+import type { CoopMission, LocalReplay, ReplayTeam, MapSummary } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { native } from "../../../ipc/native";
 import { useAppStore } from "../../../store/store";
@@ -125,7 +125,7 @@ function localReplayTeams(replay: LocalReplay): ReplayTeam[] {
 
 function localReplayCard(
   replay: LocalReplay,
-  vault: VaultMap[],
+  vault: MapSummary[],
   missions: CoopMission[],
 ): ReplayCardData {
   const presentation = replay.map ? mapPresentation(vault, replay.map, missions) : null;

@@ -66,6 +66,12 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
+export type AccountSessionUpdate = {
+	auth: AuthState,
+	chat: ChatState,
+	notifications: NotificationState,
+};
+
 /**
  *  One FAQ / Rules article as the console holds it: its markdown source, and
  *  whether it is archived.
@@ -3101,7 +3107,9 @@ export type ForumPost = {
  */
 export type FrontendMessage = { kind: "event"; revision: number; event: FrontendUpdate } | { kind: "snapshot"; revision: number; state: AppState };
 
-export type FrontendUpdate = { kind: "Session"; event: SessionState } | { kind: "Auth"; event: AuthState } | { kind: "Nav"; event: NavState } | { kind: "Notifications"; event: NotificationState } | { kind: "Clan"; event: ClanState } | { kind: "Reporting"; event: ReportingState } | { kind: "Reviews"; event: ReviewsState } | { kind: "Streams"; event: StreamsState } | { kind: "Tutorials"; event: TutorialsState } | { kind: "GalacticWar"; event: GalacticWarState } | { kind: "LinuxRuntime"; event: LinuxRuntimeState } | { kind: "Install"; event: InstallState } | { kind: "Connectivity"; event: ConnectivityState } | { kind: "Settings"; event: SettingsUpdate } | { kind: "Chat"; event: ChatEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "UnitHistory"; event: UnitHistoryEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Coop"; event: CoopEvent };
+export type FrontendUpdate = { kind: "Session"; event: SessionState } | { kind: "Auth"; event: AuthState } |
+/**  Auth changes together with the reset chat and notification slices. */
+{ kind: "AccountSession"; event: AccountSessionUpdate } | { kind: "Nav"; event: NavState } | { kind: "Notifications"; event: NotificationState } | { kind: "Clan"; event: ClanState } | { kind: "Reporting"; event: ReportingState } | { kind: "Reviews"; event: ReviewsState } | { kind: "Streams"; event: StreamsState } | { kind: "Tutorials"; event: TutorialsState } | { kind: "GalacticWar"; event: GalacticWarState } | { kind: "LinuxRuntime"; event: LinuxRuntimeState } | { kind: "Install"; event: InstallState } | { kind: "Connectivity"; event: ConnectivityState } | { kind: "Settings"; event: SettingsUpdate } | { kind: "Chat"; event: ChatEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "UnitHistory"; event: UnitHistoryEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Coop"; event: CoopEvent };
 
 /**  Counts that outlive the current season. */
 export type GalacticWarAlltime = {
@@ -5513,6 +5521,44 @@ export type MapSpec = {
 };
 
 /**
+ *  Map metadata used by catalogue consumers. URL exceptions are sparse;
+ *  paged vault searches still carry complete VaultMap records.
+ */
+export type MapSummary = {
+	mapId: number,
+	versionId: number,
+	displayName: string,
+	author: string | null,
+	authorId: number | null,
+	folderName: string,
+	version: string,
+	description: string,
+	mapType: string,
+	maxPlayers: number,
+	width: number,
+	height: number,
+	gamesPlayed: number,
+	versionGamesPlayed: number,
+	ranked: boolean,
+	hidden: boolean,
+	recommended: boolean,
+	ratingTenths: number,
+	reviews: number,
+	createdAt: string,
+	urls?: MapUrls,
+};
+
+/**
+ *  Exact exceptions to the catalogue's folder-based content URLs. Empty URLs
+ *  are exceptions too; an absent override means the canonical URL, not no art.
+ */
+export type MapUrls = {
+	thumbnailUrl?: string | null,
+	thumbnailUrlLarge?: string | null,
+	downloadUrl?: string | null,
+};
+
+/**
  *  A page of the map vault.
  *
  *  Empty strings and `None` mean "do not filter on this", so a default query is
@@ -5682,11 +5728,11 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 } } | { type: "vaultSearchFailed"; payload: {
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } |
 /**  Apply a quiet catalogue delta without replacing unrelated folder lookups. */
 { type: "vaultUpdated"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -5697,7 +5743,7 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
  *  anything in it.
  */
 { type: "vaultFoldersResolved"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
 	maps: InstalledMap[],
 } } | { type: "installedLoadFailed"; payload: {
@@ -5779,7 +5825,7 @@ export type MapsState = {
 	 *  map from a folder name through it (`shared/mapPresentation.ts`). It is
 	 *  deliberately not what the Maps tab browses; see `browse` below.
 	 */
-	vault: VaultMap[],
+	vault: MapSummary[],
 	/**  Versions explicitly resolved for live folders, retained across full refreshes. */
 	resolvedVaultVersions?: number[],
 	vaultStatus: MapListStatus,

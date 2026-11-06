@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
-import type { VaultMap } from "../../ipc/bindings";
+import type { MapSummary } from "../../ipc/bindings";
 import { useAppStore } from "../../store/store";
 import { useTranslation } from "../../i18n/useTranslation";
 import { FactionIcon } from "./FactionIcon";
@@ -26,7 +26,7 @@ const COOP_FACTION_IDS: Record<string, number> = {
 
 interface Props {
   mapName: string;
-  vault: VaultMap[];
+  vault: MapSummary[];
   className?: string;
   placeholderClassName?: string;
   large?: boolean;
