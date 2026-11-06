@@ -66,7 +66,14 @@ impl LobbyPort for ScriptedLobby {
         Err(LobbySendError::Disconnected)
     }
     fn set_party_factions(&self, _factions: Vec<String>) {}
-    fn set_relation(&self, _player_id: i32, _relation: Relation, _member: bool) {}
+    fn set_contact_relation(
+        &self,
+        _contact: faf_domain::state::Contact,
+        _member: bool,
+        _remove: Option<Relation>,
+    ) -> bool {
+        false
+    }
     fn set_player_vetoes(&self, _vetoes: Vec<PlayerVeto>) {}
     fn request_avatars(&self) -> bool {
         self.updates.lock().unwrap().is_some()
