@@ -2473,7 +2473,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.details.ratingRange": "Диапазон рейтинга",
   "lobby.details.visibility": "Видимость",
   "lobby.details.unrated": "Без рейтинга",
-  "lobby.details.open": "Открытый",
   "lobby.details.public": "Публичная",
   "lobby.details.downloadMap": "Загрузить карту",
   "lobby.details.simMods": "SIM-моды",
