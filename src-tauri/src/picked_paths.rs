@@ -439,6 +439,7 @@ fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Opt
         map_generator_instances: _,
         steam_presence: _,
         borderless_window: _,
+        auto_update_map_and_mods: _,
     } = patch;
     let wrapper = launch_wrapper
         .as_deref()

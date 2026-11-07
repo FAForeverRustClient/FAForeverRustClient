@@ -218,6 +218,13 @@ pub struct GamePreferences {
     /// game itself set to windowed. Off by default. Windows only.
     #[serde(default)]
     pub borderless_window: bool,
+    /// Before hosting, switch the chosen map to its newest vault version and
+    /// update every enabled mod that has a newer one (the Java client's "map
+    /// and mod auto update"). Off by default, unlike the Java client: an
+    /// update replaces the mod's folder, and a copy somebody edited by hand,
+    /// for example while developing it, would be overwritten.
+    #[serde(default)]
+    pub auto_update_map_and_mods: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -256,6 +263,7 @@ impl Default for GamePreferences {
             map_generator_instances: 0,
             steam_presence: false,
             borderless_window: false,
+            auto_update_map_and_mods: false,
         }
     }
 }
@@ -313,5 +321,6 @@ preference_patch! {
         map_generator_instances: u32,
         steam_presence: bool,
         borderless_window: bool,
+        auto_update_map_and_mods: bool,
     }
 }

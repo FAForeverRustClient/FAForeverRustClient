@@ -941,7 +941,8 @@ export const INITIAL_STATE: AppState = {
       "keepGeneratedMapsLimit": 0,
       "mapGeneratorInstances": 0,
       "steamPresence": false,
-      "borderlessWindow": false
+      "borderlessWindow": false,
+      "autoUpdateMapAndMods": false
     },
     "discord": {
       "enabled": true,

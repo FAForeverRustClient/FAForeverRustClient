@@ -67,7 +67,8 @@ use crate::infra::vault_install::{
     CallOff, MAX_DOWNLOAD_BYTES,
 };
 use crate::ports::{
-    ModPrepFailure, ModSearchPage, ModsPort, VaultInstallProgress, VaultInstallStep,
+    LatestModVersion, ModPrepFailure, ModSearchPage, ModsPort, VaultInstallProgress,
+    VaultInstallStep,
 };
 
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
@@ -314,6 +315,28 @@ impl ModsClient {
     }
 }
 
+/// The `latestVersion` of the mod a `modVersion` document's first record
+/// belongs to, from `include=mod.latestVersion`.
+fn parse_latest_mod_version(doc: &JsonApiDoc) -> Option<LatestModVersion> {
+    let index = resource_index(&doc.included);
+    let version = doc.data.first()?;
+    let (_, mod_id) = rel_target(&version.relationships, "mod")?;
+    let owner = index.get(&("mod".to_string(), mod_id))?;
+    let (_, latest_id) = rel_target(&owner.relationships, "latestVersion")?;
+    let latest = index.get(&("modVersion".to_string(), latest_id))?;
+    let text = |name: &str| match latest.attributes.get(name) {
+        Some(Value::String(text)) => text.clone(),
+        Some(Value::Number(number)) => number.to_string(),
+        _ => String::new(),
+    };
+    let (uid, download_url) = (text("uid"), text("downloadUrl"));
+    (!uid.is_empty() && !download_url.is_empty()).then(|| LatestModVersion {
+        uid,
+        version: text("version"),
+        download_url,
+    })
+}
+
 /// One vault `modVersion` record, reduced to what joining a game needs.
 struct RequiredModVersion {
     download_url: String,
@@ -394,6 +417,28 @@ fn content_range_total(header: &str) -> Option<u64> {
 
 #[async_trait]
 impl ModsPort for ModsClient {
+    async fn latest_mod_version(&self, uid: &str) -> Result<Option<LatestModVersion>, String> {
+        if uid.is_empty()
+            || !uid
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
+        {
+            return Ok(None);
+        }
+        let token = self
+            .tokens
+            .get()
+            .ok_or_else(|| "not logged in".to_string())?;
+        let mut url = url::Url::parse(&format!("{}/data/modVersion", self.config.api_base))
+            .map_err(|error| format!("invalid API base: {error}"))?;
+        url.query_pairs_mut()
+            .append_pair("filter", &format!(r#"uid=="{uid}""#))
+            .append_pair("include", "mod.latestVersion")
+            .append_pair("page[size]", "1");
+        let document = fetch_document(&self.http, url, &token).await?;
+        Ok(parse_latest_mod_version(&document))
+    }
+
     async fn list_vault(&self) -> Result<Vec<VaultMod>, String> {
         self.list_vault_with_progress(None).await
     }
@@ -2606,6 +2651,43 @@ ui_only = true
         assert_eq!(installed[0].folder_name, "download_bundle/total_mayhem");
 
         let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    #[test]
+    fn a_mod_versions_newest_sibling_is_read_through_its_mod() {
+        let doc: JsonApiDoc = serde_json::from_value(json!({
+            "data": [{
+                "type": "modVersion", "id": "11",
+                "attributes": { "uid": "old-uid", "version": 3 },
+                "relationships": { "mod": { "data": { "type": "mod", "id": "4" } } }
+            }],
+            "included": [
+                {
+                    "type": "mod", "id": "4", "attributes": {},
+                    "relationships": {
+                        "latestVersion": { "data": { "type": "modVersion", "id": "12" } }
+                    }
+                },
+                {
+                    "type": "modVersion", "id": "12",
+                    "attributes": {
+                        "uid": "new-uid", "version": 4,
+                        "downloadUrl": "https://content.faforever.com/mods/x.v4.zip"
+                    }
+                }
+            ]
+        }))
+        .unwrap();
+        assert_eq!(
+            parse_latest_mod_version(&doc),
+            Some(LatestModVersion {
+                uid: "new-uid".into(),
+                version: "4".into(),
+                download_url: "https://content.faforever.com/mods/x.v4.zip".into(),
+            })
+        );
+        let unknown: JsonApiDoc = serde_json::from_value(json!({ "data": [] })).unwrap();
+        assert_eq!(parse_latest_mod_version(&unknown), None);
     }
 
     #[test]

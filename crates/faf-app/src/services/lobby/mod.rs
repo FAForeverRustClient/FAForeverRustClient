@@ -28,6 +28,7 @@
 mod avatars;
 mod connection;
 mod game_notifications;
+mod host_updates;
 mod joining;
 mod launch;
 mod matchmaking;

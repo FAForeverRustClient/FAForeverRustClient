@@ -3529,6 +3529,14 @@ export type GamePreferences = {
 	 *  game itself set to windowed. Off by default. Windows only.
 	 */
 	borderlessWindow?: boolean,
+	/**
+	 *  Before hosting, switch the chosen map to its newest vault version and
+	 *  update every enabled mod that has a newer one (the Java client's "map
+	 *  and mod auto update"). Off by default, unlike the Java client: an
+	 *  update replaces the mod's folder, and a copy somebody edited by hand,
+	 *  for example while developing it, would be overwritten.
+	 */
+	autoUpdateMapAndMods?: boolean,
 };
 
 /**
@@ -3551,6 +3559,7 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	autoUpdateMapAndMods?: boolean,
 };
 
 export type GeneralPreferences = {

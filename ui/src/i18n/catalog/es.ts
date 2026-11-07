@@ -306,6 +306,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.linuxRuntimeMissing.body": "Falta algo que solo tú puedes instalar. Ajustes, Juego dice qué y cómo instalarlo.",
   "notifications.msg.linuxRuntimeFailed.title": "Falló la preparación de Forged Alliance para Linux",
   "notifications.msg.offlineGameFailed.title": "No se pudo iniciar el juego sin conexión",
+  "notifications.msg.hostModUpdateFailed.title": "No se pudo actualizar {name} antes de crear la partida",
   "notifications.msg.mapPublished.title": "Mapa publicado",
   "notifications.msg.modPublished.title": "Mod publicado",
   "notifications.msg.mapPublished.body": "{name} ya está en el vault.",
@@ -1479,6 +1480,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Argumentos de arranque adicionales",
   "settings.game.autoGenerateMaps": "Generar automáticamente los mapas que falten",
+  "settings.game.autoUpdateMapAndMods": "Actualizar mapa y mods al crear partida",
+  "settings.game.autoUpdateMapAndModsHint": "Crea la partida con la versión más reciente del mapa elegido y actualiza antes los mods activados. Una actualización reemplaza la carpeta del mod, así que se pierden los cambios que hayas hecho en sus archivos.",
   "settings.game.mapGeneratorInstances": "Generadores de mapas a la vez",
   "settings.game.mapGeneratorInstancesHint": "Se usa cuando hay varios estilos, simetrías o densidades seleccionados y cada mapa necesita su propio generador. Un generador ocupa alrededor de núcleo y medio y necesita hasta unos 3 GB de memoria para un mapa de 20 km.",
   "settings.game.mapGeneratorInstances.automatic": "Automático ({count} en este equipo)",
