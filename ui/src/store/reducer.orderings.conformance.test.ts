@@ -1,4 +1,4 @@
-// Conformance in orders nobody planned: the frontend reducer must agree with
+// Conformance for retained compact-delta slices in generated orders: the frontend reducer must agree with
 // the Rust one on the scenario cases' events interleaved, shuffled, dropped,
 // repeated, and replayed from each other's intermediate states.
 //
@@ -23,7 +23,7 @@ import { describe, expect, it } from "vitest";
 import type { AppEvent, AppState } from "../ipc/bindings";
 import scenarios from "./__fixtures__/reducer-conformance.json";
 import fixture from "./__fixtures__/reducer-conformance-orderings.json";
-import { applyEvent } from "./reducer";
+import { applyEvent, isDeltaEvent } from "./reducer";
 
 type Path = Array<string | number>;
 
@@ -101,7 +101,7 @@ describe("the frontend reducer matches the Rust one in generated orders", () => 
     expect(orderings.sequences.every((sequence) => sequence.steps.length > 0)).toBe(true);
   });
 
-  it.each(orderings.sequences.map((sequence, index) => [`#${index} ${sequence.name}`, sequence] as const))(
+  it.each(orderings.sequences.filter((sequence) => sequence.steps.every(([event]) => isDeltaEvent(orderings.events[event]))).map((sequence, index) => [`#${index} ${sequence.name}`, sequence] as const))(
     "%s",
     (_name, sequence) => {
       const { slice } = sequence;
@@ -112,6 +112,7 @@ describe("the frontend reducer matches the Rust one in generated orders", () => 
       let expected: unknown = start[slice];
       sequence.steps.forEach(([eventIndex, diffIndex], index) => {
         const event = orderings.events[eventIndex];
+        if (!isDeltaEvent(event)) throw new Error("Only compact-delta slices have a replica reducer");
         state = applyEvent(state, event);
         expected = rebuild(expected, orderings.diffs[diffIndex]);
         const context = `${orderings.seed}, after step ${index + 1}: ${JSON.stringify(event)}`;

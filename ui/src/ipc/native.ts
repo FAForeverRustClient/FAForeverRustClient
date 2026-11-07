@@ -13,6 +13,7 @@ import {
 } from "@tauri-apps/plugin-notification";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type {
+  ClientNotification,
   LogPreview,
   MapAnalysis,
   MarkedMapPreview,
@@ -62,6 +63,11 @@ export type LogKind = "game" | "client" | "ice";
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
 
 export const native = {
+  /** Read a fixed enhancement asset through the same bounded icon cache. */
+  enhancementIconUrl(faction: string, name: string): string | null {
+    if (!/^(uef|aeon|cybran|seraphim)$/.test(faction) || !/^[a-z0-9_]+$/.test(name)) return null;
+    return convertFileSrc(`enhancement-${faction}_${name}`, UNIT_ICON_SCHEME);
+  },
   showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false, holdPreview = false): Promise<void> {
     return invoke("show_notification_popup", { cards, dismissLabel, preview, holdPreview });
   },
@@ -83,11 +89,18 @@ export const native = {
   notificationPopupInteract(id: string, interaction: "activate" | "dismiss" | "expire"): Promise<void> {
     return invoke("notification_popup_interact", { id, interaction });
   },
+  nextNotificationActivation(acknowledgedId?: string): Promise<ClientNotification | null> {
+    return invoke("notification_popup_next_activation", { acknowledgedId });
+  },
+  onNotificationActivation(handler: () => void): Promise<() => void> {
+    return listen("notifications://activation-ready", handler);
+  },
   onNotificationInteraction(handler: (event: { id: string; interaction: "activate" | "dismiss" | "expire" }) => void): Promise<() => void> {
     return listen<{ id: string; interaction: "activate" | "dismiss" | "expire" }>("notifications://interact", (event) => handler(event.payload));
   },
-  gameNotificationAttention(activate = false): Promise<boolean> {
-    return invoke("game_notification_attention", { activate });
+  /** Whether the game is in front; flashes its taskbar entry unless `flash` is false. */
+  gameNotificationAttention(activate = false, flash = true): Promise<boolean> {
+    return invoke("game_notification_attention", { activate, flash });
   },
 
   openLogFolder(kind: LogKind): Promise<void> {

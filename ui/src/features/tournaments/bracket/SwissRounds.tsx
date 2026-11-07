@@ -12,7 +12,7 @@
 // yet are listed so their pools can be set before they open.
 
 import { Fragment, useState } from "react";
-import type { PlayerSummary, Tourney, TourneyMatch, VaultMap } from "../../../ipc/bindings";
+import type { PlayerSummary, Tourney, TourneyMatch, MapSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { roundKeyOf } from "../../../shared/rules/tourneyRules";
 import { myTeamId } from "../tourneyPresentation";
@@ -43,7 +43,7 @@ interface SwissRoundsProps {
   onReport: (entry: TourneyMatch) => void;
   onAnswer: (entry: TourneyMatch, accept: boolean) => void;
   onHost: (entry: TourneyMatch) => void;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   veto: VetoHandlers;
 }

@@ -10,7 +10,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { AppEvent } from "../../ipc/bindings";
+import type { FrontendUpdate } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, sentCommands } from "../../testing/mounted";
 import { ClientStatusBar } from "./ClientStatusBar";
@@ -19,7 +19,7 @@ vi.mock("../../ipc/client");
 
 failOnConsoleError();
 
-const apply = (...events: AppEvent[]) => events.forEach(applyEvent);
+const apply = (...events: FrontendUpdate[]) => events.forEach(applyEvent);
 
 /** The task slot's bar, by the name it gives the work. */
 const bar = (name: string) => screen.getByRole("progressbar", { name });

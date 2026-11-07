@@ -854,7 +854,7 @@ export const INITIAL_STATE: AppState = {
       "popup": true,
       "historyLifetimeSeconds": 0,
       "sounds": {
-        "matchFound": "fafMatch",
+        "matchFound": "alert",
         "privateMessage": "chime",
         "mention": "chime",
         "friendOnline": "chime",
@@ -868,8 +868,9 @@ export const INITIAL_STATE: AppState = {
         "partyInvite": "chime",
         "other": "chime"
       },
-      "soundChoiceVersion": 2,
+      "soundChoiceVersion": 3,
       "notifyWhenFocused": false,
+      "flashTaskbar": true,
       "toastPosition": "bottomLeft",
       "delivery": {},
       "mentionsRequireAt": false,
@@ -884,6 +885,7 @@ export const INITIAL_STATE: AppState = {
       "friendOffline": true,
       "friendPlaying": true,
       "friendJoinedGame": true,
+      "friendReplayReady": true,
       "newCustomGames": false,
       "newCustomGamesFriendsOnly": true,
       "gameFull": true,
@@ -939,7 +941,9 @@ export const INITIAL_STATE: AppState = {
       "keepGeneratedMapsLimit": 0,
       "mapGeneratorInstances": 0,
       "steamPresence": false,
-      "borderlessWindow": false
+      "borderlessWindow": false,
+      "autoUpdateMapAndMods": false,
+      "forceAffinity": true
     },
     "discord": {
       "enabled": true,

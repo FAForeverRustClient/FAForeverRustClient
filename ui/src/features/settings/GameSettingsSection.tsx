@@ -159,6 +159,19 @@ export function GameSettingsSection() {
           />
         </SettingRow>
 
+        {/* Off by default: an update replaces a mod's folder, and a copy
+            somebody changed by hand would be overwritten. */}
+        <SettingRow
+          label={t("settings.game.autoUpdateMapAndMods")}
+          hint={t("settings.game.autoUpdateMapAndModsHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.autoUpdateMapAndMods ?? false}
+            onChange={(autoUpdateMapAndMods) => void save({ autoUpdateMapAndMods })}
+            label={t("settings.game.autoUpdateMapAndMods")}
+          />
+        </SettingRow>
+
         {/* A count rather than a switch because the right number belongs to
             the computer: four at once was four times slower on a machine with
             12 GB, and the same four are what a bigger one is for. */}
@@ -205,6 +218,17 @@ export function GameSettingsSection() {
             />
           </SettingRow>
         )}
+
+        <SettingRow
+          label={t("settings.game.forceAffinity")}
+          hint={t("settings.game.forceAffinityHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.forceAffinity ?? true}
+            onChange={(forceAffinity) => void save({ forceAffinity })}
+            label={t("settings.game.forceAffinity")}
+          />
+        </SettingRow>
 
         <SettingRow
           label={t("settings.game.pipeLiveReplay")}

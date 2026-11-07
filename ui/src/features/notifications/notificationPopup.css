@@ -3,7 +3,7 @@
 
    The window itself is transparent and has no native frame, so each card is
    the only frame there is: one border, one radius, one shadow. The padding
-   around the stack is the room that shadow needs, and the shell places the
+   around the stack leaves room for the shadow, and the shell places the
    window flush with the work area, so the same padding is also each card's
    distance from the edge of the screen. */
 * { box-sizing: border-box; }

@@ -42,7 +42,7 @@ import type {
   Tourney,
   TourneyPhase,
   TourneySeries,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -140,7 +140,7 @@ const PHASE_HINTS: Record<TourneyPhase, MessageKey> = {
 
 interface ManagePanelProps {
   event: Tourney;
-  vault: VaultMap[];
+  vault: MapSummary[];
   vaultStatus: MapListStatus;
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;

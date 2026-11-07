@@ -3,10 +3,11 @@
 import { memo, useCallback, useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
-import type { Game, VaultMap } from "../../../ipc/bindings";
+import type { Game, MapSummary } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { GameMapImage } from "../GameMapImage";
 import { findVaultMap, isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPresentation";
+import { mapDownloadUrl } from "../../../shared/mapCatalogue";
 import { findPlayer } from "../../../store/reducer";
 import { useAppStore } from "../../../store/store";
 import { CopyMapNameButton, FavoriteMapStar, OpenMapInVaultButton, ZoomableImage } from "../../../shared/components/MapPreviewZoom";
@@ -31,7 +32,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
   onJoin,
 }: {
   game: Game;
-  vault: VaultMap[];
+  vault: MapSummary[];
   onClose: () => void;
   onJoin: () => void;
 }) {
@@ -230,7 +231,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
               <FavoriteMapStar
                 favorite={favorite}
                 label={presentation.displayName || game.map}
-                onToggle={() => toggleFavoriteMap(game.map, vaultMap?.downloadUrl)}
+                onToggle={() => toggleFavoriteMap(game.map, vaultMap ? mapDownloadUrl(vaultMap) : undefined)}
               />
             </>
           )}
@@ -279,7 +280,7 @@ export const GamePreviewDialog = memo(function GamePreviewDialog({
                   type: "installMap",
                   payload: {
                     folderName: vaultMap.folderName,
-                    downloadUrl: vaultMap.downloadUrl,
+                    downloadUrl: mapDownloadUrl(vaultMap),
                   },
                 },
               })

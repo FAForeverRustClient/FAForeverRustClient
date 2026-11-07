@@ -2,6 +2,7 @@ import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterv
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { MatchmakerRecentGames } from "./MatchmakerRecentGames";
 import { Button } from "../../../design-system/Button";
+import { ConfirmDialog } from "../../../design-system/ConfirmDialog";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { Icon } from "../../../design-system/Icon";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
@@ -24,7 +25,7 @@ import "./matchmaker.css";
 import type { PlayModePanelProps } from "../PlayModeTabs";
 import { t } from "../../../i18n";
 import { useLocale } from "../../../i18n/useTranslation";
-import { activeSearchQueues } from "../../../shared/joinWhileSearching";
+import { activeSearchQueues, stopSearching } from "../../../shared/joinWhileSearching";
 
 function stateForQueue(state: MatchmakingState, queueName: string): QueueDisplayState {
   switch (state.type) {
@@ -85,6 +86,7 @@ export function MatchmakingPanel({
   const javaLayout = useAppStore((state) => state.state.settings.theme === "javaClient");
   const [unselectedQueues, setUnselectedQueues] = useState<string[]>(browsing.matchmakerUnselectedQueues);
   const [selectedFactions, setSelectedFactions] = useState<string[]>(browsing.matchmakerFactions);
+  const [pendingFactions, setPendingFactions] = useState<string[] | null>(null);
   const [mapPoolQueueName, setMapPoolQueueName] = useState<string | null>(null);
   const [explaining, setExplaining] = useState(false);
   const [, setClock] = useState(() => Date.now());
@@ -215,6 +217,12 @@ export function MatchmakingPanel({
     return [...new Set(ids)].sort((left, right) => left - right).join(",");
   }, [party.members, playerId]);
   useEffect(() => {
+    // An unanswered faction change belongs to this player's current party and
+    // search. A found match or a changed party must not reuse that confirmation.
+    setPendingFactions(null);
+  }, [isSearching, playerId, party.ownerId, partyIdsKey]);
+
+  useEffect(() => {
     if (!partyIdsKey) return;
     ipc.send({
       kind: "PlayerCard",
@@ -250,6 +258,15 @@ export function MatchmakingPanel({
     });
     ipc.send({ kind: "Lobby", command: { type: "setPartyFactions", payload: { factions } } });
   }, []);
+
+  const requestFactions = useCallback((factions: string[]) => {
+    if (searchLocked) return;
+    if (isSearching) {
+      setPendingFactions(factions);
+      return;
+    }
+    setFactions(factions);
+  }, [isSearching, searchLocked, setFactions]);
 
   const toggleQueue = (queue: MatchmakerQueue) => {
     const selected = !unselectedQueues.includes(queue.queueName);
@@ -320,11 +337,10 @@ export function MatchmakingPanel({
       country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
       queues={sortedQueues}
       selectedFactions={selectedFactions}
-      // Every member picks their own, as in Java, where the faction
-      // buttons are never disabled. The server keeps the choice per member
-      // (`set_party_factions`) and rolls each one's faction from it.
+      // Every member picks their own factions. Sending a change during a
+      // search removes the whole party from queue, so ask before sending it.
       factionsDisabled={searchLocked}
-      onFactionsChange={setFactions}
+      onFactionsChange={requestFactions}
     />
   );
   const partyView = (
@@ -508,6 +524,22 @@ export function MatchmakingPanel({
 
       {explaining && (
         <MatchmakerExplainer queues={sortedQueues} onClose={() => setExplaining(false)} />
+      )}
+
+      {pendingFactions !== null && isSearching && (
+        <ConfirmDialog
+          title={t("lobby.matchmaker.factions.confirmTitle")}
+          body={t("lobby.matchmaker.factions.confirmBody")}
+          confirmLabel={t("lobby.matchmaker.factions.confirmAction")}
+          onCancel={() => setPendingFactions(null)}
+          onConfirm={() => {
+            // Before submission there is no server queue for the faction
+            // change to cancel. Stop local preparation so it cannot queue later.
+            if (preparing) stopSearching(activeSearches);
+            setFactions(pendingFactions);
+            setPendingFactions(null);
+          }}
+        />
       )}
     </div>
   );

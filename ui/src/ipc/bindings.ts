@@ -66,6 +66,12 @@ export type AccountSearch = {
 	status: TourneyLoadStatus,
 };
 
+export type AccountSessionUpdate = {
+	auth: AuthState,
+	chat: ChatState,
+	notifications: NotificationState,
+};
+
 /**
  *  One FAQ / Rules article as the console holds it: its markdown source, and
  *  whether it is archived.
@@ -1168,19 +1174,17 @@ export type ChatEvent = { type: "connecting" } |
 	emoji: string,
 	sender: string,
 } } |
-/**
- *  Someone took their reaction back.
- *
- *  The IRCv3 draft defines no retraction at all, so this rides on a client
- *  tag of this client's own (`+draft/unreact`). Between two of these
- *  clients it works; a client that does not know the tag keeps showing the
- *  reaction, and there is no way to make it not.
- */
+/**  Someone took their reaction back, including a server REDACT event. */
 { type: "reactionRemoved"; payload: {
 	channel: string,
 	msgid: string,
 	emoji: string,
 	sender: string,
+} } |
+/**  A server-authorized deletion. Remove retained copies and reactions too. */
+{ type: "messageRedacted"; payload: {
+	channel: string,
+	msgid: string,
 } } | { type: "disconnected" };
 
 /**
@@ -3099,7 +3103,11 @@ export type ForumPost = {
  *  the same channel as deltas so the webview cannot observe a post-recovery
  *  event and then roll itself back to an older snapshot from another channel.
  */
-export type FrontendMessage = { kind: "event"; revision: number; event: AppEvent } | { kind: "snapshot"; revision: number; state: AppState };
+export type FrontendMessage = { kind: "event"; revision: number; event: FrontendUpdate } | { kind: "snapshot"; revision: number; state: AppState };
+
+export type FrontendUpdate = { kind: "Session"; event: SessionState } | { kind: "Auth"; event: AuthState } |
+/**  Auth changes together with the reset chat and notification slices. */
+{ kind: "AccountSession"; event: AccountSessionUpdate } | { kind: "Nav"; event: NavState } | { kind: "Notifications"; event: NotificationState } | { kind: "Clan"; event: ClanState } | { kind: "Reporting"; event: ReportingState } | { kind: "Reviews"; event: ReviewsState } | { kind: "Streams"; event: StreamsState } | { kind: "Tutorials"; event: TutorialsState } | { kind: "GalacticWar"; event: GalacticWarState } | { kind: "LinuxRuntime"; event: LinuxRuntimeState } | { kind: "Install"; event: InstallState } | { kind: "Connectivity"; event: ConnectivityState } | { kind: "Settings"; event: SettingsUpdate } | { kind: "Chat"; event: ChatEvent } | { kind: "Lobby"; event: LobbyEvent } | { kind: "Replays"; event: ReplayEvent } | { kind: "Maps"; event: MapsEvent } | { kind: "Mods"; event: ModsEvent } | { kind: "Social"; event: SocialEvent } | { kind: "Tourney"; event: TourneyEvent } | { kind: "Changelog"; event: ChangelogEvent } | { kind: "UnitHistory"; event: UnitHistoryEvent } | { kind: "ClientUpdate"; event: ClientUpdateEvent } | { kind: "Guides"; event: GuidesEvent } | { kind: "Uploads"; event: UploadsEvent } | { kind: "Training"; event: TrainingEvent } | { kind: "PlayerCard"; event: PlayerCardEvent } | { kind: "Leaderboard"; event: LeaderboardEvent } | { kind: "MapGenerator"; event: MapGeneratorEvent } | { kind: "Events"; event: EventsEvent } | { kind: "Coop"; event: CoopEvent };
 
 /**  Counts that outlive the current season. */
 export type GalacticWarAlltime = {
@@ -3521,6 +3529,21 @@ export type GamePreferences = {
 	 *  game itself set to windowed. Off by default. Windows only.
 	 */
 	borderlessWindow?: boolean,
+	/**
+	 *  Before hosting, switch the chosen map to its newest vault version and
+	 *  update every enabled mod that has a newer one (the Java client's "map
+	 *  and mod auto update"). Off by default, unlike the Java client: an
+	 *  update replaces the mod's folder, and a copy somebody edited by hand,
+	 *  for example while developing it, would be overwritten.
+	 */
+	autoUpdateMapAndMods?: boolean,
+	/**
+	 *  Let FAF move Forged Alliance off the first two logical cores, where the
+	 *  operating system does most of its own work, on machines with six or
+	 *  more. FAF's init script does it when `fa_path.lua` says
+	 *  `ForceAffinity = "true"`. On by default, as in both reference clients.
+	 */
+	forceAffinity?: boolean,
 };
 
 /**
@@ -3543,6 +3566,8 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	autoUpdateMapAndMods?: boolean,
+	forceAffinity?: boolean,
 };
 
 export type GeneralPreferences = {
@@ -4863,6 +4888,8 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 /**  Accept an incoming party invitation from its sender. */
 { type: "acceptPartyInvite"; payload: {
 	playerId: number,
+	/**  A bell or popup action is consumed only after local send admission. */
+	notificationId?: string | null,
 } } |
 /**
  *  Update the local party member's accepted factions. The server echoes the
@@ -5509,6 +5536,44 @@ export type MapSpec = {
 };
 
 /**
+ *  Map metadata used by catalogue consumers. URL exceptions are sparse;
+ *  paged vault searches still carry complete VaultMap records.
+ */
+export type MapSummary = {
+	mapId: number,
+	versionId: number,
+	displayName: string,
+	author: string | null,
+	authorId: number | null,
+	folderName: string,
+	version: string,
+	description: string,
+	mapType: string,
+	maxPlayers: number,
+	width: number,
+	height: number,
+	gamesPlayed: number,
+	versionGamesPlayed: number,
+	ranked: boolean,
+	hidden: boolean,
+	recommended: boolean,
+	ratingTenths: number,
+	reviews: number,
+	createdAt: string,
+	urls?: MapUrls,
+};
+
+/**
+ *  Exact exceptions to the catalogue's folder-based content URLs. Empty URLs
+ *  are exceptions too; an absent override means the canonical URL, not no art.
+ */
+export type MapUrls = {
+	thumbnailUrl?: string | null,
+	thumbnailUrlLarge?: string | null,
+	downloadUrl?: string | null,
+};
+
+/**
  *  A page of the map vault.
  *
  *  Empty strings and `None` mean "do not filter on this", so a default query is
@@ -5678,11 +5743,11 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
 } } | { type: "vaultSearchFailed"; payload: {
 	reason: string,
 } } | { type: "vaultLoaded"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } |
 /**  Apply a quiet catalogue delta without replacing unrelated folder lookups. */
 { type: "vaultUpdated"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } | { type: "vaultLoadFailed"; payload: {
 	reason: string,
 } } |
@@ -5693,7 +5758,7 @@ export type MapsEvent = { type: "vaultLoading" } | { type: "vaultProgress"; payl
  *  anything in it.
  */
 { type: "vaultFoldersResolved"; payload: {
-	maps: VaultMap[],
+	maps: MapSummary[],
 } } | { type: "installedLoading" } | { type: "installedLoaded"; payload: {
 	maps: InstalledMap[],
 } } | { type: "installedLoadFailed"; payload: {
@@ -5775,7 +5840,7 @@ export type MapsState = {
 	 *  map from a folder name through it (`shared/mapPresentation.ts`). It is
 	 *  deliberately not what the Maps tab browses; see `browse` below.
 	 */
-	vault: VaultMap[],
+	vault: MapSummary[],
 	/**  Versions explicitly resolved for live folders, retained across full refreshes. */
 	resolvedVaultVersions?: number[],
 	vaultStatus: MapListStatus,
@@ -6642,10 +6707,18 @@ export type NotificationAction = { type: "openChat"; payload: {
  */
 { type: "openStream"; payload: {
 	url: string,
-} };
+} } |
+/**
+ *  Download the client release on offer and install it (#682), or install
+ *  it straight away when it is already downloaded. Opening Settings, as
+ *  this notice used to, landed on a page with no download button on it.
+ */
+{ type: "updateClient" };
 
 export type NotificationCommand = { type: "markRead"; payload: {
 	id: string,
+} } | { type: "markReadMany"; payload: {
+	ids: string[],
 } } | { type: "dismiss"; payload: {
 	id: string,
 } } | { type: "clear" };
@@ -6683,6 +6756,8 @@ export type NotificationEvent = { type: "added"; payload: {
 	notification: ClientNotification,
 } } | { type: "read"; payload: {
 	id: string,
+} } | { type: "readMany"; payload: {
+	ids: string[],
 } } | { type: "dismissed"; payload: {
 	id: string,
 } } | { type: "cleared" };
@@ -6833,6 +6908,8 @@ export type NotificationPreferences = {
 	 */
 	soundChoiceVersion: number,
 	notifyWhenFocused: boolean,
+	/**  Request attention for notifications while the client is in the background. */
+	flashTaskbar: boolean,
 	/**  Which corner a toast appears in. See [`ToastPosition`]. */
 	toastPosition: ToastPosition,
 	delivery: Partial<{ [key in NotificationKind]: NotificationDelivery }>,
@@ -6848,6 +6925,13 @@ export type NotificationPreferences = {
 	friendOffline: boolean,
 	friendPlaying: boolean,
 	friendJoinedGame: boolean,
+	/**
+	 *  Whether a friend's game is announced once its live replay can be
+	 *  watched, five minutes after it started. A switch of its own, so somebody
+	 *  can hear that a friend started without being told again later, or the
+	 *  reverse.
+	 */
+	friendReplayReady: boolean,
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
@@ -6910,6 +6994,7 @@ export type NotificationPreferencesPatch = {
 	historyLifetimeSeconds?: number,
 	soundChoiceVersion?: number,
 	notifyWhenFocused?: boolean,
+	flashTaskbar?: boolean,
 	toastPosition?: ToastPosition,
 	desktopStyle?: DesktopNotificationStyle,
 	desktopPosition?: ToastPosition,
@@ -6923,6 +7008,7 @@ export type NotificationPreferencesPatch = {
 	friendOffline?: boolean,
 	friendPlaying?: boolean,
 	friendJoinedGame?: boolean,
+	friendReplayReady?: boolean,
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,
@@ -7005,11 +7091,10 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  **Two rows are not [`NotificationSound::Chime`]: a found match plays
- *  [`NotificationSound::FafMatch`] and a filled lobby plays
- *  [`NotificationSound::Alert`].** Everything else keeps the tone the client
- *  played before this existed, so installing an update changes those two
- *  sounds and not the rest.
+ *  **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
+ *  lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+ *  tone the client played before this existed, so installing an update changes
+ *  those two sounds and not the rest.
  *
  *  That is a reversal. The original note here argued that shipping choices
  *  nobody made was the wrong answer to "all notifications sound the same", and
@@ -7021,6 +7106,10 @@ export type NotificationSound =
  *  that. A lobby filling up expires the same way -- the game launches without
  *  whoever was looking elsewhere -- and was asked for by name. The remaining
  *  ten rows are still one tone and still a preference.
+ *
+ *  A found match first defaulted to [`NotificationSound::FafMatch`], the Java
+ *  client's sample. It is long and harsh next to the synthesised tones, so it
+ *  stays on offer and stops being what everybody hears by default.
  *
  *  [`NotificationSound::Silent`] is available on every row, which is how a kind
  *  is seen and not heard.
@@ -8498,6 +8587,12 @@ export type RatingHistoryQuery = {
 	period: RatingHistoryPeriod,
 	page: number,
 	pageSize: number,
+	/**
+	 *  Only the newest this many games of the period, or all of it when
+	 *  `None` (#709). The API pages newest first, so the load stops after the
+	 *  pages that hold them instead of reading the whole history to keep 100.
+	 */
+	latestGames?: number | null,
 };
 
 /**  Which FAF rating decides seeding, and whether one is used at all. */
@@ -10492,6 +10587,12 @@ export type SettingsState = {
 	avatarHistory?: string[],
 	cacheInfo?: GameCacheInfo,
 };
+
+/**
+ *  Preference-group assignments, not another implementation of normalization.
+ *  Changing one group never resends unrelated player notes or browsing history.
+ */
+export type SettingsUpdate = { field: "all"; value: SettingsState } | { field: "theme"; value: Theme } | { field: "gamePath"; value: string } | { field: "replayGamePath"; value: string } | { field: "paths"; value: PathPreferences } | { field: "general"; value: GeneralPreferences } | { field: "appearance"; value: AppearancePreferences } | { field: "social"; value: SocialPreferences } | { field: "notifications"; value: NotificationPreferences } | { field: "chat"; value: ChatPreferences } | { field: "game"; value: GamePreferences } | { field: "discord"; value: DiscordPreferences } | { field: "connectivity"; value: ConnectivityPreferences } | { field: "debug"; value: DebugPreferences } | { field: "updates"; value: UpdatePreferences } | { field: "browsing"; value: BrowsingPreferences } | { field: "events"; value: EventsPreferences } | { field: "keptGeneratedMaps"; value: string[] } | { field: "mapGenerator"; value: GeneratorOptions } | { field: "matchmakerVetoes"; value: PlayerVeto[] } | { field: "mapPoolsSeen"; value: MapPoolsSeen[] } | { field: "avatarHistory"; value: string[] } | { field: "cacheInfo"; value: GameCacheInfo };
 
 /**  How entrants get in. */
 export type SignupMode =
@@ -14816,3 +14917,4 @@ export type WebviewEngine = {
  *  are talked about in a Monday-first week regardless of where the player is.
  */
 export type WeekStart = "monday" | "sunday";
+export const DELTA_EVENT_KINDS = ["Chat","Lobby","Replays","Maps","Mods","Social","Tourney","Changelog","UnitHistory","ClientUpdate","Guides","Uploads","Training","PlayerCard","Leaderboard","MapGenerator","Events","Coop"] as const;

@@ -558,6 +558,9 @@
     overflow-y: auto;
     scrollbar-gutter: stable;
     --content-gutter: var(--scrollbar-size);
+    /* Its height, for the custom games layout to keep the window's
+       (`custom-games.css`, issue 674). */
+    container-type: size;
   }
 
   .content-inner.content-play {

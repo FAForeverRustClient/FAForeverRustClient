@@ -113,6 +113,7 @@ fn tint(rgba: &mut [u8], colour: [u8; 3]) {
 enum Kind {
     Unit,
     Strategic,
+    Enhancement,
 }
 
 /// What an address asks for: a picture, and for a strategic icon the faction
@@ -129,6 +130,20 @@ impl Picture<'_> {
     /// `unit-UEL0201`, `strategic-icon_land1_directfire` or
     /// `strategic-cybran-icon_land1_directfire`.
     fn parse(address: &str) -> Option<Picture<'_>> {
+        if let Some(key) = address.strip_prefix("enhancement-") {
+            if key.is_empty()
+                || !key
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+            {
+                return None;
+            }
+            return Some(Picture {
+                kind: Kind::Enhancement,
+                key,
+                faction: None,
+            });
+        }
         if let Some(key) = address.strip_prefix("unit-") {
             return Some(Picture {
                 kind: Kind::Unit,
@@ -160,6 +175,7 @@ impl Picture<'_> {
     /// The other way round from [`Picture::parse`].
     fn address(self) -> String {
         match (self.kind, self.faction) {
+            (Kind::Enhancement, _) => format!("enhancement-{}", self.key),
             (Kind::Unit, _) => format!("unit-{}", self.key),
             (Kind::Strategic, None) => format!("strategic-{}", self.key),
             (Kind::Strategic, Some(index)) => {
@@ -184,6 +200,7 @@ struct Archives {
     /// back to the base game's.
     units: BTreeMap<String, Vec<Entry>>,
     strategic: BTreeMap<String, Vec<Entry>>,
+    enhancements: BTreeMap<String, Vec<Entry>>,
 }
 
 /// The pictures the install has, and where the decoded ones go.
@@ -394,6 +411,7 @@ impl Archives {
             zips: Vec::new(),
             units: BTreeMap::new(),
             strategic: BTreeMap::new(),
+            enhancements: BTreeMap::new(),
         };
         // The base game first, then FAF's copies in front of it.
         for archive in sources {
@@ -441,6 +459,25 @@ impl Archives {
                     continue;
                 };
                 (&mut self.strategic, icon.to_owned())
+            } else if let Some(file) = name.strip_prefix("textures/ui/common/game/") {
+                let Some((folder, file)) = file.split_once('/') else {
+                    continue;
+                };
+                let Some(faction) = folder.strip_suffix("-enhancements") else {
+                    continue;
+                };
+                let Some(icon) = file.strip_suffix(".dds").filter(|name| !name.contains('/'))
+                else {
+                    continue;
+                };
+                let key = format!("{faction}_{icon}");
+                if !key
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+                {
+                    continue;
+                }
+                (&mut self.enhancements, key)
             } else {
                 continue;
             };
@@ -497,6 +534,7 @@ impl Catalog {
         }
         let archives = self.archives.get_or_init(|| Archives::open(&self.sources));
         let copies = match kind {
+            Kind::Enhancement => archives.enhancements.get(key),
             Kind::Unit => archives.units.get(key),
             Kind::Strategic => archives.strategic.get(key),
         };
@@ -584,6 +622,29 @@ mod tests {
         }
         zip.finish().unwrap();
         path
+    }
+
+    #[test]
+    fn reference_chat_replay_enhancement_icons_use_the_bounded_archive_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = archive(
+            dir.path(),
+            "textures.scd",
+            &[(
+                "textures/ui/common/game/uef-enhancements/aes_btn_up.dds",
+                dds_4x4_red(),
+            )],
+        );
+        let catalog = read_catalog(Some(base), None, None);
+        let picture = Picture::parse("enhancement-uef_aes_btn_up").unwrap();
+        assert!(catalog
+            .png(picture)
+            .is_some_and(|bytes| bytes.starts_with(b"\x89PNG")));
+        assert!(Picture::parse("enhancement-../../private").is_none());
+        assert!(Picture::parse("enhancement-uef/icon").is_none());
+        assert!(catalog
+            .png(Picture::parse("enhancement-uef_unknown").unwrap())
+            .is_none());
     }
 
     #[test]

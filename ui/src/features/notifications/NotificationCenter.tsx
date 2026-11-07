@@ -9,7 +9,7 @@ import { openHttpsUrl } from "../../shared/externalLinks";
 import { useClockPreference } from "../../shared/format/clock";
 import { useAppStore } from "../../store/store";
 import { NotificationCard } from "./NotificationCard";
-import { admitNotifications, deliverNotifications } from "./deliverNotifications";
+import { admitNotifications, deliverNotifications, UNANNOUNCED_OUTCOMES, type DeliveryResult } from "./deliverNotifications";
 import { NotificationRecovery } from "./NotificationRecovery";
 import { notificationArtwork } from "./notificationArtwork";
 import { deliveryFor } from "./notificationDelivery";
@@ -52,10 +52,8 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
         await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "custom" } } });
         break;
       case "acceptPartyInvite":
-        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId } } });
-        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "play" } } });
-        await ipc.settle({ kind: "Lobby", command: { type: "setPlayMode", payload: { mode: "matchmaking" } } });
-        break;
+        await ipc.settle({ kind: "Lobby", command: { type: "acceptPartyInvite", payload: { playerId: action.payload.playerId, notificationId: item.id } } });
+        return;
       case "watchLive":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "replays" } } });
         await ipc.dispatch({ kind: "Replays", command: { type: "watchLive", payload: action.payload.target } });
@@ -86,6 +84,18 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
         // handed it the same way it validates every other one.
         await openHttpsUrl(action.payload.url);
         break;
+      case "updateClient":
+        // Download, then install, from the one click (#682). A download the
+        // background already finished installs at once. Install closes the
+        // client, so it refuses itself while a game, search or lesson runs,
+        // and the sidebar's update notice offers it again afterwards.
+        if (useAppStore.getState().state.clientUpdate.status.type !== "ready") {
+          await ipc.settle({ kind: "ClientUpdate", command: { type: "download" } });
+        }
+        if (useAppStore.getState().state.clientUpdate.status.type === "ready") {
+          await ipc.settle({ kind: "ClientUpdate", command: { type: "install" } });
+        }
+        break;
       case "openSettings":
         await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
         if (action.payload.section) {
@@ -109,6 +119,10 @@ export function NotificationCenter() {
   // rather than reading it once: flipping the switch redraws the cards (#425).
   const use24HourTime = useClockPreference();
   const [open, setOpen] = useState(false);
+  // What was unread when the bell was opened. Opening it marks everything
+  // read, so the count goes, but these keep their dot while the panel is
+  // open: the reader still sees which entries are the new ones.
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set());
   const [gamePreviewId, setGamePreviewId] = useState<number | null>(null);
   const [toastIds, setToastIds] = useState<string[]>([]);
   const processed = useRef(new Set<string>());
@@ -135,6 +149,18 @@ export function NotificationCenter() {
     hideToast(item.id);
     ipc.run(runAction(item, setGamePreviewId));
   }, [hideToast]);
+  const toggleOpen = () => {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const unreadIds = items.filter((item) => !item.read).map((item) => item.id);
+    setFresh(new Set(unreadIds));
+    if (unreadIds.length > 0) {
+      ipc.send({ kind: "Notifications", command: { type: "markReadMany", payload: { ids: unreadIds } } });
+    }
+    setOpen(true);
+  };
   const clearAll = useCallback(() => {
     setToastIds([]);
     ipc.send({ kind: "Notifications", command: { type: "clear" } });
@@ -177,28 +203,58 @@ export function NotificationCenter() {
     const arrived = items.filter((item) => !item.read && !processed.current.has(item.id));
     if (arrived.length === 0) return;
     arrived.forEach((item) => processed.current.add(item.id));
-    const announcing = admitNotifications(arrived, useAppStore.getState().state, cooldown.current, markRead);
+    const kinds = new Map(arrived.map((item) => [item.id, item.kind]));
+    const report = ({ id, outcome, detail }: DeliveryResult) => {
+      if (UNANNOUNCED_OUTCOMES.has(outcome)) ipc.reportNotificationSkip(kinds.get(id) ?? "unknown", outcome, detail);
+    };
+    const announcing = admitNotifications(arrived, useAppStore.getState().state, cooldown.current, markRead, report);
     void deliverNotifications(announcing, {
       state: () => useAppStore.getState().state,
+      report,
       showInside: (inside) => setToastIds((ids) => {
         const immediate = inside.filter((item) => item.kind === "matchFound" || item.kind === "gameFull" || item.kind === "partyInvite").map((item) => item.id);
         return [...new Set([...immediate, ...ids, ...inside.map((item) => item.id)])];
       }),
-    }).catch(() => undefined);
+    }).catch((error: unknown) => {
+      announcing.forEach((item) => ipc.reportNotificationSkip(item.kind, "deliveryError", String(error)));
+    });
   }, [items, preferences]);
 
   useEffect(() => {
     let disposed = false;
     let stop: (() => void) | undefined;
-    void native.onNotificationInteraction(({ id, interaction }) => {
-      const item = useAppStore.getState().state.notifications.items.find((candidate) => candidate.id === id);
-      if (!item) return;
-      hideToast(id);
-      if (interaction === "dismiss") dismiss(id);
-      // Native activation already focused the owned game. Avoid doing it twice.
-      else if (item.action?.type === "focusGame") markRead(id);
-      else ipc.run(runAction(item, setGamePreviewId));
-    }).then((unlisten) => { if (disposed) unlisten(); else stop = unlisten; }).catch(() => undefined);
+    let draining = false;
+    let wakePending = false;
+    const drain = async () => {
+      if (disposed) return;
+      wakePending = true;
+      if (draining) return;
+      draining = true;
+      try {
+        // A wake-up can race a response that says the queue was empty.
+        while (!disposed && wakePending) {
+          wakePending = false;
+          let item = await native.nextNotificationActivation();
+          while (!disposed && item) {
+            hideToast(item.id);
+            try {
+              await runAction(item, setGamePreviewId);
+            } catch (error) {
+              ipc.run(Promise.reject(error instanceof Error ? error : new Error(String(error))));
+            }
+            item = await native.nextNotificationActivation(item.id);
+          }
+        }
+      } finally {
+        draining = false;
+      }
+    };
+    // Register first, then fetch clicks held while the main window rebuilt.
+    void native.onNotificationActivation(() => ipc.run(drain())).then((unlisten) => {
+      if (disposed) { unlisten(); return; }
+      stop = unlisten;
+      ipc.run(drain());
+    }).catch(() => undefined);
     return () => { disposed = true; stop?.(); };
   }, [hideToast]);
 
@@ -230,7 +286,7 @@ export function NotificationCenter() {
         aria-label={unread ? t("notifications.unread", { count: unread }) : t("notifications.title")}
         aria-expanded={open}
         title={t("notifications.title")}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
       >
         <Icon name="bell" size={16} />
         {unread > 0 && <span className={`notification-badge${items.some((item) => !item.read && item.kind === "error") ? " is-error" : items.some((item) => !item.read && ["serverWarning", "gameCacheAlert"].includes(item.kind)) ? " is-warning" : ""}`}>{unread > 99 ? "99+" : unread}</span>}
@@ -250,7 +306,7 @@ export function NotificationCenter() {
             {items.length === 0 ? (
               <p className="notification-empty muted">{t("notifications.empty")}</p>
             ) : items.map((item) => (
-              <NotificationCard key={item.id} item={item} artwork={notificationArtwork(item, useAppStore.getState().state)}
+              <NotificationCard key={item.id} item={fresh.has(item.id) ? { ...item, read: false } : item} artwork={notificationArtwork(item, useAppStore.getState().state)}
                 history use24HourTime={use24HourTime} onActivate={() => handleAction(item)}
                 onDismiss={() => { hideToast(item.id); dismiss(item.id); }}
                 recovery={item.kind === "error" ? <NotificationRecovery item={item} /> : undefined} />

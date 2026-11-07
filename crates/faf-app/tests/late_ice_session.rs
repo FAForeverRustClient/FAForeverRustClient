@@ -138,7 +138,7 @@ fn harness() -> Harness {
 async fn join_until_in_game(h: &Harness) {
     let mut events = h.app.subscribe();
     h.app
-        .dispatch(AuthCommand::Login { remember: false }.into())
+        .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
         .await
         .unwrap();
     h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();

@@ -1,0 +1,1 @@
+- Changing factions while queued now asks for confirmation before removing your party from matchmaking.

@@ -6,7 +6,7 @@ import { useState, type CSSProperties } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { Modal } from "../../../design-system/Modal";
-import type { BracketSide, MapPool, Tourney, TourneyAdmin, VaultMap } from "../../../ipc/bindings";
+import type { BracketSide, MapPool, Tourney, TourneyAdmin, MapSummary } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { roundKeyOf } from "../../../shared/rules/tourneyRules";
 import { stopAtRemaining } from "../overviewPresentation";
@@ -71,7 +71,7 @@ interface RoundMapBlockProps {
   event: Tourney;
   bracket: BracketSide;
   round: number;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   /** The round's length, for the map dialog and the pool warning. */
   bestOf: number;
@@ -380,7 +380,7 @@ function PreviewMatch({ card, arms = [] }: { card: PreviewCard | null; arms?: st
 interface PreviewProps {
   event: Tourney;
   preview: BracketPreview;
-  vault: VaultMap[];
+  vault: MapSummary[];
   assetBase: string;
   onAdmin: (change: TourneyAdmin) => void;
   onAssignPool?: (key: string, poolId: string) => void;

@@ -25,6 +25,14 @@ pub struct ModSearchPage {
     pub total_records: Option<i32>,
 }
 
+/// A mod's newest published version: what replacing an older copy needs.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LatestModVersion {
+    pub uid: String,
+    pub version: String,
+    pub download_url: String,
+}
+
 #[async_trait]
 pub trait ModsPort: Send + Sync {
     /// List the mod vault (FAF Data API `/data/mod`, `include=latestVersion`
@@ -165,6 +173,13 @@ pub trait ModsPort: Send + Sync {
     /// Replace the active set with exactly `uids`, and return the refreshed
     /// installed list. Bulk on purpose: see `ModsCommand::SetActiveMods`.
     async fn set_active_mods(&self, uids: Vec<String>) -> Result<Vec<InstalledMod>, String>;
+
+    /// The newest published version of the mod the version `uid` belongs
+    /// to. `Ok(None)` when the vault does not know `uid`, which is what a
+    /// copy built locally and never uploaded looks like.
+    async fn latest_mod_version(&self, _uid: &str) -> Result<Option<LatestModVersion>, String> {
+        Ok(None)
+    }
 
     /// Install missing simulation mods required by a game and enable them.
     /// Already-installed versions are retained: this is compatibility

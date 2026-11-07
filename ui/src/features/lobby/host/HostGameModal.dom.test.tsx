@@ -200,15 +200,7 @@ describe("HostGameModal map picker, mounted", () => {
     expect(star.getAttribute("aria-pressed")).toBe("false");
     expect(screen.getByRole("tab", { name: "Favourites (0)" })).toBeDefined();
 
-    applyEvent({
-      kind: "Settings",
-      event: {
-        type: "browsingChanged",
-        payload: {
-          preferences: { ...initialState().settings.browsing, favoriteMaps: ["zz_beta.v0001"] },
-        },
-      },
-    });
+    applyEvent({ kind: "Settings", event: { field: "browsing", value: { ...initialState().settings.browsing, favoriteMaps: ["zz_beta.v0001"] } } });
 
     expect(screen.getByRole("button", { name: "Remove Zz Beta from favourites" }).getAttribute("aria-pressed")).toBe(
       "true",

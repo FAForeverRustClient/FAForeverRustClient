@@ -3,7 +3,7 @@
 import { memo, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../../../design-system/Icon";
-import type { Game, VaultMap, VaultMod } from "../../../ipc/bindings";
+import type { Game, MapSummary, VaultMod } from "../../../ipc/bindings";
 import { GameMapImage } from "../GameMapImage";
 import { mapPresentation } from "../../../shared/mapPresentation";
 import { featuredModLabel } from "../../../shared/featuredMods";
@@ -11,6 +11,7 @@ import { t } from "../../../i18n";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { formatAge, playingCount, showsUnrankedTag, simModsKeepGameRanked } from "../../../shared/gameRules";
 import { RatingRangeTag } from "./RatingRangeTag";
+import { FittingChips } from "../../../shared/components/FittingChips";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { hideGlobalLineup, useGameLineupPosition, useGameSocialPosition } from "./hoverPopovers";
 import { GameLineup } from "./GameLineup";
@@ -57,7 +58,7 @@ export const GameTile = memo(function GameTile({
   onContextMenu,
 }: {
   game: Game;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Read once by the browser rather than subscribed to by every row. */
   vaultMods: VaultMod[];
   /** The friend list, lower-cased once for the whole list. */
@@ -89,6 +90,8 @@ export const GameTile = memo(function GameTile({
   const age = formatAge(game.hostedAt, now);
   // Co-op is its tab's own mode as FAF is the Custom tab's.
   const otherMod = game.modName && !["faf", "coop"].includes(game.modName.toLowerCase()) ? game.modName : null;
+  const hasFlags = game.ratingMin !== null || game.ratingMax !== null || unranked || simModCount > 0
+    || otherMod !== null || friends.length > 0 || foes.length > 0 || goAdapter || expJavaAdapter;
 
   return (
     <article
@@ -165,89 +168,97 @@ export const GameTile = memo(function GameTile({
           <span className="game-tile-host-label">{t("lobby.browser.host")}</span>
           <PlayerName name={game.host} />
         </span>
-        <span className="game-tile-flags">
-          {/* A tag among the tags, and the first of them. It is a condition of
-              the lobby as "unranked" is: as bare numbers after the rating it
-              did not read as a range at all. First, because this line clips
-              what does not fit, and the range is the tag that decides whether
-              the reader can join. */}
-          {(game.ratingMin !== null || game.ratingMax !== null) && (
-            <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
-          )}
-          {/* Among the tags, and straight after the range: who is in the lobby
-              is what a narrow tile can least afford to clip, and the tags
-              about the game itself follow. A count is a property of the lobby
-              the way "unranked" and "3 SIM" are, so it belongs with them and
-              not off in the footer beside the host's name. Who they are is
-              the popover's job, which the tag carries exactly as the list
-              row's does. */}
-          {friends.length > 0 && (
-            <i
-              className="friend"
-              onMouseEnter={(e) => {
-                e.stopPropagation();
-                showSocial(e.currentTarget, "friends");
-              }}
-              onMouseLeave={hideSocial}
-              onFocus={(e) => {
-                e.stopPropagation();
-                showSocial(e.currentTarget, "friends");
-              }}
-              onBlur={hideSocial}
-              tabIndex={0}
-              role="button"
-              aria-label={t("lobby.browser.friendCount", { count: friends.length })}
-              aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              {friendLabel}
-            </i>
-          )}
-          {foes.length > 0 && (
-            <i
-              className="foe"
-              onMouseEnter={(e) => {
-                e.stopPropagation();
-                showSocial(e.currentTarget, "foes");
-              }}
-              onMouseLeave={hideSocial}
-              onFocus={(e) => {
-                e.stopPropagation();
-                showSocial(e.currentTarget, "foes");
-              }}
-              onBlur={hideSocial}
-              tabIndex={0}
-              role="button"
-              aria-label={t("lobby.browser.foeCount", { count: foes.length })}
-              aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-              }}
-            >
-              {foeLabel}
-            </i>
-          )}
-          {/* Whether the game counts, before what it is played with: on a
-              narrow tile the tags at the end are the ones left out. */}
-          {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
-          {/* Only a mode other than the tab's own: "FAF" on nearly every tile
-              said nothing, and a rare one stands out because it is rare. As
-              in the list row, and spelled the way the Host Game dialog spells
-              it rather than as the `fafbeta` the server sends. */}
-          {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
-          {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
-          {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
-          {simModCount > 0 && (
-            <i
-              className={simModsRanked ? "modded is-ranked" : "modded"}
-              title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
-            >
-              {t("lobby.browser.simModBadge", { count: simModCount })}
-            </i>
-          )}
-        </span>
+        {/* Nothing at all when there is no tag, so the bottom row keeps its
+            push to the bottom (see `.game-tile-flags + .game-tile-stats`). */}
+        {hasFlags && (
+          // One line, and what does not fit becomes "+N", which lists every
+          // tag on hover, as in the list row (#379). It used to wrap onto a
+          // second line that the tile's height hid, so a range and a friend
+          // count left no room and "unranked" and "1 SIM" vanished without
+          // a trace: the lobby looked unmodded (#680).
+          <FittingChips as="span" className="game-tile-flags" moreClassName="more">
+            {/* A tag among the tags, and the first of them. It is a condition of
+                the lobby as "unranked" is: as bare numbers after the rating it
+                did not read as a range at all. First, because it decides
+                whether the reader can join. */}
+            {(game.ratingMin !== null || game.ratingMax !== null) && (
+              <RatingRangeTag min={game.ratingMin} max={game.ratingMax} enforced={game.enforceRatingRange} />
+            )}
+            {/* What the game is, before who is in it (#680): what it is played
+                with and whether it counts are what somebody joining agrees
+                to, and a friend count is still one hover away under "+N".
+                The mods first: "1 SIM" is short, and its colour already says
+                whether they keep the game ranked. */}
+            {simModCount > 0 && (
+              <i
+                className={simModsRanked ? "modded is-ranked" : "modded"}
+                title={t(simModsRanked ? "lobby.browser.simModsRanked" : "lobby.browser.simModsUnranked", { count: simModCount })}
+              >
+                {t("lobby.browser.simModBadge", { count: simModCount })}
+              </i>
+            )}
+            {unranked && <i className="unranked">{t("lobby.browser.unranked")}</i>}
+            {/* Only a mode other than the tab's own: "FAF" on nearly every tile
+                said nothing, and a rare one stands out because it is rare. As
+                in the list row, and spelled the way the Host Game dialog spells
+                it rather than as the `fafbeta` the server sends. */}
+            {otherMod && <i title={featuredModLabel(otherMod)}>{featuredModLabel(otherMod)}</i>}
+            {/* A count is a property of the lobby the way "unranked" and "3 SIM"
+                are, so it belongs with them and not off in the footer beside
+                the host's name. Who they are is the popover's job, which the
+                tag carries exactly as the list row's does. */}
+            {friends.length > 0 && (
+              <i
+                className="friend"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "friends");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.friendCount", { count: friends.length })}
+                aria-describedby={socialPosition && socialCategory === "friends" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {friendLabel}
+              </i>
+            )}
+            {foes.length > 0 && (
+              <i
+                className="foe"
+                onMouseEnter={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onMouseLeave={hideSocial}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  showSocial(e.currentTarget, "foes");
+                }}
+                onBlur={hideSocial}
+                tabIndex={0}
+                role="button"
+                aria-label={t("lobby.browser.foeCount", { count: foes.length })}
+                aria-describedby={socialPosition && socialCategory === "foes" ? socialPopoverId : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {foeLabel}
+              </i>
+            )}
+            {goAdapter && <i className="go-adapter" title={t("lobby.browser.goAdapterTitle")}>{t("lobby.browser.goAdapter")}</i>}
+            {expJavaAdapter && <i className="go-adapter" title={t("lobby.browser.expJavaAdapterTitle")}>{t("lobby.browser.expJavaAdapter")}</i>}
+          </FittingChips>
+        )}
         {/* Who can still get in, at the bottom: whether there is room reads
             from the dots before the numbers are read, and the rating beside
             them says who is in. How long the lobby has been open closes the

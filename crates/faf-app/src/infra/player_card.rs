@@ -1454,6 +1454,7 @@ fn maximum_history_point(doc: &JsonApiDoc) -> Option<RatingHistoryPoint> {
             period: RatingHistoryPeriod::All,
             page: 1,
             page_size: 100,
+            latest_games: None,
         },
     )
     .points
@@ -2204,6 +2205,7 @@ mod tests {
             period: RatingHistoryPeriod::All,
             page: 1,
             page_size: 1000,
+            latest_games: None,
         };
         let page = parse_history(&doc, &query);
         assert_eq!(page.points[0].rating, 1400.0);

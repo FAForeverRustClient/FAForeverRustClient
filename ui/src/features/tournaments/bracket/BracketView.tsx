@@ -34,7 +34,7 @@ import type {
   Tourney,
   TourneyAdmin,
   TourneyMatch,
-  VaultMap,
+  MapSummary,
 } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { FfaLobby } from "./FfaLobby";
@@ -203,7 +203,7 @@ interface BracketViewProps {
   event: Tourney;
   profiles: PlayerSummary[];
   busyMatchId: string | null;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Where the service lives, for the organisers' uploaded map pictures. */
   assetBase: string;
   /**

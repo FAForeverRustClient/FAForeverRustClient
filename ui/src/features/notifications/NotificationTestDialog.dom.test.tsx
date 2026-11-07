@@ -50,7 +50,8 @@ it("shows all three real card layouts and simulates dangerous actions without co
   await flush();
   expect(within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option")).toHaveLength(27);
   choose("notifications.test.event", "partyInvite");
-  fireEvent.click(document.querySelector(".desktop-notification-main")!);
+  // The invite has an action button, which acts; the rest of the card dismisses.
+  fireEvent.click(document.querySelector(".desktop-notification-action")!);
   expect(screen.getByRole("log").textContent).toContain(text("notifications.test.result.activated"));
   fireEvent.click(screen.getByRole("button", { name: text("notifications.test.surface.toast") }));
   expect(document.querySelector(".notification-test-gallery .notification-toast")).not.toBeNull();
@@ -87,11 +88,19 @@ it("cancels a scheduled notification when the dialog unmounts", async () => {
   expect(bridge.showNotificationPopup).not.toHaveBeenCalled();
 });
 
-it("keeps gallery previews visible and cancels a native test that never acknowledges display", async () => {
+it("lets gallery previews expire like real ones until they are held", async () => {
+  vi.useFakeTimers();
+  render(<NotificationTestDialog onClose={vi.fn()} />); await flush();
+  await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+  expect(document.querySelector(".notification-test-gallery .desktop-notification")).toBeNull();
+});
+
+it("keeps held gallery previews visible and cancels a native test that never acknowledges display", async () => {
   vi.useFakeTimers();
   let finish!: () => void;
   bridge.showNotificationPopup.mockReturnValue(new Promise<void>((resolve) => { finish = resolve; }));
   render(<NotificationTestDialog onClose={vi.fn()} />); await flush();
+  fireEvent.click(screen.getByRole("checkbox", { name: text("notifications.test.hold") })); await flush();
   await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
   expect(document.querySelector(".notification-test-gallery .desktop-notification")).not.toBeNull();
   fireEvent.click(screen.getByRole("button", { name: text("notifications.test.showDesktop") })); await flush();

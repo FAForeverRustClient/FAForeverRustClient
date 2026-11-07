@@ -85,6 +85,15 @@ export const ipc = {
     }).catch(() => {});
   },
 
+  /**
+   * Write a line to the client log saying a notification was not announced on
+   * the desktop, and why. Only for those, never for one that was delivered.
+   * Diagnostics only: a failure is ignored.
+   */
+  reportNotificationSkip(kind: string, outcome: string, detail?: string): void {
+    void invoke("report_notification_skip", { kind, outcome, detail: detail ?? null }).catch(() => {});
+  },
+
   /** Backend → UI: consistent snapshot for initial hydration. */
   snapshot(): Promise<VersionedSnapshot> {
     return invoke<VersionedSnapshot>("snapshot");

@@ -28,6 +28,7 @@
 mod avatars;
 mod connection;
 mod game_notifications;
+mod host_updates;
 mod joining;
 mod launch;
 mod matchmaking;
@@ -36,8 +37,8 @@ mod updates;
 use faf_domain::state::{HostGameConfig, JoinState, LobbyCommand, LobbyEvent};
 
 use crate::runtime::{
-    AutoReconnect, Cancellable, EventSink, LatestRequest, LobbyOperations, RunningGame, ServiceCtx,
-    SingleFlight,
+    account::AccountConnection, AutoReconnect, Cancellable, EventSink, LatestRequest,
+    LobbyOperations, RunningGame, ServiceCtx,
 };
 
 pub use connection::reconnect;
@@ -67,7 +68,7 @@ pub struct LobbyContext {
     /// Single-flight guard for the lobby connection while `Connect` owns an
     /// active/connecting socket. A redundant request is dropped, so overlapping
     /// connections cannot race and clobber each other's state.
-    active: SingleFlight,
+    active: AccountConnection,
     /// The lobby's joins, hosts and launch orders: which one is current,
     /// whether it was called off, and which join holds the single-flight join
     /// slot. See [`LobbyOperations`].
@@ -100,7 +101,9 @@ pub struct LobbyContext {
     /// The search being prepared before the server is asked for it, so that
     /// Stop, or the end of the connection, reaches the updater behind it. See
     /// `matchmaking::start_search`.
-    search_preparation: Cancellable<()>,
+    search_preparation: Cancellable<u64>,
+    /// A stop and a prepared search's outgoing submission must not interleave.
+    search_submission: std::sync::Mutex<()>,
     /// The running game's adapter link while no lobby connection is open.
     /// It lived in the connect loop and closed with it, which ended the
     /// adapter's input for good: after Disconnect and Connect mid-game, or a
@@ -141,11 +144,6 @@ impl LobbyContext {
     /// somebody else's game unless a new host request says otherwise.
     pub fn take_hosted(&self) -> Option<HostedGame> {
         self.hosted.lock().unwrap().take()
-    }
-
-    /// Record the game about to be asked for; see [`Self::take_hosted`].
-    pub(crate) fn set_hosted(&self, hosted: HostedGame) {
-        *self.hosted.lock().unwrap() = Some(hosted);
     }
 
     /// The game this client is playing, if any. Auth reads it so an offline
@@ -214,9 +212,10 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
         LobbyCommand::InviteToParty { player_id } => {
             matchmaking::invite_to_party(player_id, ctx, out)
         }
-        LobbyCommand::AcceptPartyInvite { player_id } => {
-            matchmaking::accept_party_invite(player_id, ctx, out)
-        }
+        LobbyCommand::AcceptPartyInvite {
+            player_id,
+            notification_id,
+        } => matchmaking::accept_party_invite(player_id, notification_id, ctx, out),
         LobbyCommand::SetPartyFactions { factions } => ctx.ports.lobby.set_party_factions(factions),
         LobbyCommand::SetPlayMode { mode } => out.emit(LobbyEvent::PlayModeChanged { mode }),
         LobbyCommand::SetPlayerVetoes { vetoes } => {

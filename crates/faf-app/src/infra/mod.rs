@@ -108,6 +108,7 @@ pub mod paths;
 pub mod player_card;
 pub mod png;
 pub mod relay;
+mod release_metadata;
 pub mod replay;
 pub(crate) mod replay_analysis;
 pub(crate) mod replay_recorder;

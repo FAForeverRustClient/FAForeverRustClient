@@ -36,7 +36,8 @@
 //! into fragments: the fragment count is in the projectile's blueprint, which
 //! this history does not read.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{hash_map::Entry, BTreeMap, BTreeSet, HashMap};
+use std::rc::Rc;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -752,36 +753,53 @@ pub fn build_history(
     base: &BaseGameBlueprint,
     fragments: &dyn Fn(&str) -> bool,
 ) -> UnitHistory {
-    let mut resolved: Vec<(UnitRelease, Option<UnitSnapshot>)> = Vec::with_capacity(releases.len());
+    let mut resolved = Vec::with_capacity(releases.len());
+    // Several tags can contain the same text. Its values depend only on that
+    // text and the base game and projectiles for this build.
+    let mut snapshots: HashMap<String, (UnitSource, Option<Rc<UnitSnapshot>>)> = HashMap::new();
+    let mut base_snapshot = None;
     for input in releases {
         let number = release_number(&input.release).unwrap_or(u32::MAX);
-        let (source, blueprint) = match input.blueprint {
+        let (source, snapshot) = match input.blueprint {
             ReleaseBlueprint::Failed(reason) => (UnitSource::Unavailable { reason }, None),
-            ReleaseBlueprint::Found(text) => match parse_blueprint(&text) {
-                Err(error) => (
-                    UnitSource::Unavailable {
-                        reason: format!("the blueprint could not be read: {error}"),
-                    },
-                    None,
-                ),
-                Ok(blueprint) => match (blueprint.flag(&["Merge"]), base) {
-                    (true, BaseGameBlueprint::Found(original)) => {
-                        (UnitSource::Repository, Some(merged(original, &blueprint)))
-                    }
-                    (true, BaseGameBlueprint::Unknown(reason)) => (
-                        UnitSource::Unavailable {
-                            reason: reason.clone(),
+            ReleaseBlueprint::Found(text) => match snapshots.entry(text) {
+                Entry::Occupied(entry) => entry.get().clone(),
+                Entry::Vacant(entry) => {
+                    let (source, blueprint) = match parse_blueprint(entry.key()) {
+                        Err(error) => (
+                            UnitSource::Unavailable {
+                                reason: format!("the blueprint could not be read: {error}"),
+                            },
+                            None,
+                        ),
+                        Ok(blueprint) => match (blueprint.flag(&["Merge"]), base) {
+                            (true, BaseGameBlueprint::Found(original)) => {
+                                (UnitSource::Repository, Some(merged(original, &blueprint)))
+                            }
+                            (true, BaseGameBlueprint::Unknown(reason)) => (
+                                UnitSource::Unavailable {
+                                    reason: reason.clone(),
+                                },
+                                None,
+                            ),
+                            _ => (UnitSource::Repository, Some(blueprint)),
                         },
-                        None,
-                    ),
-                    _ => (UnitSource::Repository, Some(blueprint)),
-                },
+                    };
+                    let values =
+                        blueprint.map(|blueprint| Rc::new(snapshot(&blueprint, fragments)));
+                    entry.insert((source, values)).clone()
+                }
             },
             ReleaseBlueprint::Missing if number >= EVERY_UNIT_FROM => (UnitSource::Absent, None),
             ReleaseBlueprint::Missing => match base {
-                BaseGameBlueprint::Found(original) => {
-                    (UnitSource::BaseGame, Some(original.clone()))
-                }
+                BaseGameBlueprint::Found(original) => (
+                    UnitSource::BaseGame,
+                    Some(
+                        base_snapshot
+                            .get_or_insert_with(|| Rc::new(snapshot(original, fragments)))
+                            .clone(),
+                    ),
+                ),
                 BaseGameBlueprint::Missing => (UnitSource::Absent, None),
                 BaseGameBlueprint::Unknown(reason) => (
                     UnitSource::Unavailable {
@@ -791,7 +809,6 @@ pub fn build_history(
                 ),
             },
         };
-        let snapshot = blueprint.map(|blueprint| snapshot(&blueprint, fragments));
         resolved.push((
             UnitRelease {
                 release: input.release,
@@ -856,7 +873,7 @@ pub fn build_history(
         let Some((was_present, before)) = previous else {
             // The first known release is the starting point, not a change;
             // a unit that exists in it is simply there from the start.
-            previous = Some((present, snapshot.as_ref()));
+            previous = Some((present, snapshot.as_deref()));
             continue;
         };
         let mut row = Vec::new();
@@ -865,7 +882,7 @@ pub fn build_history(
             (true, false) => row.push(UnitChange::Removed),
             _ => {}
         }
-        if let (Some(before), Some(after)) = (before, snapshot.as_ref()) {
+        if let (Some(before), Some(after)) = (before, snapshot.as_deref()) {
             for key in &keys {
                 let (old, new) = (before.values.get(key), after.values.get(key));
                 if old != new {
@@ -897,7 +914,7 @@ pub fn build_history(
                 changes: row,
             });
         }
-        previous = Some((present, snapshot.as_ref()));
+        previous = Some((present, snapshot.as_deref()));
     }
 
     UnitHistory {
@@ -1231,6 +1248,7 @@ mod tests {
     #[test]
     fn a_change_is_reported_once_and_every_release_keeps_its_value() {
         let buffed = STRIKER.replace("Damage = 24", "Damage = 26");
+        let projectile_checks = std::cell::Cell::new(0);
         let history = build_history(
             summary(),
             vec![
@@ -1239,7 +1257,15 @@ mod tests {
                 input("3802", found(&buffed)),
             ],
             &BaseGameBlueprint::Missing,
-            &no_fragments,
+            &|_| {
+                projectile_checks.set(projectile_checks.get() + 1);
+                false
+            },
+        );
+        assert_eq!(
+            projectile_checks.get(),
+            2,
+            "one snapshot per distinct blueprint"
         );
         assert_eq!(
             series(&history, &gun(WeaponStat::Damage)),

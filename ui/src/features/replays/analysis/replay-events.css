@@ -1,0 +1,5 @@
+.replay-events-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.replay-event-team-toggle { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-muted); font-size: 13px; }
+.replay-event-description { display: flex; align-items: center; gap: var(--space-2); }
+.replay-event-picture { flex: none; object-fit: contain; border-radius: var(--radius-sm); }
+.replay-event-team { font-size: 11px; }

@@ -6,7 +6,7 @@ import { useAppBackground } from "./shared/appBackground";
 import { useEffect, useRef, useState } from "react";
 import { ipc } from "./ipc/client";
 import { native } from "./ipc/native";
-import { RevisionedMirror } from "./ipc/revisionedMirror";
+import { RevisionedMirror, SnapshotRecoveryTimeoutError } from "./ipc/revisionedMirror";
 import { measureEventApply } from "./ipc/eventCost";
 import { useAppStore } from "./store/store";
 import { t } from "./i18n";
@@ -162,9 +162,11 @@ export function App() {
         () => ipc.snapshot(),
         (error) => {
           if (active) {
-            setCommandError(t("app.stateSyncFailed", {
-              reason: error instanceof Error ? error.message : String(error),
-            }));
+            setCommandError(
+              error instanceof SnapshotRecoveryTimeoutError
+                ? t("app.stateSyncTimedOut")
+                : t("app.stateSyncFailed", { reason: error instanceof Error ? error.message : String(error) }),
+            );
           }
         },
       );
@@ -200,19 +202,15 @@ export function App() {
   }, []);
 
   // The reference clients establish lobby and chat sessions as part of account
-  // login, rather than waiting for the user to open those tabs. Test mode stays
-  // local and keeps its existing on-demand fake connections.
+  // login, rather than waiting for the user to open those tabs. The fake
+  // lobby also starts here so Play can honor an explicit disconnect.
   useEffect(() => {
-    if (!hydrated || auth.status !== "loggedIn" || auth.mode !== "account" || !playerName) return;
+    if (!hydrated || auth.status !== "loggedIn" || auth.mode === "offline" || !playerName) return;
     ipc.send({ kind: "Lobby", command: { type: "connect" } });
-    ipc.send({ kind: "Chat", command: { type: "connect", payload: { username: playerName } } });
+    if (auth.mode === "account") {
+      ipc.send({ kind: "Chat", command: { type: "connect", payload: { username: playerName } } });
+    }
   }, [auth.mode, auth.status, hydrated, playerName]);
-
-  useEffect(() => {
-    if (!hydrated || auth.status !== "loggedOut") return;
-    ipc.send({ kind: "Lobby", command: { type: "disconnect" } });
-    ipc.send({ kind: "Chat", command: { type: "disconnect" } });
-  }, [auth.status, hydrated]);
 
   if (startupError) return <StartupView error={startupError} />;
   const content = !hydrated

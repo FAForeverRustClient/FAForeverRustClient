@@ -110,7 +110,8 @@
 }
 
 .events-search:focus-within {
-  border-color: var(--color-border-strong);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .events-search input {

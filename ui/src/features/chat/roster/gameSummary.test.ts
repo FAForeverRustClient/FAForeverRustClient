@@ -130,7 +130,7 @@ describe("game time", () => {
     );
     expect(presence).not.toBeNull();
     expect(gameElapsedSeconds(presence!, now)).toBe(4_320);
-    expect(formatGameTime(gameElapsedSeconds(presence!, now)!)).toBe("1h 12m");
+    expect(formatGameTime(gameElapsedSeconds(presence!, now)!)).toBe("1h 12m 00s");
   });
 
   it("measures a lobby from when it was hosted", () => {
@@ -145,7 +145,13 @@ describe("game time", () => {
       now,
     );
     expect(gameElapsedSeconds(presence!, now)).toBe(180);
-    expect(formatGameTime(180)).toBe("3m");
+    expect(formatGameTime(180)).toBe("3m 00s");
+  });
+
+  it("reads to the second, padding the parts after the first", () => {
+    expect(formatGameTime(312)).toBe("5m 12s");
+    expect(formatGameTime(3_661)).toBe("1h 01m 01s");
+    expect(formatGameTime(4_325.9)).toBe("1h 12m 05s");
   });
 
   it("has nothing to say when the lobby never said", () => {
@@ -161,6 +167,6 @@ describe("game time", () => {
       now,
     );
     expect(gameElapsedSeconds(presence!, now)).toBe(0);
-    expect(formatGameTime(0)).toBe("0m");
+    expect(formatGameTime(0)).toBe("0m 00s");
   });
 });

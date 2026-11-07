@@ -14,9 +14,11 @@ Vendored from `FAForever/downlords-faf-client`, which carries it under the
 Pixabay licence; see `THIRD_PARTY_NOTICES.md`.
 
 Each of the twelve notification kinds picks one, in Settings, Notifications.
-Eleven default to `chime`, the tone the client played for everything before the
-picker existed. **A found match defaults to `fafMatch`**, because it is the one
-notification that expires: miss it and the match is gone.
+Most default to `chime`, the tone the client played for everything before the
+picker existed. **A found match and a filled lobby default to `alert`**,
+because they expire: miss them and the match is gone or the game launches
+without you. A found match first defaulted to `fafMatch`; it was too long and
+harsh to hear by default, so it is now a choice in the dropdown.
 
 ### Changing a default later
 
@@ -30,7 +32,10 @@ default" rather than chosen.
 The rule for version 1 is `chime` in the match-found row: every file written
 before this had it, and nobody could have meant it, because it was what all
 twelve said. Anything else there -- including a deliberate `silent` -- is a
-choice and is left alone.
+choice and is left alone. Version 2 does the same for `chime` in the
+game-full row. Version 3 moves `fafMatch` in the match-found row to `alert`,
+since that was the version 2 default; picking `fafMatch` again afterwards
+sticks.
 
 ## Sounds a player adds
 

@@ -1,19 +1,17 @@
 // Two of the analysis panels: who did how much, and what the game announced
 // while they were doing it.
 //
-// Both are the Python client's own tabs (`maintab.py` and `events_tab.py` in
-// FAForever/client), drawn as tables rather than as the HTML that client builds
-// and without its icon sheets: the enhancement pictures are game assets this
-// client does not ship, so an upgrade is named rather than drawn.
+// The summary is drawn as a table. The event panel is kept separately and
+// reads its unit and enhancement pictures from the installed game.
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Icon } from "../../../design-system/Icon";
 import type { ReplayAnalysis } from "../../../ipc/bindings";
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { PlayerName } from "../../../shared/components/nameColors";
 import { formatDecimal } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
-import { analysedPlayers, formatGameTime, playerColor } from "./replayAnalysis";
+import { analysedPlayers, formatGameTime } from "./replayAnalysis";
 
 /**
  * The lineup, with what each player did in the game.
@@ -104,92 +102,4 @@ export function ReplayPlayersPanel({ analysis }: { analysis: ReplayAnalysis }) {
   );
 }
 
-/**
- * What the in-game notification mod announced, as a timeline.
- *
- * These are not chat. The game sends them through the same callback with the
- * channel set to `notify`, which is how a client knows that somebody started or
- * finished an upgrade without watching the game. The Python client turns each
- * into an icon; this names it, because the pictures are the game's own assets.
- */
-export function ReplayEventsPanel({ analysis }: { analysis: ReplayAnalysis }) {
-  const { t } = useTranslation();
-  const [player, setPlayer] = useState("");
-  const bySource = useMemo(
-    () => new Map(analysis.armies.map((army) => [army.source, army])),
-    [analysis.armies],
-  );
-  const events = useMemo(
-    () => analysis.notices.filter((notice) => {
-      if (!player) return true;
-      return bySource.get(notice.source)?.name === player;
-    }),
-    [analysis.notices, bySource, player],
-  );
-
-  if (analysis.notices.length === 0) {
-    return <p className="replay-detail-empty muted">{t("replays.insights.noEvents")}</p>;
-  }
-
-  return (
-    <>
-      <div className="replay-insights-toolbar">
-        <label className="replay-insights-filter">
-          <span className="muted">{t("replays.insights.player")}</span>
-          <select
-            className="vault-input"
-            value={player}
-            onChange={(event) => setPlayer(event.target.value)}
-          >
-            <option value="">{t("replays.insights.everyone")}</option>
-            {analysis.armies.map((army) => (
-              <option key={`${army.source}-${army.name}`} value={army.name}>{army.name}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <div className="replay-table-scroll">
-        <table className="replay-data-table">
-          <thead>
-            <tr>
-              <th>{t("replays.detail.chatTime")}</th>
-              <th>{t("replays.insights.player")}</th>
-              <th>{t("replays.insights.event")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.length > 0 ? (
-              events.map((notice, index) => {
-                const army = bySource.get(notice.source);
-                return (
-                  <tr key={`${notice.tick}-${notice.source}-${index}`}>
-                    <td className="replay-chat-time">{formatGameTime(notice.tick)}</td>
-                    <td>
-                      <span className="replay-activity-player">
-                        {army && (
-                          <span
-                            className="replay-activity-swatch"
-                            style={{ background: playerColor(army.color) }}
-                            aria-hidden
-                          />
-                        )}
-                        <span>{army?.name ?? t("replays.insights.unknownPlayer")}</span>
-                      </span>
-                    </td>
-                    <td>{notice.text}</td>
-                  </tr>
-                );
-              })
-            ) : (
-              <tr>
-                <td colSpan={3} className="replay-table-empty muted">
-                  {t("replays.insights.noEventsForPlayer")}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </>
-  );
-}
+export { ReplayEventsPanel } from "./ReplayEventsPanel";

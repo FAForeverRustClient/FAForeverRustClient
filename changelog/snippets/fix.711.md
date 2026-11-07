@@ -1,0 +1,5 @@
+- "Last 100 games" on a player's rating history loads only those games instead of the whole history.
+- Joining a game from a Discord invite works: the client receives the click, and Discord can start a closed client.
+- The "new version available" notification has an "Update now" button that downloads and installs the update, instead of opening Settings.
+- A game tile in the Play tab always shows that the game is modded or unranked; tags that do not fit are counted as "+N more" and listed on hover.
+- In a small window the Play tab keeps "Host game" and the game details in view: the game list scrolls by itself instead of the whole page.

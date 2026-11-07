@@ -18,7 +18,7 @@ import { useMemo, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
-import type { MapListStatus, VaultMap } from "../../../ipc/bindings";
+import type { MapListStatus, MapSummary } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { MapPreview } from "../../../shared/components/MapPreview";
@@ -39,7 +39,7 @@ const loadVault = () => ipc.send({ kind: "Maps", command: { type: "loadVault" } 
 const SHOWN = 60;
 
 interface MapVaultPickerProps {
-  vault: VaultMap[];
+  vault: MapSummary[];
   vaultStatus: MapListStatus;
   /** Names already in the event's database, so a map cannot be added twice. */
   taken: string[];

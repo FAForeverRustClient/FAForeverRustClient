@@ -156,6 +156,23 @@ pub enum AuthEvent {
     LoggedOut,
 }
 
+impl AuthEvent {
+    /// A new sign-in attempt or authentication outcome ends the lifetime of
+    /// the previous account's in-memory activity. Socket reconnects do not.
+    pub fn resets_account_activity(&self) -> bool {
+        match self {
+            Self::SignInLinkReady { .. } => false,
+            Self::LoginStarted
+            | Self::LoggedIn { .. }
+            | Self::TestLoggedIn { .. }
+            | Self::WentOffline
+            | Self::Banned { .. }
+            | Self::LoginFailed { .. }
+            | Self::LoggedOut => true,
+        }
+    }
+}
+
 /// What the UI can ask the auth service to do.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
@@ -186,6 +203,7 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
     match event {
         AuthEvent::LoginStarted => {
             state.status = AuthStatus::LoggingIn;
+            state.player = None;
             state.error = None;
             state.sign_in_link = None;
         }

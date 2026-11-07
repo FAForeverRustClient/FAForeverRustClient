@@ -7,9 +7,10 @@
 //    again cycles through the other matches (Java's `AutoCompletionHelper`,
 //    Python's `ChatLineEdit.try_completion`). The nickname replaces the partial
 //    word and nothing else: neither reference client appends a separator, and
-//    the `: ` this used to add at the start of a line was ours alone. When
-//    there is nothing to complete, Tab moves focus as it does anywhere else
-//    (see `nickCompletion.ts`).
+//    the `: ` this used to add at the start of a line was ours alone. A word
+//    nobody here is called keeps the press in the box (#712); with no word
+//    before the caret at all, Tab moves focus as it does anywhere else (see
+//    `nickCompletion.ts`).
 //  * Up/Down walk the history of sent lines (Python's `prev_history`/
 //    `next_history`), so correcting a typo doesn't mean retyping.
 //

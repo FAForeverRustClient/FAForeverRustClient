@@ -55,6 +55,8 @@ pub(crate) enum Lane {
 pub(crate) enum Key {
     /// Contact-name lookup retries are single-flight.
     Contacts,
+    /// Keep the local relation and its outgoing frames in the same order.
+    ContactWrite,
     /// Replaceable reads: a newer query drops the older request future.
     ReplaySearch,
     MapSearch,
@@ -402,6 +404,7 @@ fn nav(command: &NavCommand) -> CommandPolicy {
 fn notifications(command: &NotificationCommand) -> CommandPolicy {
     match command {
         NotificationCommand::MarkRead { .. }
+        | NotificationCommand::MarkReadMany { .. }
         | NotificationCommand::Dismiss { .. }
         | NotificationCommand::Clear => ORDINARY,
     }
@@ -622,7 +625,7 @@ fn social(command: &SocialCommand) -> CommandPolicy {
     match command {
         SocialCommand::SetContactsOpen { .. } => ORDINARY,
         SocialCommand::ResolveContacts => single_flight(Key::Contacts),
-        SocialCommand::SetRelation { .. } => ORDINARY,
+        SocialCommand::SetRelation { .. } => serial(Key::ContactWrite),
         // A read whose answer is keyed by its login, so two at once are two
         // answers, never one overwriting the other.
         SocialCommand::LookUpLogin { .. } => ORDINARY,

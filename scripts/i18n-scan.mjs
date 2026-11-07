@@ -36,6 +36,7 @@ const target = args.find((arg) => !arg.startsWith("--") && arg !== String(budget
 // Files whose capitalised strings are data, not copy. Each carries its reason:
 // an unexplained ignore list is how real strings get lost.
 const IGNORED_FILES = new Map([
+  ["ui/src/ipc/bindings.ts", "generated wire contracts and compact-delta kind names, never UI copy"],
   ["ui/src/store/reducer.ts", "AppEvent kind discriminants, matched against the wire"],
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
   ["ui/src/shared/linuxRuntimeText.ts", "product names (GE-Proton, DXVK) and the shell commands that install packages"],

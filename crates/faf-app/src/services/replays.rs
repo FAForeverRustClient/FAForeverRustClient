@@ -10,8 +10,8 @@ use crate::ports::PreparationStep;
 use faf_domain::state::ReplayPreparation;
 use faf_domain::state::{
     live_replay_delay_remaining, LiveReplayTarget, LiveReplayTracking, LiveReplayTrackingAction,
-    NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayLaunch, ReplayQuery,
-    ResolvedReplayMap, VaultReplay,
+    NavEvent, NotificationAction, NotificationKind, ReplayCommand, ReplayEvent, ReplayLaunch,
+    ReplayQuery, ResolvedReplayMap, Tab, VaultReplay,
 };
 use std::collections::HashMap;
 use std::{path::PathBuf, time::Duration};
@@ -551,6 +551,12 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
             out.emit(ReplayEvent::LiveTrackingCleared);
 
             match action {
+                // A friend's game may have been announced as watchable at this
+                // very second; one offer to watch it is enough.
+                LiveReplayTrackingAction::Notify
+                    if out.with_state(|state| {
+                        notifications::announces_watch(state, tracking.target.uid)
+                    }) => {}
                 LiveReplayTrackingAction::Notify => notifications::add_text(
                     out,
                     NotificationKind::ReplayAvailable,
@@ -578,6 +584,7 @@ pub async fn handle(cmd: ReplayCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         ReplayCommand::CancelLiveTracking => out.emit(ReplayEvent::LiveTrackingCleared),
         ReplayCommand::OpenFile { path } => {
+            out.emit(NavEvent::TabSelected { tab: Tab::Replays });
             cancel_live_tracking(out);
             let Some(ticket) = begin_launch(ctx, out, LaunchTarget::File(path.clone())) else {
                 return;

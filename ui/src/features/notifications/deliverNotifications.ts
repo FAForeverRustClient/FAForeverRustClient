@@ -12,6 +12,16 @@ import { happensInView, RepeatCooldown } from "./notificationGate";
 export type DeliveryOutcome = "disabled" | "eventDisabled" | "inView" | "cooldown" | "channelsOff" | "gameFocused" | "soundMuted"
   | "sound" | "client" | "desktop" | "system" | "permissionDenied" | "desktopFailed" | "focusSuppressed";
 export type DeliveryResult = { id: string; outcome: DeliveryOutcome; detail?: string };
+
+/**
+ * The outcomes that leave a live notification in the bell without reaching
+ * the desktop, which the client log records so a missing popup can be
+ * explained. Not `inView`: a reply in the conversation being read is not
+ * missing anything, and an active chat would fill the log with them.
+ */
+export const UNANNOUNCED_OUTCOMES: ReadonlySet<DeliveryOutcome> = new Set<DeliveryOutcome>([
+  "disabled", "cooldown", "channelsOff", "gameFocused", "focusSuppressed", "desktopFailed", "permissionDenied",
+]);
 export type DeliveryOptions = {
   state: () => AppState;
   showInside: (items: ClientNotification[]) => void;
@@ -48,14 +58,19 @@ export async function deliverNotifications(items: ClientNotification[], options:
     && (options.current?.(item) ?? state().notifications.items.some((n) => n.id === item.id && !n.read));
   const record = (candidates: ClientNotification[], outcome: DeliveryOutcome, detail?: string) => candidates.forEach((item) => report?.({ id: item.id, outcome, detail }));
   const focused = await native.isWindowFocused().catch(() => document.hasFocus());
-  const gameFocused = items.some((item) => item.kind === "gameFull") && await native.gameNotificationAttention().catch(() => false);
-  if (!focused && !gameFocused) void native.requestAttention().catch(() => undefined);
+  // The game's own taskbar entry flashes for a filled lobby; the switch covers it too.
+  const flash = state().settings.notifications.flashTaskbar;
+  const gameFocused = items.some((item) => item.kind === "gameFull")
+    && await native.gameNotificationAttention(false, flash).catch(() => false);
   const visible = items.filter((item) => {
     if (item.kind === "gameFull" && gameFocused) { record([item], "gameFocused"); return false; }
     if (!current(item)) { record([item], "disabled"); return false; }
     return true;
   });
   const latest = state().settings.notifications;
+  if (latest.flashTaskbar && !focused && !gameFocused && visible.length > 0) {
+    void native.requestAttention().catch(() => undefined);
+  }
   visible.forEach((item) => {
     if (deliveryFor(item.kind, latest).sound) {
       const sound = soundForKind(item.kind, latest.sounds);

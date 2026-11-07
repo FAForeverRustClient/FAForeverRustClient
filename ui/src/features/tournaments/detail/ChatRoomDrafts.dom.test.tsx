@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import { useAppStore } from "../../../store/store";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { en } from "../../../i18n/catalog/en";
@@ -69,15 +70,12 @@ describe("tournament room drafts", () => {
         chat={chat}
       />
     );
-    const login = () => applyEvent({
-      kind: "Auth",
-      event: { type: "loggedIn", payload: { player: { id: 1, name: "First", roles: [] } } },
-    });
+    const login = () => applyEvent({ kind: "Auth", event: { ...useAppStore.getState().state.auth, status: "loggedIn", player: { id: 1, name: "First", roles: [] }, mode: "account", error: null, signInLink: null } });
     login();
     const { unmount } = render(room);
     const input = screen.getByRole<HTMLInputElement>("textbox", { name: en["tournaments.chat.placeholder"] });
     fireEvent.change(input, { target: { value: "Private tournament draft" } });
-    applyEvent({ kind: "Auth", event: { type: "loggedOut" } });
+    applyEvent({ kind: "Auth", event: { ...useAppStore.getState().state.auth, status: "loggedOut", player: null, mode: "account", error: null, signInLink: null } });
     expect(input.value).toBe("");
     unmount();
     login();

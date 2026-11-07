@@ -13,10 +13,12 @@ use std::sync::{Arc, Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuar
 use faf_domain::{AppCommand, AppEvent, AppState};
 use serde::Serialize;
 use tokio::sync::{broadcast, mpsc, oneshot, OwnedSemaphorePermit, Semaphore};
+use tokio_util::sync::CancellationToken;
 
 use crate::ports::Ports;
 use crate::services;
 
+pub(crate) mod account;
 mod cancellation;
 mod census;
 mod command_policy;
@@ -73,8 +75,9 @@ pub struct ServiceCtx {
 /// The sink a service emits events into.
 ///
 /// `emit` is the single chokepoint where state changes: it reduces the event into
-/// the authoritative state and then broadcasts the *same* event to subscribers
-/// (the Tauri shell, which forwards it to the frontend).
+/// the authoritative state and broadcasts the event to backend subscribers.
+/// Window replacements are captured under the reduction guard; large slices
+/// keep compact deltas, moved into their window message by the shell.
 #[derive(Clone)]
 pub struct EventSink {
     state: Arc<RwLock<AppState>>,
@@ -85,6 +88,8 @@ pub struct EventSink {
     /// N+1 is handed out. Held by [`EventSink::emit`] across the whole
     /// operation; never taken by a reader. See the note on `emit`.
     send_order: Arc<Mutex<()>>,
+    account: Arc<Mutex<CancellationToken>>,
+    account_scope: Option<CancellationToken>,
 }
 
 /// One state delta with the exact authoritative-state revision it produced.
@@ -98,6 +103,9 @@ pub struct EventSink {
 pub struct VersionedEvent {
     pub revision: u64,
     pub event: AppEvent,
+    /// `None` means the original event is an explicitly retained compact delta.
+    /// A replacement is captured here, never by reading state later in the shell.
+    pub update: Option<faf_domain::frontend::FrontendUpdate>,
 }
 
 /// An authoritative state snapshot and its revision, including any recovery
@@ -192,15 +200,67 @@ impl EventSink {
     /// under that same guard. The next delivered event deliberately skips it
     /// so an older frontend mirror resnapshots the possibly partial state.
     pub fn emit(&self, event: impl Into<AppEvent>) {
-        let event = event.into();
+        let _ = self.emit_event(event.into());
+    }
+
+    /// A transition caused by account-owned work can report into the session
+    /// it just opened, without accidentally acquiring a later session.
+    pub(crate) fn transition_account(&self, event: faf_domain::state::AuthEvent) -> Option<Self> {
+        self.emit_event(event.into())
+            .map(|token| self.with_account_token(token))
+    }
+
+    pub(crate) fn account_token(&self) -> CancellationToken {
+        self.account_scope
+            .clone()
+            .unwrap_or_else(|| lock_runtime(&self.account, "account session").clone())
+    }
+
+    pub(crate) fn scoped_to_account(&self) -> Self {
+        self.with_account_token(self.account_token())
+    }
+
+    fn with_account_token(&self, token: CancellationToken) -> Self {
+        Self {
+            account_scope: Some(token),
+            ..self.clone()
+        }
+    }
+
+    fn emit_event(&self, event: AppEvent) -> Option<CancellationToken> {
         let _delivery = lock_runtime(&self.send_order, "event delivery");
+        // The check and the auth reset are serialized with reduction. A late
+        // message cannot pass the check just before logout and land after it.
+        if self
+            .account_scope
+            .as_ref()
+            .is_some_and(CancellationToken::is_cancelled)
+            && matches!(
+                &event,
+                AppEvent::Chat(_) | AppEvent::Notifications(_) | AppEvent::Auth(_)
+            )
+        {
+            return None;
+        }
         let started = std::time::Instant::now();
-        let revision = {
+        let (revision, update, next_account) = {
             let mut guard = write_state(&self.state, &self.revision);
             faf_domain::reduce(&mut guard, &event);
-            self.revision
+            let next_account = if matches!(&event, AppEvent::Auth(auth) if auth.resets_account_activity())
+            {
+                let mut current = lock_runtime(&self.account, "account session");
+                let next = CancellationToken::new();
+                std::mem::replace(&mut *current, next.clone()).cancel();
+                Some(next)
+            } else {
+                None
+            };
+            let update = faf_domain::frontend::FrontendUpdate::capture(&guard, &event);
+            let revision = self
+                .revision
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
-                .wrapping_add(1)
+                .wrapping_add(1);
+            (revision, update, next_account)
         };
         // Every reader and every other emitter waits for this, so a reducer
         // that has become expensive at a populated catalogue should say so.
@@ -219,7 +279,12 @@ impl EventSink {
         if self.tx.receiver_count() > 0 {
             let _ = self.tx.send(event.clone());
         }
-        let _ = self.versioned_tx.send(VersionedEvent { revision, event });
+        let _ = self.versioned_tx.send(VersionedEvent {
+            revision,
+            event,
+            update,
+        });
+        next_account
     }
 
     /// A snapshot of the authoritative state, for a test that wants to read
@@ -270,10 +335,16 @@ pub struct App {
     event_tx: broadcast::Sender<AppEvent>,
     versioned_event_tx: broadcast::Sender<VersionedEvent>,
     revision: Arc<AtomicU64>,
+    account: Arc<Mutex<CancellationToken>>,
     /// The game port, for [`Self::replay_upload_pending`]: the one thing about
     /// a game's end the state does not record.
     process: Arc<dyn crate::ports::ProcessPort>,
     lesson_results: Arc<std::sync::atomic::AtomicUsize>,
+    /// For [`Self::sweep_generated_maps`], which runs as the process exits,
+    /// when the command loop may already be gone.
+    settings: Arc<dyn crate::ports::SettingsPort>,
+    map_generator: Arc<dyn crate::ports::MapGeneratorPort>,
+    generated_map_protection: SerialMutation,
 }
 
 /// The command-processing loop. Spawn `run()` on any async runtime.
@@ -287,6 +358,7 @@ pub struct AppLoop {
 
 struct QueuedCommand {
     command: AppCommand,
+    account: CancellationToken,
     completion: Option<oneshot::Sender<()>>,
     /// When it was dispatched, from [`ReleaseOrder::stamp`].
     seq: u64,
@@ -374,9 +446,17 @@ impl ReleaseOrder {
             }
         }
         if let Some(PairHalf::Release(pair)) = command_policy::policy(command).pair {
-            lock_runtime(&self.released, "released command pairs").insert(pair, seq);
+            self.record_release(pair, seq);
         }
         seq
+    }
+
+    fn record_release(&self, pair: Pair, seq: u64) {
+        // Callers allocate stamps before taking this lock and can reach it
+        // out of order. Keep the latest cancellation for each pair.
+        let mut released = lock_runtime(&self.released, "released command pairs");
+        let latest = released.entry(pair).or_insert(seq);
+        *latest = (*latest).max(seq);
     }
 
     fn superseded(&self, command: &AppCommand, seq: u64) -> bool {
@@ -420,7 +500,10 @@ impl App {
         let revision = Arc::new(AtomicU64::new(0));
         let order = Arc::new(ReleaseOrder::default());
         let send_order = Arc::new(Mutex::new(()));
+        let account = Arc::new(Mutex::new(CancellationToken::new()));
         let process = ports.process.clone();
+        let settings = ports.settings.clone();
+        let map_generator = ports.map_generator.clone();
 
         let sink = EventSink {
             state: state.clone(),
@@ -428,6 +511,8 @@ impl App {
             versioned_tx: versioned_event_tx.clone(),
             revision: revision.clone(),
             send_order: send_order.clone(),
+            account: account.clone(),
+            account_scope: None,
         };
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),
@@ -460,6 +545,7 @@ impl App {
 
         let app = Self {
             state,
+            account,
             cmd_tx,
             urgent_tx,
             order: order.clone(),
@@ -468,6 +554,9 @@ impl App {
             revision,
             process,
             lesson_results: ctx.training.lesson_results.clone(),
+            settings,
+            map_generator,
+            generated_map_protection: ctx.settings.generated_map_protection.clone(),
         };
         let app_loop = AppLoop {
             cmd_rx,
@@ -483,12 +572,7 @@ impl App {
     /// queue is busy and reporting a stopped runtime to the caller.
     pub async fn dispatch(&self, cmd: AppCommand) -> Result<(), String> {
         self.queue_for(&cmd)
-            .send(QueuedCommand {
-                queued_at: std::time::Instant::now(),
-                seq: self.order.stamp(&cmd),
-                command: cmd,
-                completion: None,
-            })
+            .send(self.queued(cmd, None))
             .await
             .map_err(|_| "application command loop is not running".to_string())
     }
@@ -501,12 +585,7 @@ impl App {
     pub async fn dispatch_and_wait(&self, cmd: AppCommand) -> Result<(), String> {
         let (completion, finished) = oneshot::channel();
         self.queue_for(&cmd)
-            .send(QueuedCommand {
-                queued_at: std::time::Instant::now(),
-                seq: self.order.stamp(&cmd),
-                command: cmd,
-                completion: Some(completion),
-            })
+            .send(self.queued(cmd, Some(completion)))
             .await
             .map_err(|_| "application command loop is not running".to_string())?;
         finished
@@ -517,12 +596,7 @@ impl App {
     /// Send a command without awaiting (for sync call sites like Tauri commands).
     pub fn try_dispatch(&self, cmd: AppCommand) -> Result<(), String> {
         self.queue_for(&cmd)
-            .try_send(QueuedCommand {
-                queued_at: std::time::Instant::now(),
-                seq: self.order.stamp(&cmd),
-                command: cmd,
-                completion: None,
-            })
+            .try_send(self.queued(cmd, None))
             .map_err(|error| match error {
                 mpsc::error::TrySendError::Full(_) => {
                     "application command queue is full".to_string()
@@ -531,6 +605,20 @@ impl App {
                     "application command loop is not running".to_string()
                 }
             })
+    }
+
+    fn queued(
+        &self,
+        command: AppCommand,
+        completion: Option<oneshot::Sender<()>>,
+    ) -> QueuedCommand {
+        QueuedCommand {
+            queued_at: std::time::Instant::now(),
+            account: lock_runtime(&self.account, "account session").clone(),
+            seq: self.order.stamp(&command),
+            command,
+            completion,
+        }
     }
 
     /// The queue a command waits in. Cancellations get their own, so a
@@ -638,6 +726,32 @@ impl App {
             .load(std::sync::atomic::Ordering::SeqCst)
             != 0
     }
+
+    /// Delete the generated maps nobody asked to keep, for the shell to call
+    /// as the client exits (#720). The Java client does the same on exit
+    /// (`MapGeneratorService.destroy`); this one only ever deleted them from
+    /// the Maps tab's clean-up button, so a generated map stayed on disk for
+    /// good unless somebody went and pressed it.
+    ///
+    /// Spared as by that button: favourites, and the maps on the keep list.
+    /// Merge saved and live protections so a pending settings write cannot
+    /// lose a favourite. An unreadable file or a running game skips deletion.
+    pub async fn sweep_generated_maps(&self) -> Result<usize, String> {
+        let _protection = self.generated_map_protection.acquire().await;
+        if self.process.game_running() {
+            return Ok(0);
+        }
+        crate::services::map_generator::clean_up_generated_maps(
+            self.settings.as_ref(),
+            self.map_generator.as_ref(),
+            || {
+                self.with_state(|state| {
+                    crate::services::map_generator::protected_generated_maps(&state.settings)
+                })
+            },
+        )
+        .await
+    }
 }
 
 impl AppLoop {
@@ -683,9 +797,13 @@ impl AppLoop {
         let sink = self.sink.clone();
         // Admitted here, synchronously, as the command leaves its queue: see
         // `CommandAdmission` for why the place is taken before the task starts.
-        let handle = move |command: AppCommand| {
+        let handle = move |command: AppCommand, account: CancellationToken| {
             let ctx = ctx.clone();
-            let sink = sink.clone();
+            let sink = if matches!(command, AppCommand::Auth(_)) {
+                sink.clone()
+            } else {
+                sink.with_account_token(account)
+            };
             let admission = command_policy::policy(&command).admission;
             let turn = ctx.admission.admit(admission);
             // Claim analysis before spawning: a close or replacement can run
@@ -823,7 +941,7 @@ async fn drive<H, F>(
     limits: Limits,
     handle: H,
 ) where
-    H: Fn(AppCommand) -> F,
+    H: Fn(AppCommand, CancellationToken) -> F,
     F: std::future::Future<Output = ()> + Send + 'static,
 {
     let ordinary_permits = Arc::new(Semaphore::new(limits.ordinary));
@@ -960,7 +1078,7 @@ fn spawn_command<H, F>(
     handle: &H,
     running: &Running,
 ) where
-    H: Fn(AppCommand) -> F,
+    H: Fn(AppCommand, CancellationToken) -> F,
     F: std::future::Future<Output = ()> + Send + 'static,
 {
     let name = command_name(&queued.command);
@@ -976,7 +1094,7 @@ fn spawn_command<H, F>(
         );
     }
     let id = running.start(name);
-    let work = handle(queued.command);
+    let work = handle(queued.command, queued.account);
     let completion = queued.completion;
     let running = running.clone();
     tokio::spawn(async move {
@@ -1017,6 +1135,21 @@ pub(crate) fn run_command<'a>(
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
 async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
+    if sink
+        .account_scope
+        .as_ref()
+        .is_some_and(CancellationToken::is_cancelled)
+        && matches!(
+            &cmd,
+            AppCommand::Chat(_) | AppCommand::Notifications(_) | AppCommand::Lobby(_)
+        )
+        && !matches!(
+            &cmd,
+            AppCommand::Lobby(faf_domain::state::LobbyCommand::TerminateGame)
+        )
+    {
+        return;
+    }
     match cmd {
         AppCommand::Session(c) => services::session::handle(c, ctx, sink).await,
         AppCommand::Auth(c) => services::auth::handle(c, ctx, sink).await,
@@ -1058,6 +1191,91 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn account_isolation_clears_activity_and_rejects_late_events() {
+        use faf_domain::frontend::FrontendUpdate;
+        use faf_domain::state::{
+            AuthEvent, ChatEvent, ChatMessage, ChatMessageKind, NotificationKind, Player,
+        };
+
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        let sink = &app_loop.sink;
+        sink.emit(AuthEvent::LoggedIn {
+            player: Player::new(1, "First"),
+        });
+        let first = sink.scoped_to_account();
+        let message = || ChatEvent::MessageReceived {
+            channel: "Contact".into(),
+            message: ChatMessage {
+                id: "private".into(),
+                sender: "Contact".into(),
+                content: "private message".into(),
+                timestamp: "2026-01-01T00:00:00Z".into(),
+                kind: ChatMessageKind::Message,
+                msgid: String::new(),
+                reply_to: String::new(),
+            },
+        };
+        let notify = |out: &EventSink| {
+            services::notifications::add(
+                out,
+                NotificationKind::PrivateMessage,
+                "Message from Contact",
+                "private message",
+                None,
+            );
+        };
+        first.emit(message());
+        notify(&first);
+        first.emit(ChatEvent::Disconnected);
+        first.emit(ChatEvent::Connected {
+            username: "First".into(),
+        });
+        assert_eq!(
+            app.with_state(|state| state.chat.channels[0].messages.len()),
+            1
+        );
+        assert_eq!(app.with_state(|state| state.notifications.items.len()), 1);
+
+        let (mut events, _) = app.subscribe_versioned_with_snapshot();
+        sink.emit(AuthEvent::LoggedOut);
+        let logout = events.try_recv().unwrap();
+        let Some(FrontendUpdate::AccountSession(update)) = logout.update else {
+            panic!("logout must reset the mirror in one update");
+        };
+        assert!(update.chat.channels.is_empty());
+        assert!(update.chat.retained_histories.is_empty());
+        assert!(update.notifications.items.is_empty());
+        assert!(update.auth.player.is_none());
+
+        sink.emit(AuthEvent::LoggedIn {
+            player: Player::new(2, "Second"),
+        });
+        let before = app.versioned_snapshot().revision;
+        first.emit(message());
+        notify(&first);
+        first.emit(AuthEvent::Banned {
+            message: "late refusal".into(),
+        });
+        let after = app.versioned_snapshot();
+        assert_eq!(
+            after.revision, before,
+            "stale events must not reach either stream"
+        );
+        assert_eq!(after.state.auth.player.unwrap().id, 2);
+        assert!(after.state.chat.channels.is_empty());
+        assert!(after.state.notifications.items.is_empty());
+
+        let second = sink.scoped_to_account();
+        second.emit(message());
+        notify(&second);
+        assert_eq!(
+            app.with_state(|state| state.chat.channels[0].messages.len()),
+            1
+        );
+        assert_eq!(app.with_state(|state| state.notifications.items.len()), 1);
+    }
+
     #[tokio::test]
     async fn dispatch_reports_a_stopped_command_loop() {
         let (app, app_loop) = App::new("test", crate::infra::fake_ports());
@@ -1088,6 +1306,39 @@ mod tests {
         // A cancellation still gets through: it has a queue of its own.
         app.try_dispatch(faf_domain::state::LobbyCommand::CancelJoin.into())
             .expect("a cancellation must not wait behind a full ordinary queue");
+    }
+
+    #[tokio::test]
+    async fn replay_open_waits_for_capacity_before_navigating() {
+        use faf_domain::state::{ReplayCommand, SocialCommand, Tab};
+
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        while app
+            .try_dispatch(
+                SocialCommand::LookUpLogin {
+                    login: String::new(),
+                }
+                .into(),
+            )
+            .is_ok()
+        {}
+        let opening = app.dispatch_and_wait(
+            ReplayCommand::OpenFile {
+                path: "fixture.fafreplay".into(),
+            }
+            .into(),
+        );
+        tokio::pin!(opening);
+        assert!(futures_util::poll!(&mut opening).is_pending());
+        assert_ne!(app.snapshot().nav.active_tab, Tab::Replays);
+
+        let task = tokio::spawn(app_loop.run());
+        tokio::time::timeout(std::time::Duration::from_secs(2), opening)
+            .await
+            .expect("the replay open reached the core")
+            .unwrap();
+        assert_eq!(app.snapshot().nav.active_tab, Tab::Replays);
+        task.abort();
     }
 
     #[test]
@@ -1160,7 +1411,7 @@ mod tests {
         let handle = {
             let started = started.clone();
             let gate = gate.clone();
-            move |command: AppCommand| {
+            move |command: AppCommand, _account: CancellationToken| {
                 let started = started.clone();
                 let gate = gate.clone();
                 async move {
@@ -1186,6 +1437,7 @@ mod tests {
 
         let queued = |command: AppCommand| QueuedCommand {
             queued_at: std::time::Instant::now(),
+            account: CancellationToken::new(),
             command,
             completion: None,
             seq: 0,
@@ -1215,6 +1467,7 @@ mod tests {
         urgent_tx
             .send(QueuedCommand {
                 queued_at: std::time::Instant::now(),
+                account: CancellationToken::new(),
                 command: LobbyCommand::CancelJoin.into(),
                 completion: Some(completion),
                 seq: 0,
@@ -1265,6 +1518,7 @@ mod tests {
         };
         let queued = |command: AppCommand, completion| QueuedCommand {
             queued_at: std::time::Instant::now(),
+            account: CancellationToken::new(),
             seq: order.stamp(&command),
             command,
             completion,
@@ -1276,7 +1530,7 @@ mod tests {
         let gate = Arc::new(tokio::sync::Semaphore::new(0));
         let handle = {
             let (starts, gate) = (starts.clone(), gate.clone());
-            move |command: AppCommand| {
+            move |command: AppCommand, _account: CancellationToken| {
                 let (starts, gate) = (starts.clone(), gate.clone());
                 async move {
                     match command {
@@ -1364,6 +1618,7 @@ mod tests {
         let order = Arc::new(ReleaseOrder::default());
         let queued = |command: AppCommand, completion| QueuedCommand {
             queued_at: std::time::Instant::now(),
+            account: CancellationToken::new(),
             seq: order.stamp(&command),
             command,
             completion,
@@ -1374,7 +1629,7 @@ mod tests {
         let gate = Arc::new(Semaphore::new(0));
         let handle = {
             let (starts, gate) = (starts.clone(), gate.clone());
-            move |command: AppCommand| {
+            move |command: AppCommand, _account: CancellationToken| {
                 let (starts, gate) = (starts.clone(), gate.clone());
                 async move {
                     match command {
@@ -1568,6 +1823,19 @@ mod tests {
         );
     }
 
+    #[test]
+    fn an_older_release_cannot_overwrite_a_newer_release_for_the_same_pair() {
+        use faf_domain::state::MapsCommand;
+
+        let order = ReleaseOrder::default();
+        let start = MapsCommand::LoadVault.into();
+        order.record_release(Pair::MapVault, 3);
+        order.record_release(Pair::MapVault, 1);
+
+        assert!(order.superseded(&start, 2));
+        assert!(!order.superseded(&start, 4));
+    }
+
     #[tokio::test]
     async fn details_cancelled_before_their_first_poll_never_read_or_settle() {
         use faf_domain::state::ReplayCommand;
@@ -1723,6 +1991,78 @@ mod tests {
         let snapshot = app.versioned_snapshot();
         assert_eq!(snapshot.revision, event.revision);
         assert_eq!(snapshot.state.session.status, ConnectionStatus::Connecting);
+    }
+
+    #[tokio::test]
+    async fn window_replacements_capture_the_state_at_their_own_revision() {
+        use faf_domain::frontend::FrontendUpdate;
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        let (mut events, _) = app.subscribe_versioned_with_snapshot();
+        app_loop.sink.emit(SessionEvent::Connecting);
+        app_loop.sink.emit(SessionEvent::BackendReady {
+            version: "1.2.3".into(),
+            offline_auth: true,
+        });
+        let first = events.recv().await.unwrap();
+        let second = events.recv().await.unwrap();
+        assert_eq!(second.revision, first.revision + 1);
+        let Some(FrontendUpdate::Session(first_state)) = first.update else {
+            panic!("first replacement")
+        };
+        let Some(FrontendUpdate::Session(second_state)) = second.update else {
+            panic!("second replacement")
+        };
+        assert_eq!(first_state.status, ConnectionStatus::Connecting);
+        assert_eq!(second_state.status, ConnectionStatus::Connected);
+        assert_eq!(second_state.backend_version, "1.2.3");
+        assert!(second_state.offline_auth);
+        assert!(!first_state.offline_auth);
+    }
+
+    #[tokio::test]
+    async fn marking_notifications_read_in_bulk_sends_one_window_update() {
+        use faf_domain::frontend::FrontendUpdate;
+        use faf_domain::state::{
+            ClientNotification, NotificationCommand, NotificationEvent, NotificationKind,
+        };
+
+        let (app, app_loop) = App::new("test", crate::infra::fake_ports());
+        let ids: Vec<_> = (0..50).map(|index| format!("notice-{index}")).collect();
+        // The newest arrival evicts one of the IDs captured by the bell.
+        for id in ids.iter().map(String::as_str).chain(["arrived-later"]) {
+            app_loop.sink.emit(NotificationEvent::Added {
+                notification: ClientNotification {
+                    id: id.into(),
+                    kind: NotificationKind::Mention,
+                    title: "Mention".into(),
+                    body: "A message".into(),
+                    created_at: "2026-01-01T00:00:00Z".into(),
+                    read: false,
+                    action: None,
+                    text: None,
+                },
+            });
+        }
+        let (mut events, before) = app.subscribe_versioned_with_snapshot();
+        tokio::spawn(app_loop.run());
+
+        app.dispatch_and_wait(NotificationCommand::MarkReadMany { ids }.into())
+            .await
+            .expect("bulk read completes");
+
+        let update = events.try_recv().expect("one window update");
+        assert_eq!(update.revision, before.revision + 1);
+        let Some(FrontendUpdate::Notifications(state)) = update.update else {
+            panic!("expected an authoritative notification replacement");
+        };
+        assert_eq!(state.items.len(), 50);
+        assert_eq!(state.items[0].id, "arrived-later");
+        assert!(!state.items[0].read);
+        assert!(state.items[1..].iter().all(|item| item.read));
+        assert!(matches!(
+            events.try_recv(),
+            Err(broadcast::error::TryRecvError::Empty)
+        ));
     }
 
     #[tokio::test]

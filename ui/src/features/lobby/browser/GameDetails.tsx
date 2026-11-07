@@ -29,7 +29,6 @@ import { findPlayer } from "../../../store/reducer";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { plainError } from "../../../shared/plainError";
-import { boundsText } from "../../../shared/ratingBounds";
 
 export function GameDetails({
   game,
@@ -228,7 +227,6 @@ export function GameDetails({
               )}
             </dd>
           </div>
-          <div><dt>{t("lobby.details.ratingRange")}</dt><dd>{boundsText(game.ratingMin, game.ratingMax) ?? t("lobby.details.open")}</dd></div>
         </dl>
         {simMods.length > 0 && (
           <div className="game-detail-section">

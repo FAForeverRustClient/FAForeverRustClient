@@ -111,8 +111,9 @@ pub trait MapGeneratorPort: Send + Sync {
 
     /// Delete generated maps not named in `protected_maps`, returning how many went.
     ///
-    /// Safe because generated maps are reproducible from their name alone. The
-    /// Java client does this on shutdown; here it is user-triggered.
+    /// Safe because generated maps are reproducible from their name alone. Run
+    /// from the Maps tab's clean-up button and, as the Java client does, when
+    /// the client exits (`App::sweep_generated_maps`).
     async fn clean_up(&self, protected_maps: &[String]) -> Result<usize, String>;
 
     /// Read preview PNGs from disk for generated maps and return as base64 data URLs.

@@ -1,8 +1,7 @@
 // Private comments and tags on replays (#324).
 //
-// The twin of `normalized_replay_notes` in
-// crates/faf-domain/src/state/settings/social.rs, plus the two questions the UI asks
-// of the list: what is written on this replay, and does it match a search.
+// Normalization is authoritative in Rust. These helpers look up the received
+// notes and validate/filter local editor drafts without a round trip.
 
 import type { ReplayNote } from "../../ipc/bindings";
 import { normalizeReplayPath } from "./replayReadKey";
@@ -10,7 +9,6 @@ import { normalizeReplayPath } from "./replayReadKey";
 export const REPLAY_NOTE_CHARACTER_LIMIT = 500;
 export const REPLAY_TAG_CHARACTER_LIMIT = 32;
 export const REPLAY_TAGS_PER_REPLAY = 10;
-const REPLAY_NOTE_LIMIT = 5_000;
 
 function tidyTag(tag: string): string {
   return Array.from(tag.split(/\s+/).filter(Boolean).join(" "))
@@ -35,56 +33,6 @@ function noteTarget(replayId: number | null, path: string | null | undefined): N
   return path ? { replayId: 0, path: normalizeReplayPath(path) } : null;
 }
 
-/**
- * Order by Unicode code point, which is how Rust orders strings. JavaScript's
- * own comparison goes by UTF-16 unit, and the two disagree past the Basic
- * Multilingual Plane.
- */
-function compareCodePoints(left: string, right: string): number {
-  const a = Array.from(left);
-  const b = Array.from(right);
-  for (let index = 0; index < Math.min(a.length, b.length); index += 1) {
-    const difference = (a[index].codePointAt(0) ?? 0) - (b[index].codePointAt(0) ?? 0);
-    if (difference !== 0) return difference;
-  }
-  return a.length - b.length;
-}
-
-/** Games first, by id, as notes have always been kept; then files, by path. */
-function compareTargets(left: NoteTarget, right: NoteTarget): number {
-  if (left.path !== null && right.path !== null) return compareCodePoints(left.path, right.path);
-  if (left.path !== null) return 1;
-  if (right.path !== null) return -1;
-  return left.replayId - right.replayId;
-}
-
-/** Mirror the Rust normalization applied when a social-settings event lands. */
-export function normalizeReplayNotes(notes: readonly ReplayNote[]): ReplayNote[] {
-  const byTarget = new Map<string, { target: NoteTarget; note: ReplayNote }>();
-  for (const entry of notes) {
-    const target = noteTarget(entry.replayId, entry.path);
-    if (!target) continue;
-    const key = target.path === null ? `game:${target.replayId}` : `file:${target.path}`;
-    const comment = Array.from(entry.comment.trim()).slice(0, REPLAY_NOTE_CHARACTER_LIMIT).join("");
-    const tags: string[] = [];
-    for (const raw of entry.tags) {
-      const tag = tidyTag(raw);
-      if (!tag || tags.some((known) => known.toLowerCase() === tag.toLowerCase())) continue;
-      tags.push(tag);
-      if (tags.length === REPLAY_TAGS_PER_REPLAY) break;
-    }
-    if (!comment && tags.length === 0) {
-      byTarget.delete(key);
-      continue;
-    }
-    byTarget.set(key, { target, note: { replayId: target.replayId, path: target.path, comment, tags } });
-  }
-  return [...byTarget.values()]
-    .sort((left, right) => compareTargets(left.target, right.target))
-    .slice(0, REPLAY_NOTE_LIMIT)
-    .map(({ note }) => note);
-}
-
 // Store updates replace the immutable array, so each revision gets its own index.
 const noteIndexes = new WeakMap<readonly ReplayNote[], {
   games: Map<number, ReplayNote>;
@@ -97,7 +45,7 @@ const noteIndexes = new WeakMap<readonly ReplayNote[], {
  * `SocialPreferences::replay_note_for`.
  *
  * Only the path asked about is normalised: the notes in the store already are
- * (see `normalizeReplayNotes`), and the local list asks this once per file it
+ * (by the Rust settings reducer), and the local list asks this once per file it
  * filters, which is thousands of times per keystroke.
  */
 export function noteForReplay(

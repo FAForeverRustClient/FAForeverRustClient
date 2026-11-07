@@ -1,0 +1,1 @@
+- Unit History replaces damaged cached blueprints after a successful download.

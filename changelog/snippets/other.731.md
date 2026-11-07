@@ -1,0 +1,1 @@
+- Reverted the unreleased addition of a close button to desktop notification popups.

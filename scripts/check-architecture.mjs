@@ -207,6 +207,23 @@ for (const directory of ["design-system", "i18n", "ipc", "shared", "store"]) {
   }
 }
 
+// Replica reducers are an explicit exception to authoritative Rust updates.
+// The exception list is generated from the Rust projection policy; a new
+// feature cannot quietly acquire a second implementation of its reducer.
+{
+  const bindings = await readFile(resolve(root, "ui/src/ipc/bindings.ts"), "utf8");
+  const list = bindings.match(/export const DELTA_EVENT_KINDS = (\[[^\n]*\]) as const;/);
+  if (!list) throw new Error("Generated compact-delta policy missing; regenerate bindings");
+  const kinds = new Set(JSON.parse(list[1]));
+  for (const path of await sourceFiles(resolve(root, "ui/src/store/reducers"), new Set([".ts"]))) {
+    if (/\.test\.ts$/.test(path)) continue;
+    const source = await readFile(path, "utf8");
+    for (const match of source.matchAll(/export\s+(?:function|const)\s+reduce(\w+)\b/g)) {
+      if (!kinds.has(match[1])) report(path, `replica reducer ${match[1]} has no compact-delta exception in the Rust projection policy`);
+    }
+  }
+}
+
 // A feature folder is a module: it may depend on the foundation directories
 // above and on nothing beside it. Anything two features both need belongs in
 // `shared/`, which is where the player menu, the map preview, the join flow

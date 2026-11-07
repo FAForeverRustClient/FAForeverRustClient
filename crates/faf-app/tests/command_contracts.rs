@@ -32,6 +32,7 @@ use faf_app::infra::{
     FakeGuides, FakeIce, FakeLobby, FakeMapGenerator, FakeMaps, FakeMods, FakePlayerCard,
     FakeTourney, FakeUploads,
 };
+use faf_app::ports::LobbySendError;
 use faf_app::ports::{
     AdapterInventory, AdapterLogTail, AuthPort, AuthResult, ChangelogPort, ChatPort, ChatUpdate,
     ClanPort, ClientUpdatePort, ConnectivityPort, ConnectivitySession, DeviceCode,
@@ -1200,11 +1201,11 @@ impl LobbyPort for CountingLobby {
     fn join(&self, id: i32, password: Option<String>) -> bool {
         self.inner.join(id, password)
     }
-    fn host(&self, config: HostGameConfig) {
+    fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError> {
         self.inner.host(config)
     }
-    fn matchmake(&self, queue_name: String, start: bool) {
-        self.inner.matchmake(queue_name, start)
+    fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
+        self.inner.matchmake(queue_names, start)
     }
     fn leave_party(&self) {
         self.inner.leave_party()
@@ -1215,14 +1216,19 @@ impl LobbyPort for CountingLobby {
     fn invite_to_party(&self, player_id: i32) {
         self.inner.invite_to_party(player_id)
     }
-    fn accept_party_invite(&self, player_id: i32) {
+    fn accept_party_invite(&self, player_id: i32) -> Result<(), LobbySendError> {
         self.inner.accept_party_invite(player_id)
     }
     fn set_party_factions(&self, factions: Vec<String>) {
         self.inner.set_party_factions(factions)
     }
-    fn set_relation(&self, player_id: i32, relation: Relation, member: bool) {
-        self.inner.set_relation(player_id, relation, member)
+    fn set_contact_relation(
+        &self,
+        contact: faf_domain::state::Contact,
+        member: bool,
+        remove: Option<Relation>,
+    ) -> bool {
+        self.inner.set_contact_relation(contact, member, remove)
     }
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
         self.inner.set_player_vetoes(vetoes)
@@ -1410,6 +1416,82 @@ async fn the_chat_socket_is_single_flight_before_and_after_a_drop() {
         2,
         "connecting again after the drop opened more than one socket"
     );
+}
+
+#[tokio::test]
+async fn switching_accounts_replaces_the_chat_connection_without_a_window() {
+    let chat = Arc::new(FakeChat::default());
+    let connects = Arc::new(AtomicUsize::new(0));
+    let gates = Gates::default();
+    let app = start(Ports {
+        auth: Arc::new(HeldAuth {
+            gates: gates.clone(),
+            logouts: Arc::default(),
+        }),
+        chat: Arc::new(CountingChat {
+            inner: chat,
+            connects: connects.clone(),
+        }),
+        ..fake_ports()
+    });
+    gates.open("login");
+    completes(
+        &app,
+        "first account signs in",
+        AuthCommand::Login { remember: false }.into(),
+    )
+    .await;
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Ada".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, "first chat connection", |state| {
+        state.chat.username == "Ada"
+    })
+    .await;
+    completes(
+        &app,
+        "a private chat message",
+        ChatCommand::SendMessage {
+            channel: "Contact".into(),
+            content: "private message".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await;
+    until(&app, "the private message", |state| {
+        state.chat.channel("Contact").is_some()
+    })
+    .await;
+
+    // No renderer is available to dispatch a disconnect in between logins.
+    completes(&app, "first account signs out", AuthCommand::Logout.into()).await;
+    assert!(app.snapshot().chat.channels.is_empty());
+    completes(
+        &app,
+        "second account signs in",
+        AuthCommand::LoginTest.into(),
+    )
+    .await;
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "TestCommander".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, "second chat connection", |state| {
+        state.chat.username == "TestCommander"
+    })
+    .await;
+    assert!(app.snapshot().chat.channel("Contact").is_none());
+    assert_eq!(connects.load(Ordering::SeqCst), 2);
 }
 
 /// A sign-in that waits at a gate, as an interactive login waits for the

@@ -125,12 +125,23 @@ textarea {
 }
 
 button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-a:focus-visible {
+a:focus-visible,
+input:is([type="checkbox"], [type="radio"]):focus-visible {
   outline: 2px solid var(--color-text);
   outline-offset: 2px;
+}
+
+/* A field takes its line on its own edge instead. A browser counts every
+   focus in something typed into as keyboard focus, so a click showed the
+   ring above too, 2 px wide and 2 px off the field in the text colour, and
+   clicking into a search box drew a heavy white frame round it. Fields drawn
+   inside a wrapper (`.search-field` and the like) light the wrapper instead,
+   with the accent border and soft halo every such field shares. */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--color-accent);
+  outline-offset: -1px;
 }
 
 /* The clear button every search field has. The browser draws it at about

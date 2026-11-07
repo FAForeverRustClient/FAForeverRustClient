@@ -14,7 +14,21 @@ use crate::{AppEvent, AppState};
 pub fn reduce(state: &mut AppState, event: &AppEvent) {
     match event {
         AppEvent::Session(e) => session::reduce(&mut state.session, e),
-        AppEvent::Auth(e) => auth::reduce(&mut state.auth, e),
+        AppEvent::Auth(e) => {
+            if e.resets_account_activity() {
+                state.chat = chat::ChatState {
+                    show_joins_parts: state.settings.chat.show_joins_parts,
+                    ..chat::ChatState::default()
+                };
+                // A client release is device-wide. Every other notice may
+                // contain activity from the account that just ended.
+                state
+                    .notifications
+                    .items
+                    .retain(|item| item.kind == notifications::NotificationKind::ClientUpdate);
+            }
+            auth::reduce(&mut state.auth, e);
+        }
         AppEvent::Nav(e) => nav::reduce(&mut state.nav, e),
         AppEvent::Notifications(e) => notifications::reduce(&mut state.notifications, e),
         AppEvent::Chat(e) => chat::reduce(&mut state.chat, e),

@@ -1,5 +1,7 @@
 import { type MapFilterState, type VaultSort, type VaultPreset, presetSort, storedVaultSort, mapVaultQuery, mapFilterFromQuery } from "./mapVaultFilters";
 import { useVaultFilters, useVaultSearch } from "../../shared/hooks/useVaultFilters";
+import { DEFAULT_MAP_FILTERS, MAP_FILTER_CHOICES } from "./mapVaultFilters";
+import { VaultSavedSearches } from "../../shared/components/VaultSavedSearches";
 // Maps tab: vault discovery and installed-map management. The backend owns
 // the map catalogue and installation state; this component only derives the
 // current search, filters, sorting and selection for presentation.
@@ -9,6 +11,7 @@ import { type MapFilterDraft, type RankedFilter, useMapFilterDraft } from "./map
 import { type InstallFilter, mapsByDownload, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 import { StatusNotice } from "../../design-system/StatusNotice";
 import { localPage, vaultPageOutcome } from "../../shared/vaultResults";
+import { mapDownloadUrl } from "../../shared/mapCatalogue";
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
 import { native } from "../../ipc/native";
@@ -24,7 +27,7 @@ import {
 // Only the from-disk entry point: publishing an installed map has its own modal.
 import { openUploadFromDisk } from "../uploads/UploadDialog";
 import { Pagination } from "../../design-system/Pagination";
-import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { GeneratorStatus, InstalledMap, MapsSection, MapVaultQuery, MapSummary } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { GeneratorFailure } from "../../shared/components/GeneratorFailure";
 import { FailureNotice, LoadStatusNotice } from "../../shared/components/LoadNotices";
@@ -147,7 +150,7 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
-  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
+  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset, restore } = useVaultFilters<MapFilterState, VaultPreset>({
     initial: restored ?? {
       search: "",
       author: "",
@@ -174,10 +177,10 @@ function VaultView({ busy }: { busy: boolean }) {
   const setShowHidden = (value: MapFilterState["showHidden"]) => setField("showHidden", value);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
-  const [pendingUninstall, setPendingUninstall] = useState<VaultMap | null>(null);
-  const [pendingHide, setPendingHide] = useState<VaultMap | null>(null);
-  const [previewMap, setPreviewMap] = useState<VaultMap | null>(null);
-  const [analysedMap, setAnalysedMap] = useState<VaultMap | null>(null);
+  const [pendingUninstall, setPendingUninstall] = useState<MapSummary | null>(null);
+  const [pendingHide, setPendingHide] = useState<MapSummary | null>(null);
+  const [previewMap, setPreviewMap] = useState<MapSummary | null>(null);
+  const [analysedMap, setAnalysedMap] = useState<MapSummary | null>(null);
 
   // With filters never remembered (#447), the next visit starts from the
   // default preset. The sort the preset brought is not a filter and stays.
@@ -395,6 +398,12 @@ function VaultView({ busy }: { busy: boolean }) {
             </Button>
             ))}
             <span className="spacer" />
+            <VaultSavedSearches list="maps.vault" presets={browsing.searchPresets} category={preset}
+              filters={draft} defaults={DEFAULT_MAP_FILTERS} categories={VAULT_PRESETS} choices={MAP_FILTER_CHOICES}
+              signedIn={playerId !== null} onApply={({ category, filters }) => {
+                restore(filters, category);
+                ipc.send({ kind: "Settings", command: { type: "patchBrowsing", payload: { patch: { mapVaultPreset: category, mapVaultSort: filters.sort } } } });
+              }} />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
           </>
@@ -602,9 +611,9 @@ function VaultView({ busy }: { busy: boolean }) {
                       busy={isBusy}
                       favorite={favorite}
                       onSelect={() => setSelectedFolder(map.folderName)}
-                      onInstall={() => installMap(map.folderName, map.downloadUrl)}
+                      onInstall={() => installMap(map.folderName, mapDownloadUrl(map))}
                       onUninstall={() => setPendingUninstall(map)}
-                      onToggleFavorite={() => toggleFavorite(map.folderName, map.downloadUrl)}
+                      onToggleFavorite={() => toggleFavorite(map.folderName, mapDownloadUrl(map))}
                     />
                   );
                 })}
@@ -624,12 +633,12 @@ function VaultView({ busy }: { busy: boolean }) {
                 favorite={favoriteFolders.has(selected.folderName.toLocaleLowerCase())}
                 mine={playerId !== null && selected.authorId === playerId}
                 visibilityBusy={visibilityStatus.type === "working" && visibilityStatus.payload.versionId === selected.versionId}
-                onInstall={() => installMap(selected.folderName, selected.downloadUrl)}
+                onInstall={() => installMap(selected.folderName, mapDownloadUrl(selected))}
                 onUninstall={() => setPendingUninstall(selected)}
                 onHide={() => setPendingHide(selected)}
                 onUnhide={() => setMapVersionHidden(selected.versionId, false)}
                 onPreview={() => setPreviewMap(selected)}
-                onToggleFavorite={() => toggleFavorite(selected.folderName, selected.downloadUrl)}
+                onToggleFavorite={() => toggleFavorite(selected.folderName, mapDownloadUrl(selected))}
                 onAnalyse={() => setAnalysedMap(selected)}
               />
             )}
@@ -722,7 +731,7 @@ function InstalledView({ busy }: { busy: boolean }) {
   // The Installed grid could not enlarge anything: half the maps a player
   // looks at were stuck at thumbnail size, which is the complaint the Vault's
   // zoom answers.
-  const [previewMap, setPreviewMap] = useState<InstalledMap | VaultMap | null>(null);
+  const [previewMap, setPreviewMap] = useState<InstalledMap | MapSummary | null>(null);
   const [analysedMap, setAnalysedMap] = useState<{ folderName: string; title: string } | null>(null);
   // The filters as the setting keeps them (#447). The sort is not one.
   const [remembered] = useState(() =>

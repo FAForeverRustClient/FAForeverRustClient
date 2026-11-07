@@ -27,19 +27,23 @@ export function formatDuration(seconds: number | null, fallback = ""): string {
 }
 
 /**
- * How long a game has been going, as `24m` or `1h 12m`.
+ * How long a game has been going, to the second: `24m 05s` or `1h 12m 05s`.
  *
- * Neither of the two above it. `formatDuration` keeps seconds below the hour,
- * which is noise on a value nobody reads to the second and would force the
- * view to tick once a second to stay honest. `formatRelativeDuration` answers
- * "now" under a minute, which is right for the age of a lobby listing and
- * wrong as the value of a field labelled "game time".
+ * Seconds at every length, unlike `formatDuration`, because players asked to
+ * read the clock of a live game as it runs; the view that shows it ticks once
+ * a second while it is on screen (see `GameTime` in `GameSummaryCard`).
+ * `formatRelativeDuration` answers "now" under a minute, which is right for
+ * the age of a lobby listing and wrong as the value of a field labelled "game
+ * time".
  */
 export function formatGameTime(seconds: number): string {
   const total = wholeSeconds(seconds);
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
-  return hours > 0 ? hoursMinutes(hours, minutes) : justMinutes(minutes);
+  const secondsPart = String(total % 60).padStart(2, "0");
+  return hours > 0
+    ? t("duration.hoursMinutesSeconds", { hours, minutes: String(minutes).padStart(2, "0"), seconds: secondsPart })
+    : t("duration.minutesSeconds", { minutes, seconds: secondsPart });
 }
 
 interface RelativeDurationOptions {

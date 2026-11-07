@@ -110,8 +110,9 @@ pub use map_generator::{
     StyleConstraints, ValidationIssue, MAX_PRESET_NAME,
 };
 pub use maps::{
-    InstalledMap, LocalMapPreview, MapInstallStatus, MapListStatus, MapVisibilityStatus,
-    MapsCommand, MapsEvent, MapsState, MatchmakerMapPool, MatchmakerPoolMap, VaultMap,
+    CatalogueMap, InstalledMap, LocalMapPreview, MapInstallStatus, MapListStatus, MapSummary,
+    MapUrls, MapVisibilityStatus, MapsCommand, MapsEvent, MapsState, MatchmakerMapPool,
+    MatchmakerPoolMap, VaultMap,
 };
 pub use mods::{
     InstalledMod, ModDownloadSize, ModDownloadTarget, ModInstallStatus, ModListStatus,

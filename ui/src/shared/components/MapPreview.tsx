@@ -8,22 +8,22 @@
 import { useEffect, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
+import { mapThumbnailUrl, type MapUrlSource } from "../mapCatalogue";
 import "./map-preview.css";
 
-export type PreviewableMap = {
-  folderName: string;
+export type PreviewableMap = MapUrlSource & {
   displayName?: string;
-  thumbnailUrl?: string;
-  thumbnailUrlLarge?: string;
   previewUrl?: string;
 };
 
 export function MapPreview({ map, large = false }: { map: PreviewableMap; large?: boolean }) {
   const { t } = useTranslation();
   const cdnFallback = `https://content.faforever.com/maps/previews/${large ? "large" : "small"}/${encodeURIComponent(map.folderName.toLowerCase())}.png`;
+  const smallUrl = mapThumbnailUrl(map);
+  const largeUrl = mapThumbnailUrl(map, true);
   const primaryUrl = large
-    ? (map.thumbnailUrlLarge || map.thumbnailUrl || map.previewUrl)
-    : (map.thumbnailUrl || map.previewUrl || map.thumbnailUrlLarge);
+    ? (largeUrl || smallUrl || map.previewUrl)
+    : (smallUrl || map.previewUrl || largeUrl);
   const [currentUrl, setCurrentUrl] = useState<string | null>(primaryUrl || cdnFallback);
   const [failed, setFailed] = useState(false);
 

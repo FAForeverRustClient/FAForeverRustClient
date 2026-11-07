@@ -1,7 +1,7 @@
 import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SocialState, VaultMap } from "../../../ipc/bindings";
+import type { SocialState, MapSummary } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { ipc } from "../../../ipc/client";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
@@ -22,7 +22,7 @@ import {
 interface Props {
   presence: GamePresence;
   social: SocialState;
-  vault: VaultMap[];
+  vault: MapSummary[];
 }
 
 export function GameSummaryPopover({ presence, social, vault }: Props) {

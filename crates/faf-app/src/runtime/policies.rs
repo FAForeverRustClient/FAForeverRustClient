@@ -316,6 +316,16 @@ impl LobbyOperations {
         self.current.load(Ordering::Acquire) == operation.0 << 1
     }
 
+    /// Commit a synchronous send only while this operation is current.
+    pub fn while_live<T>(
+        &self,
+        operation: LobbyOperation,
+        commit: impl FnOnce() -> T,
+    ) -> Option<T> {
+        let _token = self.token();
+        self.is_live(operation).then(commit)
+    }
+
     /// Release the join slot if, and only if, `operation` holds it. A
     /// cancelled join's cleanup runs after the next join may have started,
     /// and must leave that one's slot alone.

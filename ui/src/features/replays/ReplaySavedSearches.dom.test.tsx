@@ -161,12 +161,7 @@ describe("ReplaySavedSearches", () => {
       },
     ]);
 
-    applyEvent({
-      kind: "Settings",
-      event: {
-        type: "browsingChanged",
-        payload: {
-          preferences: {
+    applyEvent({ kind: "Settings", event: { field: "browsing", value: {
             ...DEFAULT_BROWSING_PREFERENCES,
             searchPresets: [
               {
@@ -175,10 +170,7 @@ describe("ReplaySavedSearches", () => {
                 query: encodeLocalReplayPreset(EMPTY_LOCAL_REPLAY_QUERY),
               },
             ],
-          },
-        },
-      },
-    });
+          } } });
     expect(screen.getByText(/No saved searches yet/)).toBeTruthy();
 
     // Undo puts the deleted search back exactly as it was saved.

@@ -187,6 +187,10 @@ pub enum NotificationAction {
     OpenStream {
         url: String,
     },
+    /// Download the client release on offer and install it (#682), or install
+    /// it straight away when it is already downloaded. Opening Settings, as
+    /// this notice used to, landed on a page with no download button on it.
+    UpdateClient,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
@@ -243,6 +247,7 @@ pub struct NotificationState {
 pub enum NotificationEvent {
     Added { notification: ClientNotification },
     Read { id: String },
+    ReadMany { ids: Vec<String> },
     Dismissed { id: String },
     Cleared,
 }
@@ -251,6 +256,7 @@ pub enum NotificationEvent {
 #[serde(tag = "type", content = "payload", rename_all = "camelCase")]
 pub enum NotificationCommand {
     MarkRead { id: String },
+    MarkReadMany { ids: Vec<String> },
     Dismiss { id: String },
     Clear,
 }
@@ -264,6 +270,11 @@ pub fn reduce(state: &mut NotificationState, event: &NotificationEvent) {
         }
         NotificationEvent::Read { id } => {
             if let Some(item) = state.items.iter_mut().find(|item| &item.id == id) {
+                item.read = true;
+            }
+        }
+        NotificationEvent::ReadMany { ids } => {
+            for item in state.items.iter_mut().filter(|item| ids.contains(&item.id)) {
                 item.read = true;
             }
         }
@@ -319,6 +330,31 @@ mod tests {
         reduce(&mut state, &NotificationEvent::Dismissed { id: "1".into() });
         reduce(&mut state, &NotificationEvent::Cleared);
         assert!(state.items.is_empty());
+    }
+
+    #[test]
+    fn a_batch_read_marks_only_the_named_entries() {
+        let mut state = NotificationState::default();
+        for id in ["1", "2", "3"] {
+            reduce(
+                &mut state,
+                &NotificationEvent::Added {
+                    notification: item(id),
+                },
+            );
+        }
+        reduce(
+            &mut state,
+            &NotificationEvent::ReadMany {
+                ids: vec!["1".into(), "3".into(), "unknown".into()],
+            },
+        );
+        let read: Vec<_> = state
+            .items
+            .iter()
+            .map(|item| (item.id.as_str(), item.read))
+            .collect();
+        assert_eq!(read, [("3", true), ("2", false), ("1", true)]);
     }
 
     #[test]

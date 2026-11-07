@@ -91,6 +91,21 @@ const row = (title: string) => screen.getByRole("button", { name: new RegExp(tit
 const joinOf = (id: number) => ({ type: "join", payload: { id, password: null, replaceMods: false } });
 
 describe("LobbyView custom games, mounted", () => {
+  it("stays disconnected when Play is revisited and reconnects on request", async () => {
+    const user = userEvent.setup();
+    seedStore((state) => ({
+      ...state,
+      lobby: { ...state.lobby, status: "disconnected", playMode: "custom" },
+    }));
+    clearSentCommands();
+    const first = render(<LobbyView />);
+    first.unmount();
+    render(<LobbyView />);
+    expect(lobbySent("connect")).toEqual([]);
+    await user.click(screen.getByRole("button", { name: "Reconnect" }));
+    expect(lobbySent("connect")).toEqual([{ type: "connect" }]);
+  });
+
   it("joins the picked game with one join command and shows Joining once the backend answers", async () => {
     const user = userEvent.setup();
     mountPlayTab();
@@ -293,15 +308,7 @@ describe("LobbyView custom games, mounted", () => {
 /** The backend's answer to a browsing patch: the list's preferences as they now are. */
 function browserChanged(changes: Partial<CustomGameBrowserPreferences>) {
   const browsing = useAppStore.getState().state.settings.browsing;
-  applyEvent({
-    kind: "Settings",
-    event: {
-      type: "browsingChanged",
-      payload: {
-        preferences: { ...browsing, customGamesBrowser: { ...browsing.customGamesBrowser, ...changes } },
-      },
-    },
-  });
+  applyEvent({ kind: "Settings", event: { field: "browsing", value: { ...browsing, customGamesBrowser: { ...browsing.customGamesBrowser, ...changes } } } });
 }
 
 const toolbar = () => {

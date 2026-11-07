@@ -24,7 +24,7 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
     if let Some(cache) = &cached {
         tracing::info!(entries = cache.entries.len(), age_seconds = ?cache.age_seconds(Utc::now()), "map vault: loaded disk catalogue");
         out.emit(MapsEvent::VaultLoaded {
-            maps: cache.entries.clone(),
+            maps: cache.entries.clone().into_iter().map(Into::into).collect(),
         });
     }
     let mut full = cached
@@ -74,7 +74,7 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
     );
     let catalogue = if full {
         out.emit(MapsEvent::VaultLoaded {
-            maps: batch.entries.clone(),
+            maps: batch.entries.clone().into_iter().map(Into::into).collect(),
         });
         CachedCatalogue {
             full_at: Utc::now().to_rfc3339(),
@@ -88,7 +88,7 @@ pub(super) async fn load(ctx: &ServiceCtx, out: &EventSink) {
         let changed = changes_anything(&cache.entries, &batch.entries, key, keep);
         if changed {
             out.emit(MapsEvent::VaultUpdated {
-                maps: batch.entries.clone(),
+                maps: batch.entries.clone().into_iter().map(Into::into).collect(),
             });
             merge_changes(&mut cache.entries, &batch.entries, key, keep);
         }

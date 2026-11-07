@@ -134,6 +134,10 @@ impl GameUpdaterClient {
 
 #[async_trait]
 impl GameUpdaterPort for GameUpdaterClient {
+    fn set_force_affinity(&self, enabled: bool) {
+        game_updater::set_force_affinity(enabled);
+    }
+
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress> {
         // Nobody holds this token, so the run goes to the end.
         self.prepare_cancellable(request, CancellationToken::new())

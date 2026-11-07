@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MapVaultQuery, VaultMap } from "../../ipc/bindings";
+import type { MapSummary, MapVaultQuery, VaultMap } from "../../ipc/bindings";
 import { EMPTY_MAP_QUERY } from "../../shared/vaultQuery";
 import { mapsByDownload, mapsMatchingQuery, visibleVaultMaps } from "./mapVaultResults";
 
@@ -79,7 +79,7 @@ describe("mapsMatchingQuery", () => {
     map("dual", { displayName: "Dual Gap", author: "Nuggets", ratingTenths: 38, reviews: 40, maxPlayers: 8, width: 512, height: 512, createdAt: "2021-07-15T10:00:00Z", gamesPlayed: 50, ranked: false }),
     map("astro", { displayName: "Astro Crater", author: null, ratingTenths: 0, reviews: 0, maxPlayers: 4, width: 256, height: 256, createdAt: "2023-01-02T10:00:00Z", gamesPlayed: 400 }),
   ];
-  const names = (maps: VaultMap[]) => maps.map((m) => m.folderName);
+  const names = (maps: MapSummary[]) => maps.map((m) => m.folderName);
 
   it("matches the search against the display name, ignoring case", () => {
     expect(names(mapsMatchingQuery(starred, { ...EMPTY_MAP_QUERY, search: " CLUTCH " }))).toEqual(["seton"]);

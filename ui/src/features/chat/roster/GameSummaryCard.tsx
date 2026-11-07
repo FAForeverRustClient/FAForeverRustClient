@@ -5,9 +5,10 @@
 // Two copies would have drifted the moment either grew a field, and the second
 // place exists precisely because the first one is not always enough.
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 
-import type { SocialState, VaultMap } from "../../../ipc/bindings";
+import type { MapSummary, SocialState } from "../../../ipc/bindings";
 import { Icon } from "../../../design-system/Icon";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { MapPreviewDialog } from "../../../shared/components/MapPreviewZoom";
@@ -24,7 +25,7 @@ import { mapPresentation, mapSize } from "../../../shared/mapPresentation";
 import { splitGoAdapterTitle } from "../../../shared/goAdapterTitle";
 import { useAppStore } from "../../../store/store";
 import {
-  gameElapsedSeconds,
+  gameStartedSeconds,
   gameTeamSummaries,
   type GamePresence,
   type GameSummaryPlayer,
@@ -44,7 +45,7 @@ export const STATUS_LABEL = {
 interface Props {
   presence: GamePresence;
   social: SocialState;
-  vault: VaultMap[];
+  vault: MapSummary[];
   /** Seconds since the epoch, from whichever tick the caller runs. */
   now: number;
   /** Skipped by a closed popover: this is the expensive half of the card. */
@@ -75,6 +76,21 @@ interface Props {
    * stays on screen.
    */
   onOpenMapPreview?: () => void;
+}
+
+/**
+ * The game's clock, to the second, while the card is on screen.
+ *
+ * Its own component with its own one-second timer, so each tick redraws this
+ * span and nothing else: the card sits in the conversation sidebar too, whose
+ * clock belongs to the whole chat view and ticks twice a minute. It starts
+ * from the caller's `now`, and follows it when that moves.
+ */
+function GameTime({ started, now }: { started: number; now: number }) {
+  const [current, setCurrent] = useState(now);
+  useEffect(() => setCurrent(now), [now]);
+  useForegroundInterval(() => setCurrent(Math.floor(Date.now() / 1000)), 1000);
+  return <>{formatGameTime(Math.max(0, current - started))}</>;
 }
 
 /**
@@ -155,7 +171,7 @@ export function GameSummaryCard({
   const teams = showTeams ? gameTeamSummaries(presence.game, social) : [];
   const leaderboard = gameLeaderboard(presence.game.ratingType);
   const mapGen = useNamedMapGeneration(presence.game.map);
-  const elapsed = gameElapsedSeconds(presence, now);
+  const started = gameStartedSeconds(presence);
   // The picture beside the title is 64px of map (issue 359). The Play tab has
   // had the enlarged, zoomable one for a while, and the reader looking at a
   // conversation is asking the same question about the same game: which map,
@@ -232,10 +248,10 @@ export function GameSummaryCard({
             <div>
               <span className="chat-game-state">
                 <span className={`chat-game-status is-${presence.status}`}>{status}</span>
-                {elapsed !== null && (
+                {started !== null && (
                   <span className="chat-game-elapsed">
                     <span className="chat-game-sr">{elapsedLabel} </span>
-                    {formatGameTime(elapsed)}
+                    <GameTime started={started} now={now} />
                   </span>
                 )}
               </span>
@@ -354,7 +370,7 @@ export function GameMapPreviewDialog({
   onClose,
 }: {
   presence: GamePresence;
-  vault: VaultMap[];
+  vault: MapSummary[];
   onClose: () => void;
 }) {
   const { t } = useTranslation();

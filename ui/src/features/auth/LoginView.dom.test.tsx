@@ -6,10 +6,11 @@
 // Retry does again what was pressed: signing in, or starting the game offline,
 // which reports its failures through the same slice.
 
+import { useAppStore } from "../../store/store";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { AuthEvent } from "../../ipc/bindings";
+import type { AuthState } from "../../ipc/bindings";
 import { en } from "../../i18n/catalog/en";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
@@ -19,7 +20,7 @@ vi.mock("../../ipc/client");
 
 failOnConsoleError();
 
-const authEvent = (event: AuthEvent) => applyEvent({ kind: "Auth", event });
+const authState = (event: Partial<AuthState>) => applyEvent({ kind: "Auth", event: { ...useAppStore.getState().state.auth, ...event } });
 
 const authCommands = () => sentCommands().filter((command) => command.kind === "Auth");
 
@@ -31,9 +32,9 @@ describe("a failed sign-in, mounted", () => {
     const login = authCommands();
     expect(login).toEqual([{ kind: "Auth", command: { type: "login", payload: { remember: true } } }]);
 
-    authEvent({ type: "loginStarted" });
+    authState({ status: "loggingIn", error: null, signInLink: null });
     const reason = "Token request failed: error sending request for url (https://hydra.faforever.com/oauth2/token)";
-    authEvent({ type: "loginFailed", payload: { message: reason } });
+    authState({ status: "failed", player: null, error: reason, signInLink: null });
 
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText(en["errors.cause.offline"]).getAttribute("title")).toBe(reason);
@@ -43,7 +44,7 @@ describe("a failed sign-in, mounted", () => {
     await user.click(within(alert).getByRole("button", { name: en["common.retry"] }));
     expect(authCommands()).toEqual(login);
 
-    authEvent({ type: "loginStarted" });
+    authState({ status: "loggingIn", error: null, signInLink: null });
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -54,7 +55,7 @@ describe("a failed sign-in, mounted", () => {
     clearSentCommands();
 
     // The client's own sentence, which passes through as written.
-    authEvent({ type: "loginFailed", payload: { message: "Forged Alliance is already running." } });
+    authState({ status: "failed", player: null, error: "Forged Alliance is already running.", signInLink: null });
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText("Forged Alliance is already running.")).toBeTruthy();
 
@@ -72,10 +73,10 @@ describe("a sign-in whose browser never appeared", () => {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(<LoginView />);
 
-    authEvent({ type: "loginStarted" });
+    authState({ status: "loggingIn", error: null, signInLink: null });
     expect(screen.queryByRole("textbox", { name: en["auth.linkLabel"] })).toBeNull();
 
-    authEvent({ type: "signInLinkReady", payload: { url: link } });
+    authState({ signInLink: link });
     const field = screen.getByRole<HTMLInputElement>("textbox", { name: en["auth.linkLabel"] });
     expect(field.value).toBe(link);
     expect(field.readOnly).toBe(true);
@@ -84,7 +85,7 @@ describe("a sign-in whose browser never appeared", () => {
     expect(writeText).toHaveBeenCalledWith(link);
     expect(screen.getByRole("button", { name: en["auth.linkCopied"] })).toBeTruthy();
 
-    authEvent({ type: "loggedOut" });
+    authState({ status: "loggedOut", player: null, mode: "account", error: null, signInLink: null });
     expect(screen.queryByRole("textbox", { name: en["auth.linkLabel"] })).toBeNull();
   });
 
@@ -94,8 +95,8 @@ describe("a sign-in whose browser never appeared", () => {
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(<LoginView />);
 
-    authEvent({ type: "loginStarted" });
-    authEvent({ type: "signInLinkReady", payload: { url: link } });
+    authState({ status: "loggingIn", error: null, signInLink: null });
+    authState({ signInLink: link });
     await user.click(screen.getByRole("button", { name: en["auth.copyLink"] }));
     const field = screen.getByRole<HTMLInputElement>("textbox", { name: en["auth.linkLabel"] });
     expect(document.activeElement).toBe(field);

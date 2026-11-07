@@ -414,6 +414,26 @@ html.is-resizing-chat-roster * {
   outline-offset: 1px;
 }
 
+/* Where the log moves on to another day (issue 708): a rule across the log with
+   the day in its middle, quieter than any message. */
+.chat-day-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chat-day-divider::before,
+.chat-day-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--color-border);
+}
+
 /* A browser's find bar: a small box over the log's top right corner, clear of
    the scrollbar and above the message action toolbars (z-index 10). A match
    is scrolled to the middle of the log, so the box never covers it. */
@@ -460,8 +480,7 @@ html.is-resizing-chat-roster * {
 
 .chat-find-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .chat-find-field input {
@@ -1234,8 +1253,7 @@ html.is-resizing-chat-roster * {
 
 .chat-roster-search-field:focus-within {
   border-color: var(--color-accent);
-  outline: 2px solid var(--color-accent);
-  outline-offset: -1px;
+  box-shadow: 0 0 0 3px var(--color-accent-glow);
 }
 
 .chat-roster-search-field input {
@@ -1622,6 +1640,15 @@ img.chat-game-map {
   white-space: nowrap;
   cursor: pointer;
   transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+/* Level with the letters rather than the line. "Watch live" and "Join" have
+   no descenders, so their letters sit a pixel below the middle of a line that
+   keeps room for some, and the icon, centred on the line, read as floating
+   above its label. */
+.chat-game-popover-action svg {
+  position: relative;
+  top: 1px;
 }
 
 .chat-game-popover-action:hover {

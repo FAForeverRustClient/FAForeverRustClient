@@ -156,11 +156,10 @@ pub enum NotificationSound {
 /// UI. Everything without a switch of its own (server notices, errors, a
 /// finished map, a new client version) shares [`Self::other`].
 ///
-/// **Two rows are not [`NotificationSound::Chime`]: a found match plays
-/// [`NotificationSound::FafMatch`] and a filled lobby plays
-/// [`NotificationSound::Alert`].** Everything else keeps the tone the client
-/// played before this existed, so installing an update changes those two
-/// sounds and not the rest.
+/// **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
+/// lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+/// tone the client played before this existed, so installing an update changes
+/// those two sounds and not the rest.
 ///
 /// That is a reversal. The original note here argued that shipping choices
 /// nobody made was the wrong answer to "all notifications sound the same", and
@@ -172,6 +171,10 @@ pub enum NotificationSound {
 /// that. A lobby filling up expires the same way -- the game launches without
 /// whoever was looking elsewhere -- and was asked for by name. The remaining
 /// ten rows are still one tone and still a preference.
+///
+/// A found match first defaulted to [`NotificationSound::FafMatch`], the Java
+/// client's sample. It is long and harsh next to the synthesised tones, so it
+/// stays on offer and stops being what everybody hears by default.
 ///
 /// [`NotificationSound::Silent`] is available on every row, which is how a kind
 /// is seen and not heard.
@@ -200,14 +203,14 @@ pub struct NotificationSoundChoices {
 
 /// Bump when a default in [`NotificationSoundChoices`] changes and the change
 /// should reach people whose settings already name the old one.
-const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 2;
+const NOTIFICATION_SOUND_CHOICE_VERSION: u8 = 3;
 
 impl Default for NotificationSoundChoices {
     fn default() -> Self {
         // One value, deliberately: see the note on the struct.
         Self {
-            // The one graded default: see the note on the struct.
-            match_found: NotificationSound::FafMatch,
+            // A graded default: see the note on the struct.
+            match_found: NotificationSound::Alert,
             private_message: NotificationSound::Chime,
             mention: NotificationSound::Chime,
             friend_online: NotificationSound::Chime,
@@ -329,6 +332,8 @@ pub struct NotificationPreferences {
     /// such; a `u8` among them would be a row that is not a sound.
     pub sound_choice_version: u8,
     pub notify_when_focused: bool,
+    /// Request attention for notifications while the client is in the background.
+    pub flash_taskbar: bool,
     /// Which corner a toast appears in. See [`ToastPosition`].
     pub toast_position: ToastPosition,
     pub delivery: std::collections::BTreeMap<
@@ -347,6 +352,11 @@ pub struct NotificationPreferences {
     pub friend_offline: bool,
     pub friend_playing: bool,
     pub friend_joined_game: bool,
+    /// Whether a friend's game is announced once its live replay can be
+    /// watched, five minutes after it started. A switch of its own, so somebody
+    /// can hear that a friend started without being told again later, or the
+    /// reverse.
+    pub friend_replay_ready: bool,
     pub new_custom_games: bool,
     pub new_custom_games_friends_only: bool,
     pub game_full: bool,
@@ -407,6 +417,7 @@ impl Default for NotificationPreferences {
             sounds: NotificationSoundChoices::default(),
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: false,
+            flash_taskbar: true,
             toast_position: ToastPosition::BottomLeft,
             delivery: Default::default(),
             mentions_require_at: false,
@@ -421,6 +432,7 @@ impl Default for NotificationPreferences {
             friend_offline: true,
             friend_playing: true,
             friend_joined_game: true,
+            friend_replay_ready: true,
             new_custom_games: false,
             new_custom_games_friends_only: true,
             game_full: true,
@@ -458,6 +470,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sounds: NotificationSoundChoices,
             sound_choice_version: u8,
             notify_when_focused: bool,
+            flash_taskbar: bool,
             toast_position: ToastPosition,
             delivery: std::collections::BTreeMap<
                 crate::state::notifications::NotificationKind,
@@ -475,6 +488,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             friend_offline: bool,
             friend_playing: bool,
             friend_joined_game: bool,
+            friend_replay_ready: bool,
             new_custom_games: bool,
             new_custom_games_friends_only: bool,
             game_full: bool,
@@ -505,6 +519,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     // the file the migration below is for.
                     sound_choice_version: 0,
                     notify_when_focused: defaults.notify_when_focused,
+                    flash_taskbar: defaults.flash_taskbar,
                     toast_position: defaults.toast_position,
                     delivery: defaults.delivery,
                     mentions_require_at: defaults.mentions_require_at,
@@ -519,6 +534,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     friend_offline: defaults.friend_offline,
                     friend_playing: defaults.friend_playing,
                     friend_joined_game: defaults.friend_joined_game,
+                    friend_replay_ready: defaults.friend_replay_ready,
                     new_custom_games: defaults.new_custom_games,
                     new_custom_games_friends_only: defaults.new_custom_games_friends_only,
                     game_full: defaults.game_full,
@@ -545,10 +561,15 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
         let mut sounds = wire.sounds;
         let graded = NotificationSoundChoices::default();
         if wire.sound_choice_version < 1 && sounds.match_found == NotificationSound::Chime {
-            sounds.match_found = graded.match_found;
+            sounds.match_found = graded.match_found.clone();
         }
         if wire.sound_choice_version < 2 && sounds.game_full == NotificationSound::Chime {
             sounds.game_full = graded.game_full;
+        }
+        // Version 2 still defaulted a found match to the sample, so a file
+        // from then naming it was mostly written by that default.
+        if wire.sound_choice_version < 3 && sounds.match_found == NotificationSound::FafMatch {
+            sounds.match_found = graded.match_found;
         }
         Ok(Self {
             enabled: wire.enabled,
@@ -560,6 +581,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             sounds,
             sound_choice_version: NOTIFICATION_SOUND_CHOICE_VERSION,
             notify_when_focused: wire.notify_when_focused,
+            flash_taskbar: wire.flash_taskbar,
             toast_position: wire.toast_position,
             delivery: wire.delivery,
             mentions_require_at: wire.mentions_require_at,
@@ -574,6 +596,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             friend_offline: wire.friend_offline,
             friend_playing: wire.friend_playing,
             friend_joined_game: wire.friend_joined_game,
+            friend_replay_ready: wire.friend_replay_ready,
             new_custom_games: wire.new_custom_games,
             new_custom_games_friends_only: wire.new_custom_games_friends_only,
             game_full: wire.game_full,
@@ -637,6 +660,7 @@ preference_patch! {
         history_lifetime_seconds: u32,
         sound_choice_version: u8,
         notify_when_focused: bool,
+        flash_taskbar: bool,
         toast_position: ToastPosition,
         desktop_style: DesktopNotificationStyle,
         desktop_position: ToastPosition,
@@ -650,6 +674,7 @@ preference_patch! {
         friend_offline: bool,
         friend_playing: bool,
         friend_joined_game: bool,
+        friend_replay_ready: bool,
         new_custom_games: bool,
         new_custom_games_friends_only: bool,
         game_full: bool,
@@ -771,7 +796,7 @@ mod tests {
     }
 
     #[test]
-    fn a_chime_written_by_the_old_default_moves_to_the_faf_match_sound() {
+    fn a_chime_written_by_the_old_default_moves_to_the_graded_sound() {
         // Every settings file written before this existed says `chime` in all
         // twelve rows, because every save writes every field. Without the
         // version that made the new default unreachable for everybody who had
@@ -781,7 +806,7 @@ mod tests {
 
         assert_eq!(
             settings.notifications.sounds.match_found,
-            NotificationSound::FafMatch
+            NotificationSound::Alert
         );
         assert_eq!(
             settings.notifications.sound_choice_version,
@@ -803,15 +828,44 @@ mod tests {
     }
 
     #[test]
+    fn the_sample_written_by_the_version_two_default_moves_to_alert() {
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":2,"sounds":{"matchFound":"fafMatch"}}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            settings.notifications.sounds.match_found,
+            NotificationSound::Alert
+        );
+    }
+
+    #[test]
+    fn the_sample_chosen_since_version_three_is_left_alone() {
+        let settings: SettingsState = serde_json::from_str(
+            r#"{"notifications":{"soundChoiceVersion":3,"sounds":{"matchFound":"fafMatch"}}}"#,
+        )
+        .unwrap();
+
+        assert_eq!(
+            settings.notifications.sounds.match_found,
+            NotificationSound::FafMatch
+        );
+    }
+
+    #[test]
     fn the_migration_only_touches_the_row_the_old_default_wrote() {
         // Anything that is not `chime` is a choice somebody made, including a
         // deliberate silence, and the migration must not overwrite it.
-        for stored in ["silent", "soft", "ping", "alert"] {
+        for (stored, expected) in [
+            ("silent", NotificationSound::Silent),
+            ("soft", NotificationSound::Soft),
+            ("ping", NotificationSound::Ping),
+        ] {
             let json = format!(r#"{{"notifications":{{"sounds":{{"matchFound":"{stored}"}}}}}}"#);
             let settings: SettingsState = serde_json::from_str(&json).unwrap();
-            assert_ne!(
-                settings.notifications.sounds.match_found,
-                NotificationSound::FafMatch,
+            assert_eq!(
+                settings.notifications.sounds.match_found, expected,
                 "{stored} should have been left alone"
             );
         }
@@ -957,6 +1011,7 @@ mod desktop_tests {
             "toastPosition": "topLeft", "sounds": {"privateMessage": "silent"}});
         let preferences: NotificationPreferences = serde_json::from_value(stored).unwrap();
         assert!(!preferences.desktop && !preferences.popup && !preferences.sound);
+        assert!(preferences.flash_taskbar);
         assert_eq!(preferences.toast_position, ToastPosition::TopLeft);
         assert_eq!(preferences.desktop_position, ToastPosition::BottomRight);
         assert_eq!(preferences.desktop_style, DesktopNotificationStyle::Popup);
@@ -967,6 +1022,20 @@ mod desktop_tests {
             NotificationSound::Silent
         );
     }
+
+    #[test]
+    fn taskbar_flash_can_be_disabled_independently_and_stays_off_when_loaded() {
+        let patch: NotificationPreferencesPatch =
+            serde_json::from_value(serde_json::json!({"flashTaskbar": false})).unwrap();
+        let preferences = patch.apply_to(NotificationPreferences::default());
+        assert!(!preferences.flash_taskbar);
+        assert!(preferences.desktop && preferences.popup && preferences.sound);
+        let saved = serde_json::to_value(&preferences).unwrap();
+        assert_eq!(saved["flashTaskbar"], false);
+        let loaded: NotificationPreferences = serde_json::from_value(saved).unwrap();
+        assert_eq!(loaded, preferences);
+    }
+
     #[test]
     fn delivery_edits_merge_per_channel_and_reset_to_inherited_values() {
         let first: NotificationPreferencesPatch = serde_json::from_value(

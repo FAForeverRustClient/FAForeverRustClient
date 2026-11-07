@@ -196,6 +196,7 @@ pub fn run() {
                 commands::map_generator_automatic_instances,
                 commands::report_webview_stall,
                 commands::report_event_cost,
+                commands::report_notification_skip,
                 commands::exit_app,
                 commands::page_ready,
                 commands::page_gone,
@@ -204,6 +205,7 @@ pub fn run() {
                 notification_popup::notification_displays,
                 notification_popup::notification_popup_snapshot,
                 notification_popup::notification_popup_interact,
+                notification_popup::notification_popup_next_activation,
                 notification_popup::notification_popup_size,
                 notification_popup::notification_popup_painted,
                 notification_popup::game_notification_attention,
@@ -230,6 +232,10 @@ pub fn run() {
             // closes the only window, which must not exit the client.
             #[cfg(windows)]
             webview_recovery::on_run_event(_app, &_event);
+            // The one event every way out passes through, once.
+            if let tauri::RunEvent::Exit = _event {
+                exit::sweep_generated_maps(_app);
+            }
         });
 }
 

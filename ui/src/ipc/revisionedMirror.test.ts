@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppEvent, AppState } from "./bindings";
+import type { FrontendUpdate, AppState, VersionedSnapshot } from "./bindings";
 import {
   MAX_PENDING_EVENTS,
   RECOVERY_MAX_ATTEMPTS,
+  RECOVERY_TIMEOUT_MS,
   RevisionedMirror,
+  SnapshotRecoveryTimeoutError,
   recoveryRetryDelay,
 } from "./revisionedMirror";
 
-const connecting: AppEvent = { kind: "Session", event: { type: "connecting" } };
-const disconnected: AppEvent = { kind: "Session", event: { type: "disconnected" } };
+const connecting: FrontendUpdate = { kind: "Session", event: { status: "connecting", backendVersion: "", offlineAuth: false } };
+const disconnected: FrontendUpdate = { kind: "Session", event: { status: "disconnected", backendVersion: "", offlineAuth: false } };
 const snapshotState = {} as AppState;
 
 describe("RevisionedMirror", () => {
@@ -153,7 +155,7 @@ describe("RevisionedMirror recovery", () => {
   type Answer = { revision: number } | Error;
 
   function harness(answers: Answer[]) {
-    const applied: AppEvent[] = [];
+    const applied: FrontendUpdate[] = [];
     const errors: unknown[] = [];
     const resnapshot = vi.fn(() => {
       const answer = answers.shift() ?? new Error("no scripted answer");
@@ -186,6 +188,46 @@ describe("RevisionedMirror recovery", () => {
 
     expect(applied).toEqual([disconnected]);
     expect(errors).toEqual([]);
+  });
+
+  it("retries an unanswered snapshot and ignores its late reply", async () => {
+    let finishFirst!: (snapshot: VersionedSnapshot) => void;
+    const first = new Promise<VersionedSnapshot>((resolve) => { finishFirst = resolve; });
+    const resnapshot = vi.fn<() => Promise<VersionedSnapshot>>()
+      .mockReturnValueOnce(first)
+      .mockResolvedValue({ revision: 2, state: snapshotState });
+    const hydrate = vi.fn();
+    const apply = vi.fn();
+    const onError = vi.fn();
+    const mirror = new RevisionedMirror(hydrate, apply, resnapshot, onError);
+    mirror.replace({ revision: 1, state: snapshotState });
+    mirror.receive({ kind: "event", revision: 3, event: connecting });
+
+    await vi.advanceTimersByTimeAsync(RECOVERY_TIMEOUT_MS + recoveryRetryDelay(1) - 1);
+    expect(resnapshot).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(resnapshot).toHaveBeenCalledTimes(2);
+    expect(apply).toHaveBeenCalledExactlyOnceWith(connecting);
+
+    // Even a late reply carrying a newer revision belongs to the expired attempt.
+    finishFirst({ revision: 9, state: {} as AppState });
+    await vi.runAllTimersAsync();
+    mirror.receive({ kind: "event", revision: 4, event: disconnected });
+    expect(hydrate).toHaveBeenCalledTimes(2);
+    expect(apply.mock.calls).toEqual([[connecting], [disconnected]]);
+    expect(onError).not.toHaveBeenCalled();
+  });
+
+  it("reports once when all snapshot attempts time out", async () => {
+    const resnapshot = vi.fn(() => new Promise<VersionedSnapshot>(() => {}));
+    const onError = vi.fn();
+    const mirror = new RevisionedMirror(vi.fn(), vi.fn(), resnapshot, onError);
+    mirror.replace({ revision: 1, state: snapshotState });
+    mirror.receive({ kind: "event", revision: 3, event: disconnected });
+
+    await vi.runAllTimersAsync();
+    expect(resnapshot).toHaveBeenCalledTimes(RECOVERY_MAX_ATTEMPTS);
+    expect(onError).toHaveBeenCalledExactlyOnceWith(expect.any(SnapshotRecoveryTimeoutError));
   });
 
   it("backs off between retries and reports once the attempts run out", async () => {

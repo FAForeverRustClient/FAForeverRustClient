@@ -5,8 +5,8 @@
 use std::time::Instant;
 
 use faf_domain::state::{
-    JoinState, LobbyEvent, MatchmakerQueue, MatchmakingState, NotificationAction, NotificationKind,
-    PartyState, PlayerVeto, SettingsEvent,
+    JoinState, LobbyEvent, MatchmakerQueue, MatchmakingState, NavEvent, NotificationAction,
+    NotificationEvent, NotificationKind, PartyState, PlayMode, PlayerVeto, SettingsEvent, Tab,
 };
 
 use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
@@ -35,25 +35,62 @@ const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
 
 /// Start or stop the search in one queue: `LobbyCommand::Matchmake`.
 pub(super) fn matchmake(queue_name: String, start: bool, ctx: &ServiceCtx, out: &EventSink) {
-    // Stopping a search that is still being prepared stops the
-    // preparation from asking for it: `start_search` checks the state
-    // before it sends anything. The `stop` still goes out, which the
-    // server answers with nothing when it has no such search.
-    if !start
-        && out.with_state(|state| {
-            matches!(state.lobby.matchmaking, MatchmakingState::Preparing { .. })
-        })
-    {
-        out.emit(LobbyEvent::MatchmakingUpdated {
-            state: MatchmakingState::Idle,
+    let _submission = ctx.lobby.search_submission.lock().unwrap();
+    if !start {
+        let (looking, preparing) = out.with_state(|state| {
+            let matchmaking = &state.lobby.matchmaking;
+            (
+                matchmaking.is_looking(),
+                matches!(matchmaking, MatchmakingState::Preparing { .. }),
+            )
         });
-        // And the updater behind it stops at its next safe point, which lets
-        // the launcher's preparation lock go: a join or a search started
-        // straight after used to wait for the whole update, unnarrated. After
-        // the state, so the preparation finds its search no longer wanted.
-        ctx.lobby.search_preparation.cancel(|_| true);
+        // A multi-queue Stop can send more commands after local preparation
+        // was already cancelled. There is no server search in that case.
+        if !looking {
+            return;
+        }
+        let attempt = ctx
+            .lobby
+            .search_attempt
+            .load(std::sync::atomic::Ordering::SeqCst);
+        if preparing
+            && ctx
+                .lobby
+                .search_preparation
+                .cancel(|pending| *pending == attempt)
+        {
+            out.emit(LobbyEvent::MatchmakingUpdated {
+                state: MatchmakingState::Idle,
+            });
+            return;
+        }
     }
-    ctx.ports.lobby.matchmake(queue_name, start)
+    // Once submitted, wait for the server's state. Stopping one queue may
+    // leave other queues running, including when their Stop was refused.
+    if let Err(error) = ctx
+        .ports
+        .lobby
+        .matchmake(std::slice::from_ref(&queue_name), start)
+    {
+        let (key, title) = if start {
+            (
+                "notifications.msg.searchFailed",
+                "Could not start the search",
+            )
+        } else {
+            (
+                "notifications.msg.searchStopFailed",
+                "Could not stop the search",
+            )
+        };
+        notifications::add_required_failure(
+            out,
+            notifications::Text::new(key),
+            title,
+            error.reason().to_owned(),
+            Some(NotificationAction::OpenMatchmaking),
+        );
+    }
 }
 
 /// Leave the party: `LobbyCommand::LeaveParty`.
@@ -89,7 +126,12 @@ pub(super) fn invite_to_party(player_id: i32, ctx: &ServiceCtx, out: &EventSink)
 }
 
 /// Accept a party invitation: `LobbyCommand::AcceptPartyInvite`.
-pub(super) fn accept_party_invite(player_id: i32, ctx: &ServiceCtx, out: &EventSink) {
+pub(super) fn accept_party_invite(
+    player_id: i32,
+    notification_id: Option<String>,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+) {
     if let Some(refusal) = out.with_state(|state| party_join_refusal(state, ctx, player_id)) {
         notifications::add_required_text(
             out,
@@ -101,7 +143,23 @@ pub(super) fn accept_party_invite(player_id: i32, ctx: &ServiceCtx, out: &EventS
         );
         return;
     }
-    ctx.ports.lobby.accept_party_invite(player_id)
+    if let Err(error) = ctx.ports.lobby.accept_party_invite(player_id) {
+        notifications::add_required_failure(
+            out,
+            notifications::Text::new("notifications.msg.cannotJoinParty"),
+            "Cannot join the party",
+            error.reason().to_owned(),
+            Some(NotificationAction::OpenMatchmaking),
+        );
+        return;
+    }
+    if let Some(id) = notification_id {
+        out.emit(LobbyEvent::PlayModeChanged {
+            mode: PlayMode::Matchmaking,
+        });
+        out.emit(NavEvent::TabSelected { tab: Tab::Play });
+        out.emit(NotificationEvent::Read { id });
+    }
 }
 
 /// Choose the map vetoes: `LobbyCommand::SetPlayerVetoes`.
@@ -173,68 +231,73 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     if queue_names.is_empty() {
         return;
     }
-    let refusal = out.with_state(|state| {
-        if !matches!(
-            state.lobby.status,
-            faf_domain::state::LobbyStatus::Connected
-        ) {
-            return Some(Err(
-                "Connect to the FAF lobby before searching for a match.",
-            ));
+    let (preparation, attempt) = {
+        let _submission = ctx.lobby.search_submission.lock().unwrap();
+        let refusal = out.with_state(|state| {
+            if !matches!(
+                state.lobby.status,
+                faf_domain::state::LobbyStatus::Connected
+            ) {
+                return Some(Err(
+                    "Connect to the FAF lobby before searching for a match.",
+                ));
+            }
+            if state.lobby.matchmaking.is_looking()
+                || matches!(
+                    state.lobby.matchmaking,
+                    MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
+                )
+            {
+                // A second press while the first is still on its way.
+                return Some(Ok(()));
+            }
+            if game_is_running(state, ctx) {
+                return Some(Err("Close Forged Alliance before searching for a match."));
+            }
+            let me = state.auth.player.as_ref().map(|player| player.id);
+            let party = &state.lobby.party;
+            if party.members.len() > 1 && party.owner_id != me {
+                return Some(Err("Only the party leader can start the search."));
+            }
+            None
+        });
+        match refusal {
+            Some(Ok(())) => return,
+            Some(Err(reason)) => {
+                notifications::add_required_text(
+                    out,
+                    NotificationKind::Error,
+                    notifications::Text::new("notifications.msg.searchFailed"),
+                    "Could not start the search",
+                    reason,
+                    Some(NotificationAction::OpenMatchmaking),
+                );
+                return;
+            }
+            None => {}
         }
-        if state.lobby.matchmaking.is_looking()
-            || matches!(
-                state.lobby.matchmaking,
-                MatchmakingState::MatchFound { .. } | MatchmakingState::Launching { .. }
-            )
-        {
-            // A second press while the first is still on its way.
-            return Some(Ok(()));
-        }
-        if game_is_running(state, ctx) {
-            return Some(Err("Close Forged Alliance before searching for a match."));
-        }
-        let me = state.auth.player.as_ref().map(|player| player.id);
-        let party = &state.lobby.party;
-        if party.members.len() > 1 && party.owner_id != me {
-            return Some(Err("Only the party leader can start the search."));
-        }
-        None
-    });
-    match refusal {
-        Some(Ok(())) => return,
-        Some(Err(reason)) => {
-            notifications::add_required_text(
-                out,
-                NotificationKind::Error,
-                notifications::Text::new("notifications.msg.searchFailed"),
-                "Could not start the search",
-                reason,
-                Some(NotificationAction::OpenMatchmaking),
-            );
-            return;
-        }
-        None => {}
-    }
 
-    // Registered before the state says `Preparing`, so a Stop that sees the
-    // state also reaches this preparation's updater.
-    let preparation = ctx.lobby.search_preparation.begin(());
-    let attempt = ctx
-        .lobby
-        .search_attempt
-        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-        + 1;
-    out.emit(LobbyEvent::MatchmakingUpdated {
-        state: MatchmakingState::Preparing {
-            queue_names: queue_names.clone(),
-        },
-    });
+        // Registered before the state says `Preparing`, so a Stop that sees the
+        // state also reaches this preparation's updater.
+        let attempt = ctx
+            .lobby
+            .search_attempt
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            + 1;
+        let preparation = ctx.lobby.search_preparation.begin(attempt);
+        out.emit(LobbyEvent::MatchmakingUpdated {
+            state: MatchmakingState::Preparing {
+                queue_names: queue_names.clone(),
+            },
+        });
+        (preparation, attempt)
+    };
     let prepared = if ctx.ports.process.supports_live_launch() {
         launcher::prepare_search(&queue_names, ctx, out, &preparation.called_off).await
     } else {
         Ok(())
     };
+    let _submission = ctx.lobby.search_submission.lock().unwrap();
     ctx.lobby.search_preparation.end(&preparation);
 
     // Stopped, disconnected or replaced while the files came down. Nothing is
@@ -242,6 +305,11 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     // the state: a stopped search followed at once by a new one for the same
     // queues reads `Preparing` again, and that state is the new search's.
     let still_wanted = !preparation.called_off.is_cancelled()
+        && ctx
+            .lobby
+            .search_attempt
+            .load(std::sync::atomic::Ordering::SeqCst)
+            == attempt
         && out.with_state(|state| {
             matches!(
                 &state.lobby.matchmaking,
@@ -269,8 +337,18 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         return;
     }
 
-    for queue_name in &queue_names {
-        ctx.ports.lobby.matchmake(queue_name.clone(), true);
+    if let Err(error) = ctx.ports.lobby.matchmake(&queue_names, true) {
+        out.emit(LobbyEvent::MatchmakingUpdated {
+            state: MatchmakingState::Idle,
+        });
+        notifications::add_required_failure(
+            out,
+            notifications::Text::new("notifications.msg.searchFailed"),
+            "Could not start the search",
+            error.reason().to_owned(),
+            Some(NotificationAction::OpenMatchmaking),
+        );
+        return;
     }
     watch_for_search_start(queue_names, attempt, ctx, out);
 }

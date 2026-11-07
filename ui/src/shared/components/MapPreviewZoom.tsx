@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon } from "../../design-system/Icon";
 import { Modal } from "../../design-system/Modal";
 import { ipc } from "../../ipc/client";
-import type { VaultMap } from "../../ipc/bindings";
+import type { MapSummary } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapPreview, type PreviewableMap } from "./MapPreview";
 import { MapThumbnail } from "./MapThumbnail";
@@ -33,7 +33,7 @@ const DOUBLE_CLICK_SCALE = 2.5;
 
 /// A generated map has no vault record, so its thumbnail is asked for without
 /// one. A constant so the thumbnail's memo does not see a new list each render.
-const NO_VAULT: VaultMap[] = [];
+const NO_VAULT: MapSummary[] = [];
 
 /**
  * Put the preview PNG on the clipboard.
@@ -81,7 +81,7 @@ async function copyImageToClipboard(url: string): Promise<void> {
  * jump in and back out, and the same through buttons and the keyboard.
  *
  * Takes the image as a child rather than drawing one, because the two places
- * that need this resolve their art differently: the Maps tab has a `VaultMap`
+ * that need this resolve their art differently: the Maps tab has a `MapSummary`
  * and its fallbacks, the Play tab has a game's map name and the generated
  * previews that go with it. Everything here works on whatever `<img>` ends up
  * inside, including the copy, which reads the `currentSrc` the browser settled

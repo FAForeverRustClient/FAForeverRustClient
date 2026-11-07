@@ -929,6 +929,10 @@ pub enum LobbyCommand {
     #[serde(rename_all = "camelCase")]
     AcceptPartyInvite {
         player_id: i32,
+        /// A bell or popup action is consumed only after local send admission.
+        #[serde(default)]
+        #[specta(optional)]
+        notification_id: Option<String>,
     },
     /// Update the local party member's accepted factions. The server echoes the
     /// authoritative selection in its next `update_party` snapshot.

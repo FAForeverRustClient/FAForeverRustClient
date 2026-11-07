@@ -1,11 +1,7 @@
 // Reactions under a chat message, and the controls that add and remove one.
 //
-// The IRCv3 draft this rides on (`+draft/react` anchored by `+draft/reply`)
-// defines no *retraction*. Removal therefore travels on a client tag of this
-// client's own, `+draft/unreact`, which other clients will not understand:
-// between two of these clients a removal is seen by both, and to a client that
-// only knows the draft the reaction stays. That limit belongs to the protocol
-// and cannot be designed away here.
+// Match Java's wire emoticon aliases. The adapter tracks each reaction's
+// server message ID and uses REDACT to remove it across clients.
 //
 // Clicking a reaction you are part of takes yours back; clicking one you are
 // not adds yours. A message the server never gave a `msgid` cannot be reacted
@@ -18,9 +14,9 @@ import { useEffect, useRef, useState } from "react";
 import type { Reaction } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { emojiName } from "./emoji";
-
-/** The shortlist offered inline. The full picker lives in the composer. */
-const QUICK_REACTIONS = ["👍", "😂", "🔥", "❤️", "👏", "🤔"] as const;
+import { QUICK_REACTIONS, reactionGlyph, reactionFaction } from "../../../shared/chatEmoticons";
+import { FactionIcon } from "../../../shared/components/FactionIcon";
+import { factionLabel } from "../../../shared/factions";
 
 interface Props {
   msgid: string;
@@ -117,12 +113,12 @@ export function MessageReactions({
             // else in the UI that would show them.
             title={`${nameOf(reaction.emoji)}: ${reaction.senders.join(", ")}`}
             aria-label={t(mine ? "chat.reaction.remove" : "chat.reaction.by", {
-              emoji: reaction.emoji,
+              emoji: nameOf(reaction.emoji),
               people: reaction.senders.join(", "),
             })}
             onClick={() => (mine ? onUnreact(reaction.emoji) : react(reaction.emoji))}
           >
-            <span aria-hidden="true">{reaction.emoji}</span>
+            <span aria-hidden="true"><ReactionGlyph value={reaction.emoji} /></span>
             <span className="chat-reaction-count">{reaction.senders.length}</span>
           </button>
         );
@@ -152,7 +148,7 @@ export function MessageReactions({
                 title={nameOf(emoji)}
                 onClick={() => react(emoji)}
               >
-                {emoji}
+                <ReactionGlyph value={emoji} />
               </button>
             ))}
           </div>
@@ -164,5 +160,11 @@ export function MessageReactions({
 
 /** What to call an emoji on a button, falling back to the emoji itself. */
 function nameOf(char: string): string {
-  return emojiName(char) ?? char;
+  const faction = reactionFaction(char);
+  return faction === undefined ? emojiName(reactionGlyph(char)) ?? reactionGlyph(char) : factionLabel(faction);
+}
+
+function ReactionGlyph({ value }: { value: string }) {
+  const faction = reactionFaction(value);
+  return faction === undefined ? <>{reactionGlyph(value)}</> : <FactionIcon faction={faction} size={18} />;
 }

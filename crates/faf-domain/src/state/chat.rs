@@ -837,17 +837,17 @@ pub enum ChatEvent {
         emoji: String,
         sender: String,
     },
-    /// Someone took their reaction back.
-    ///
-    /// The IRCv3 draft defines no retraction at all, so this rides on a client
-    /// tag of this client's own (`+draft/unreact`). Between two of these
-    /// clients it works; a client that does not know the tag keeps showing the
-    /// reaction, and there is no way to make it not.
+    /// Someone took their reaction back, including a server REDACT event.
     ReactionRemoved {
         channel: String,
         msgid: String,
         emoji: String,
         sender: String,
+    },
+    /// A server-authorized deletion. Remove retained copies and reactions too.
+    MessageRedacted {
+        channel: String,
+        msgid: String,
     },
     Disconnected,
 }
@@ -1056,6 +1056,20 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
             }
         }
         ChatEvent::JoinsPartsToggled { enabled } => state.show_joins_parts = *enabled,
+        ChatEvent::MessageRedacted { channel, msgid } => {
+            if msgid.is_empty() {
+                return;
+            }
+            if let Some(c) = state.channel_mut(channel) {
+                c.messages.retain(|message| message.msgid != *msgid);
+                c.reactions.retain(|reaction| reaction.msgid != *msgid);
+            }
+            for history in &mut state.retained_histories {
+                if history.channel.eq_ignore_ascii_case(channel) {
+                    history.messages.retain(|message| message.msgid != *msgid);
+                }
+            }
+        }
         ChatEvent::AutoJoinAnnounced { channels } => {
             state.server_auto_join = normalize_channels(channels.clone());
         }

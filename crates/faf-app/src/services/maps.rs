@@ -90,7 +90,9 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             match ctx.ports.maps.find_vault_maps_by_folder(&wanted).await {
                 Ok(maps) if !maps.is_empty() => {
-                    out.emit(MapsEvent::VaultFoldersResolved { maps });
+                    out.emit(MapsEvent::VaultFoldersResolved {
+                        maps: maps.into_iter().map(Into::into).collect(),
+                    });
                 }
                 Ok(_) => tracing::debug!(?wanted, "no vault record for these map folders"),
                 // Quiet on purpose: the tile already shows its placeholder, and
@@ -128,7 +130,9 @@ pub async fn handle(cmd: MapsCommand, ctx: &ServiceCtx, out: &EventSink) {
                 .await
             {
                 Ok(maps) if !maps.is_empty() => {
-                    out.emit(MapsEvent::VaultFoldersResolved { maps });
+                    out.emit(MapsEvent::VaultFoldersResolved {
+                        maps: maps.into_iter().map(Into::into).collect(),
+                    });
                 }
                 Ok(_) => tracing::debug!(?wanted, "no vault record under these map names"),
                 // Quiet, as for folders: a missing size is what the page

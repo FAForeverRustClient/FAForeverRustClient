@@ -1,6 +1,6 @@
-// Conformance: the frontend reducer must agree with the Rust one.
+// Conformance: authoritative assignments and retained delta reducers must agree with Rust.
 //
-// `reducers/*.ts` are hand-written twins of `crates/faf-domain/src/state/`.
+// The remaining `reducers/*.ts` are hand-written twins of `crates/faf-domain/src/state/`.
 // TypeScript's exhaustive switch catches a *missing* event variant; nothing
 // catches the same variant taking a different transition, and nothing
 // reconciles the two at runtime: `src-tauri` re-sends a full snapshot only
@@ -12,12 +12,14 @@
 // someone's reading of the Rust: the same reading that produced the one
 // divergence already found (`userLeft` creating a chat channel).
 //
-// If this fails after a Rust change, the twin has not kept up. Fix the twin,
-// not the fixture.
+// Migrated slices replay the actual post-reduce update captured in Rust.
+// Compact-delta slices still replay the original event. A failure means either
+// the assignment contract or a remaining twin has not kept up with Rust.
 
 import { describe, expect, it } from "vitest";
 import type {
   AppEvent,
+  FrontendUpdate,
   AppState,
   BracketConfig,
   ChatRoom,
@@ -31,8 +33,6 @@ import type {
   QualifierRule,
   ReplayDetails,
   ReplayEvent,
-  Review,
-  ReviewSummary,
   Tourney,
   TourneyAction,
   TourneyDraft,
@@ -139,14 +139,14 @@ import {
   vetoTurn,
   wouldExceedCap,
 } from "../shared/rules/tourneyRules";
-import { applyEvent } from "./reducer";
+import { applyEvent, isDeltaEvent } from "./reducer";
 import { ONLINE_LOOKUPS_KEPT, REPLAY_DETAILS_KEPT, RESOLVED_MAPS_KEPT, reduceReplays } from "./reducers/replays";
-import { summarize } from "./reducers/reviews";
 import { isUploadBusy } from "./reducers/uploads";
 import { useAppStore } from "./store";
 
 interface Step {
   event: AppEvent;
+  update?: FrontendUpdate;
   expected: unknown;
 }
 
@@ -156,7 +156,6 @@ interface Case {
 }
 
 interface HelperFixture {
-  reviewSummaries: Array<{ reviews: Review[]; expected: ReviewSummary }>;
   uploadBusy: Array<{ status: UploadsState["status"]; expected: boolean }>;
   playerNoteLookups: Array<{
     notes: AppState["settings"]["social"]["playerNotes"];
@@ -397,12 +396,19 @@ describe("the frontend reducer matches the Rust one", () => {
       let state = initial;
       testCase.steps.forEach((step, index) => {
         const before = state;
-        state = applyEvent(state, step.event);
+        const update = step.update ?? (isDeltaEvent(step.event) ? step.event : null);
+        if (!update) throw new Error("Rust must supply an authoritative replacement for this slice");
+        state = applyEvent(state, update);
         const slice = `${step.event.kind[0].toLowerCase()}${step.event.kind.slice(1)}` as keyof AppState;
         const context = `after step ${index + 1}: ${JSON.stringify(step.event)}`;
         expect(state[slice], context).toEqual(step.expected);
+        if (update.kind === "AccountSession") {
+          expect(state.chat, context).toEqual(update.event.chat);
+          expect(state.notifications, context).toEqual(update.event.notifications);
+        }
         for (const otherSlice of Object.keys(before) as Array<keyof AppState>) {
-          if (otherSlice !== slice) {
+          const accountReset = update.kind === "AccountSession" && (otherSlice === "chat" || otherSlice === "notifications");
+          if (otherSlice !== slice && !accountReset) {
             expect(state[otherSlice], `${context}; unexpected change in ${otherSlice}`).toEqual(
               before[otherSlice],
             );
@@ -470,10 +476,6 @@ describe("training library filter twins match Rust", () => {
 });
 
 describe("derived helper twins match Rust", () => {
-  it.each(helpers.reviewSummaries)("summarizes reviews", ({ reviews, expected }) => {
-    expect(summarize(reviews)).toEqual(expected);
-  });
-
   it.each(helpers.uploadBusy)("classifies upload status $status.type", ({ status, expected }) => {
     expect(isUploadBusy(status)).toBe(expected);
   });

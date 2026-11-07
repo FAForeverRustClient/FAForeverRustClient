@@ -412,6 +412,14 @@ export function NotificationsSettingsSection() {
             label={t("settings.notifications.whenFocused")}
           />
         </SettingRow>
+        <SettingRow label={t("settings.notifications.flashTaskbar")} hint={t("settings.notifications.flashTaskbarHint")}>
+          <SettingsSwitch
+            checked={preferences.flashTaskbar}
+            disabled={!preferences.enabled}
+            onChange={(flashTaskbar) => update({ flashTaskbar })}
+            label={t("settings.notifications.flashTaskbar")}
+          />
+        </SettingRow>
       </SettingsGroup>
       <SettingsGroup title={t("settings.notifications.group.inClient")}>
         <SettingRow label={t("settings.notifications.toastPositionLabel")}>
@@ -524,6 +532,12 @@ export function NotificationsSettingsSection() {
         <SettingRow label={t("settings.notifications.friendPlaying")}>
           <SoundChoice value={preferences.sounds.friendPlaying} disabled={mute || !preferences.friendPlaying} what={t("settings.notifications.friendPlaying")} onChange={(friendPlaying) => setSound({ friendPlaying })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.friendPlaying} disabled={!preferences.enabled} onChange={(friendPlaying) => update({ friendPlaying })} label={t("settings.notifications.friendPlaying")} />
+        </SettingRow>
+        {/* No sound picker of its own: it is the same "live replay ready" event
+            as a replay the player asked to be told about, and sounds as that
+            does (under "Other" in the sound list). */}
+        <SettingRow label={t("settings.notifications.friendReplayReady")}>
+          <SettingsSwitch checked={preferences.friendReplayReady ?? true} disabled={!preferences.enabled} onChange={(friendReplayReady) => update({ friendReplayReady })} label={t("settings.notifications.friendReplayReady")} />
         </SettingRow>
         <SettingRow label={t("settings.notifications.friendJoinedGame")}>
           <SoundChoice value={preferences.sounds.friendJoinedGame ?? "chime"} disabled={mute || !preferences.friendJoinedGame} what={t("settings.notifications.friendJoinedGame")} onChange={(friendJoinedGame) => setSound({ friendJoinedGame })} custom={choosableSounds} onAdd={addSound} />

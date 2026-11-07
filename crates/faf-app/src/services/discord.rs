@@ -12,13 +12,27 @@
 
 use faf_domain::protocol::discord::{presence_for, Activity, GamePhase};
 use faf_domain::state::{
-    AppState, Game, LiveReplayTarget, LobbyCommand, ReplayCommand, LIVE_REPLAY_DELAY_SECONDS,
+    AppState, Game, LiveReplayTarget, LobbyCommand, LobbyStatus, ReplayCommand,
+    LIVE_REPLAY_DELAY_SECONDS,
 };
 use faf_domain::AppEvent;
 
 use crate::ports::DiscordRequest;
 use crate::runtime::{EventSink, ServiceCtx};
 use std::sync::Arc;
+use std::time::Duration;
+
+/// How long a click in Discord waits for the lobby. Discord starts the client
+/// when it is not running, and the click arrives as soon as the client is
+/// connected to Discord: before the sign-in, and before the game list it
+/// names a game from. Long enough for a sign-in, not for a forgotten one.
+const LOBBY_WAIT: Duration = Duration::from_secs(120);
+
+/// How long, once signed in, the game the click names may take to appear in
+/// the game list the server sends after the welcome.
+const GAME_LIST_WAIT: Duration = Duration::from_secs(10);
+
+const WAIT_POLL: Duration = Duration::from_millis(250);
 
 /// Start the two long-lived tasks: presence out, requests in.
 ///
@@ -140,6 +154,11 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
                     tracing::info!("ignoring Discord join request because joins are disabled");
                     continue;
                 }
+                tracing::info!(game_id, "Discord asked to join a game");
+                if !wait_for_game(&sink, game_id, false).await {
+                    tracing::warn!(game_id, "Discord join: the lobby never connected");
+                    continue;
+                }
                 crate::runtime::run_command(
                     LobbyCommand::Join {
                         id: game_id,
@@ -153,6 +172,8 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
                 .await;
             }
             DiscordRequest::Spectate { game_id } => {
+                tracing::info!(game_id, "Discord asked to watch a game");
+                wait_for_game(&sink, game_id, true).await;
                 // The live-replay launcher needs the featured mod and map,
                 // which only the game list knows.
                 let game = sink.with_state(|state| {
@@ -181,6 +202,34 @@ async fn serve_requests(ctx: Arc<ServiceCtx>, sink: EventSink) {
             }
         }
     }
+}
+
+/// Wait until the lobby is connected and, for a little longer, until the game
+/// is on its list (`live` for the running games). False only when the lobby
+/// never connected; a game that does not show up is left to the join or the
+/// spectate to report, which say why better than a timeout would.
+async fn wait_for_game(sink: &EventSink, game_id: i32, live: bool) -> bool {
+    let connected = |state: &AppState| state.lobby.status == LobbyStatus::Connected;
+    let listed = |state: &AppState| {
+        let games = if live {
+            &state.lobby.live_games
+        } else {
+            &state.lobby.games
+        };
+        games.iter().any(|game| game.id == game_id)
+    };
+    let lobby = tokio::time::Instant::now() + LOBBY_WAIT;
+    while !sink.with_state(connected) {
+        if tokio::time::Instant::now() >= lobby {
+            return false;
+        }
+        tokio::time::sleep(WAIT_POLL).await;
+    }
+    let list = tokio::time::Instant::now() + GAME_LIST_WAIT;
+    while !sink.with_state(listed) && tokio::time::Instant::now() < list {
+        tokio::time::sleep(WAIT_POLL).await;
+    }
+    true
 }
 
 #[cfg(test)]

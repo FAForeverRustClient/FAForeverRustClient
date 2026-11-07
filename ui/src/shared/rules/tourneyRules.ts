@@ -11,6 +11,7 @@
 // `may_report` proved it, having lost the `has_bracket` half of its condition
 // while it sat inside `BracketView.tsx`.
 
+import { mapThumbnailUrl } from "../mapCatalogue";
 import type {
   BracketConfig,
   BracketKind,
@@ -43,7 +44,7 @@ import type {
   TourneyPlayer,
   TourneyStatus,
   TourneyTeam,
-  VaultMap,
+  MapSummary,
 } from "../../ipc/bindings";
 
 // Why the server would refuse a draft, as the rule below returns it. Generated
@@ -374,7 +375,7 @@ function withoutVersion(folder: string): string {
  * the tournament server's own image, which is usually absent: the vault preview
  * is the picture players already recognise from the maps tab.
  */
-export function matchVaultMap(tourneyMap: Pick<TourneyMap, "name">, vault: VaultMap[]): VaultMap | null {
+export function matchVaultMap(tourneyMap: Pick<TourneyMap, "name">, vault: MapSummary[]): MapSummary | null {
   const wanted = mapKey(tourneyMap.name);
   if (wanted === "") return null;
   const index = vaultIndex(vault);
@@ -387,8 +388,8 @@ export function matchVaultMap(tourneyMap: Pick<TourneyMap, "name">, vault: Vault
 }
 
 interface VaultIndex {
-  byName: Map<string, VaultMap>;
-  byFolder: Map<string, VaultMap>;
+  byName: Map<string, MapSummary>;
+  byFolder: Map<string, MapSummary>;
 }
 
 /**
@@ -400,9 +401,9 @@ interface VaultIndex {
  * times a veto grid of maps, again on each keystroke anywhere in the pane. The
  * first entry under a key wins, which is what `find` answered too.
  */
-const VAULT_INDEXES = new WeakMap<VaultMap[], VaultIndex>();
+const VAULT_INDEXES = new WeakMap<MapSummary[], VaultIndex>();
 
-function vaultIndex(vault: VaultMap[]): VaultIndex {
+function vaultIndex(vault: MapSummary[]): VaultIndex {
   const held = VAULT_INDEXES.get(vault);
   if (held !== undefined) return held;
   const index: VaultIndex = { byName: new Map(), byFolder: new Map() };
@@ -432,7 +433,7 @@ function vaultIndex(vault: VaultMap[]): VaultIndex {
 export function tourneyMapImage(
   tourneyMap: TourneyMap,
   assetBase: string,
-  vault: VaultMap[],
+  vault: MapSummary[],
 ): string {
   const own = tourneyMap.imageUrl.trim();
   if (own.startsWith("https://") && !/[<>"'\s]/.test(own)) return own;
@@ -441,7 +442,8 @@ export function tourneyMapImage(
   if (file !== "" && base !== "" && /^[A-Za-z0-9_.-]+$/.test(file)) {
     return `${base}/map-images/${encodeURIComponent(file)}`;
   }
-  return vault.length === 0 ? "" : (matchVaultMap(tourneyMap, vault)?.thumbnailUrl ?? "");
+  const map = vault.length === 0 ? undefined : matchVaultMap(tourneyMap, vault);
+  return map ? mapThumbnailUrl(map) : "";
 }
 
 /** Twin of `Tourney::team_is_full`. */

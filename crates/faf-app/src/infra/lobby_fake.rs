@@ -13,13 +13,13 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    AvailableAvatar, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
+    AvailableAvatar, Contact, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
     PlayerProfile, PlayerVeto, RatingRange, Relation,
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
-use crate::ports::{LobbyPort, LobbyUpdate};
+use crate::ports::{LobbyPort, LobbySendError, LobbyUpdate};
 
 /// Interval between simulated lobby updates.
 const TICK: Duration = Duration::from_secs(2);
@@ -31,6 +31,7 @@ pub type GameRelay = (String, Vec<serde_json::Value>);
 
 #[derive(Debug, Clone, Default)]
 pub struct FakeLobby {
+    send_busy: Arc<std::sync::atomic::AtomicBool>,
     /// Cancels the in-flight connection's update loop. Shared so `disconnect`
     /// (a separate call) can reach the task started by `connect`.
     cancel: Arc<Mutex<Option<CancellationToken>>>,
@@ -46,6 +47,25 @@ pub struct FakeLobby {
 }
 
 impl FakeLobby {
+    /// Simulate a saturated writer while the fake connection stays open.
+    pub fn set_send_busy(&self, busy: bool) {
+        self.send_busy
+            .store(busy, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn outgoing(&self) -> Result<mpsc::Sender<LobbyUpdate>, LobbySendError> {
+        if self.send_busy.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err(LobbySendError::Busy);
+        }
+        self.updates
+            .lock()
+            .unwrap()
+            .as_ref()
+            .filter(|tx| !tx.is_closed())
+            .cloned()
+            .ok_or(LobbySendError::Disconnected)
+    }
+
     /// Inject a server update into the active fake connection. Kept narrow so
     /// integration tests can exercise transition-only behavior (offline,
     /// invites, failures) without sleeping for the demo ticker.
@@ -233,11 +253,9 @@ impl LobbyPort for FakeLobby {
         true
     }
 
-    fn host(&self, config: HostGameConfig) {
+    fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError> {
         self.hosted.lock().unwrap().push(config.clone());
-        let Some(tx) = self.updates.lock().unwrap().clone() else {
-            return;
-        };
+        let tx = self.outgoing()?;
         tokio::spawn(async move {
             tokio::time::sleep(JOIN_DELAY).await;
             let mut launch = fake_launch(200);
@@ -246,20 +264,22 @@ impl LobbyPort for FakeLobby {
             launch.mod_name = config.mod_name;
             let _ = tx.send(LobbyUpdate::Launch(launch)).await;
         });
+        Ok(())
     }
 
-    fn matchmake(&self, queue_name: String, start: bool) {
-        let Some(tx) = self.updates.lock().unwrap().clone() else {
-            return;
-        };
+    fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
+        let tx = self.outgoing()?;
         let state = {
             let mut matchmaking = self.matchmaking.lock().unwrap();
-            matchmaking.update_search(queue_name, start);
+            for queue_name in queue_names {
+                matchmaking.update_search(queue_name.clone(), start);
+            }
             matchmaking.clone()
         };
         tokio::spawn(async move {
             let _ = tx.send(LobbyUpdate::Matchmaking(state)).await;
         });
+        Ok(())
     }
 
     fn leave_party(&self) {}
@@ -268,13 +288,26 @@ impl LobbyPort for FakeLobby {
 
     fn invite_to_party(&self, _player_id: i32) {}
 
-    fn accept_party_invite(&self, _player_id: i32) {}
+    fn accept_party_invite(&self, _player_id: i32) -> Result<(), LobbySendError> {
+        self.outgoing().map(|_| ())
+    }
 
     fn set_party_factions(&self, _factions: Vec<String>) {}
 
     /// No-op: the real server sends no acknowledgement either, so the social
     /// service's optimistic event is the whole observable effect.
-    fn set_relation(&self, _player_id: i32, _relation: Relation, _member: bool) {}
+    fn set_contact_relation(
+        &self,
+        _contact: Contact,
+        _member: bool,
+        _remove: Option<Relation>,
+    ) -> bool {
+        self.updates
+            .lock()
+            .unwrap()
+            .as_ref()
+            .is_some_and(|sender| !sender.is_closed())
+    }
 
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
         let Some(tx) = self.updates.lock().unwrap().clone() else {

@@ -9,6 +9,7 @@
 
 pub mod commands;
 pub mod events;
+pub mod frontend;
 pub mod native;
 pub mod protocol;
 pub mod reducer;

@@ -28,11 +28,12 @@ pub(super) async fn connect(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
-    if !ctx.lobby.active.try_start() {
+    let out = out.scoped_to_account();
+    let session = out.account_token();
+    let Some(_active) = ctx.lobby.active.acquire(&session).await else {
         return;
-    }
+    };
     if only_if_armed && !ctx.lobby.auto_reconnect.armed() {
-        ctx.lobby.active.finish();
         return;
     }
 
@@ -42,7 +43,16 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     // Emitting it here made `LobbyStatus::Connected` true for seconds while the
     // lobby would still reject everything, and that flag gates the join guard and
     // the whole UI. It is emitted on `LobbyUpdate::Authenticated` instead.
-    let mut updates = ctx.ports.lobby.connect().await;
+    let mut updates = tokio::select! {
+        biased;
+        () = session.cancelled() => {
+            ctx.ports.lobby.disconnect();
+            out.emit(LobbyEvent::Disconnected);
+            out.emit(SocialEvent::Cleared);
+            return;
+        }
+        updates = ctx.ports.lobby.connect() => updates,
+    };
 
     let launch_enabled = ctx.ports.process.supports_live_launch();
     let mut launch = LaunchSlot::default();
@@ -64,19 +74,23 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
         // time was only seen once the game had already been started. Java runs
         // both as futures beside the connection (`GameRunner`).
         let next = tokio::select! {
+            () = session.cancelled() => Next::Update(None),
             update = updates.recv() => Next::Update(update),
             started = async { background.launch.as_mut().expect("guarded").await },
                 if background.launch.is_some() => Next::Started(started),
             () = async { background.warm_up.as_mut().expect("guarded").await },
                 if background.warm_up.is_some() => Next::WarmedUp,
         };
+        if session.is_cancelled() {
+            break;
+        }
         match next {
             Next::Update(None) => break,
             Next::Update(Some(update)) => {
                 handle_update(
                     update,
                     ctx,
-                    out,
+                    &out,
                     launch_enabled,
                     &mut launch,
                     &mut background,
@@ -86,13 +100,18 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
             }
             Next::Started(session) => {
                 background.launch = None;
-                launch.started(session, ctx, out).await;
+                launch.started(session, ctx, &out).await;
             }
             Next::WarmedUp => {
                 background.warm_up = None;
                 background.warm_up_called_off = None;
             }
         }
+    }
+    if session.is_cancelled() {
+        ctx.ports.lobby.disconnect();
+        ctx.lobby.operations.cancel();
+        launch.called_off = true;
     }
     // A party member's update is for a search the connection took with it.
     // Called off and dropped before the launch below is awaited: unpolled, it
@@ -106,7 +125,7 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     // completed, then the closed stream was read.
     if let Some(starting) = background.launch.take() {
         let session = starting.await;
-        launch.started(session, ctx, out).await;
+        launch.started(session, ctx, &out).await;
     }
 
     // The game outlives the connection: keep its adapter link for the next.
@@ -114,7 +133,6 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
         *ctx.lobby.kept_session.lock().unwrap() = launch.session.take();
     }
 
-    ctx.lobby.active.finish();
     // The connection a join was being prepared for is gone, so the join is
     // too: the same reasoning as an explicit Disconnect.
     ctx.lobby.operations.cancel();

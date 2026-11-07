@@ -41,6 +41,8 @@ struct Case {
 #[derive(Serialize)]
 struct Step {
     event: AppEvent,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    update: Option<faf_domain::frontend::FrontendUpdate>,
     /// The owning state slice afterwards. The frontend also verifies that all
     /// other slices equal their pre-event values, which preserves the
     /// cross-slice guard without repeating the full AppState for every step.
@@ -60,7 +62,7 @@ struct Fixture {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct HelperFixture {
-    review_summaries: Vec<ReviewSummaryCase>,
+    map_catalogue_urls: Vec<MapCatalogueUrlCase>,
     upload_busy: Vec<UploadBusyCase>,
     player_note_lookups: Vec<PlayerNoteLookupCase>,
     replay_read_keys: Vec<ReplayReadKeyCase>,
@@ -92,6 +94,47 @@ struct HelperFixture {
     tourney_match_plans: Vec<TourneyMatchPlanCase>,
     training_filters: TrainingFilterFixture,
     training_form_problems: TrainingFormProblemFixture,
+}
+
+#[derive(Serialize)]
+struct MapCatalogueUrlCase {
+    name: &'static str,
+    input: CatalogueMap,
+    expected: VaultMap,
+}
+
+fn map_catalogue_url_cases() -> Vec<MapCatalogueUrlCase> {
+    let mut cases = Vec::new();
+    for (name, folder) in [
+        ("canonical catalogue URL templates", "map.v0001"),
+        (
+            "raw folder punctuation and Unicode",
+            "Map (one), [two] & café.v0002",
+        ),
+    ] {
+        let mut metadata = serde_json::to_value(conformance_vault_map(1, 2, folder)).unwrap();
+        for key in ["downloadUrl", "thumbnailUrl", "thumbnailUrlLarge"] {
+            metadata.as_object_mut().unwrap().remove(key);
+        }
+        // The production Rust decoder supplies the canonical URLs, not a
+        // hand-written expectation that could agree with an outdated TS twin.
+        let input: CatalogueMap = serde_json::from_value(metadata).unwrap();
+        cases.push(MapCatalogueUrlCase {
+            name,
+            expected: (*input).clone(),
+            input,
+        });
+    }
+    let mut expected = conformance_vault_map(3, 4, "custom.v0001");
+    expected.thumbnail_url = String::new();
+    expected.thumbnail_url_large = "https://other.invalid/art?size=large".into();
+    expected.download_url = "https://other.invalid/archive.zip".into();
+    cases.push(MapCatalogueUrlCase {
+        name: "custom and empty URL overrides",
+        input: expected.clone().into(),
+        expected,
+    });
+    cases
 }
 
 /// What the two training forms refuse, and why.
@@ -151,12 +194,6 @@ struct TrainingFilterCase {
     ratings: std::collections::BTreeMap<String, i32>,
     /// Ids selected, in the order the filter returns them.
     expected_ids: Vec<String>,
-}
-
-#[derive(Serialize)]
-struct ReviewSummaryCase {
-    reviews: Vec<Review>,
-    expected: ReviewSummary,
 }
 
 #[derive(Serialize)]
@@ -3397,16 +3434,6 @@ fn replay_lookups_kept_fixture() -> ReplayLookupsKeptFixture {
 }
 
 fn helper_fixture() -> HelperFixture {
-    let review_sets = vec![
-        Vec::new(),
-        vec![review(1, 5, "Ada"), review(2, 2, "Bob")],
-        vec![
-            review(3, 1, "Ada"),
-            review(4, 2, "Bob"),
-            review(5, 2, "Cid"),
-        ],
-        vec![review(6, -1, "Ada"), review(7, 9, "Bob")],
-    ];
     let statuses = vec![
         UploadStatus::Idle,
         UploadStatus::Compressing {
@@ -3508,13 +3535,7 @@ fn helper_fixture() -> HelperFixture {
     ];
 
     HelperFixture {
-        review_summaries: review_sets
-            .into_iter()
-            .map(|reviews| ReviewSummaryCase {
-                expected: summarize(&reviews),
-                reviews,
-            })
-            .collect(),
+        map_catalogue_urls: map_catalogue_url_cases(),
         upload_busy: statuses
             .into_iter()
             .map(|status| UploadBusyCase {
@@ -3725,7 +3746,27 @@ fn case(name: &str, events: Vec<AppEvent>) -> Case {
                 .get(&slice)
                 .unwrap_or_else(|| panic!("event slice `{slice}` is absent from AppState"))
                 .clone();
-            Step { event, expected }
+            let captured = faf_domain::frontend::FrontendUpdate::capture(&state, &event);
+            let encoded_event = serde_json::to_value(&event).expect("event must serialize");
+            let kind = encoded_event["kind"]
+                .as_str()
+                .expect("every event has a kind");
+            assert_eq!(
+                captured.is_none(),
+                faf_domain::frontend::FrontendUpdate::DELTA_KINDS.contains(&kind),
+                "the generated compact-delta list must match the projection policy"
+            );
+            if captured.is_none() {
+                let delta = faf_domain::frontend::FrontendUpdate::from_delta(event.clone())
+                    .expect("uncaptured events must use compact deltas");
+                assert_eq!(serde_json::to_value(delta).unwrap(), encoded_event);
+            }
+            let update = captured;
+            Step {
+                event,
+                update,
+                expected,
+            }
         })
         .collect();
     Case {
@@ -3843,7 +3884,7 @@ fn cases() -> Vec<Case> {
                 MapsEvent::VaultProgress { progress: maps::CatalogueProgress { pages: 2, total_pages: Some(5) } }.into(),
                 MapsEvent::VaultCancelled.into(),
                 MapsEvent::VaultLoading.into(),
-                MapsEvent::VaultLoaded { maps: vec![] }.into(),
+                MapsEvent::VaultLoaded { maps: vec![]}.into(),
                 ModsEvent::VaultLoading.into(),
                 ModsEvent::VaultProgress { progress: maps::CatalogueProgress { pages: 1, total_pages: None } }.into(),
                 ModsEvent::VaultCancelled.into(),
@@ -4504,6 +4545,24 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "auth switches accounts and clears private chat and alerts",
+            vec![
+                AuthEvent::LoggedIn { player: player() }.into(),
+                ChatEvent::MessageReceived {
+                    channel: "Contact".into(),
+                    message: chat_message("Contact", "private message"),
+                }.into(),
+                NotificationEvent::Added {
+                    notification: notification("private", NotificationKind::PrivateMessage),
+                }.into(),
+                NotificationEvent::Added {
+                    notification: notification("update", NotificationKind::ClientUpdate),
+                }.into(),
+                AuthEvent::LoggedOut.into(),
+                AuthEvent::LoggedIn { player: Player::new(42, "Second") }.into(),
+            ],
+        ),
+        case(
             "an offline session signs nobody in, and leaving it clears the mode",
             vec![
                 AuthEvent::LoginStarted.into(),
@@ -5064,6 +5123,20 @@ fn cases() -> Vec<Case> {
                     at_seconds: 1_011,
                 }
                 .into(),
+            ],
+        ),
+        case(
+            "chat redaction removes open and retained content without reopening a conversation",
+            vec![
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "unknown".into() }.into(),
+                ChatEvent::ChannelJoined { channel: "Bob".into() }.into(),
+                ChatEvent::MessageReceived { channel: "Bob".into(), message: chat_message("Bob", "remove me") }.into(),
+                ChatEvent::MessageReceived { channel: "Bob".into(), message: chat_message("Bob", "keep me") }.into(),
+                ChatEvent::ReactionReceived { channel: "Bob".into(), msgid: "srv-Bob-remove me".into(), emoji: ":+1:".into(), sender: "Ada".into() }.into(),
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "srv-Bob-remove me".into() }.into(),
+                ChatEvent::ChannelLeft { channel: "Bob".into() }.into(),
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "srv-Bob-keep me".into() }.into(),
+                ChatEvent::ChannelJoined { channel: "Bob".into() }.into(),
             ],
         ),
         // ── lobby ────────────────────────────────────────────────────────
@@ -6942,20 +7015,20 @@ fn cases() -> Vec<Case> {
             "a withdrawn map looked up by folder joins the index once",
             vec![
                 MapsEvent::VaultLoaded {
-                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 // Twice, and with the catalogue's own record in the second
                 // answer: neither may duplicate what the index already holds.
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")],
+                    maps: vec![conformance_vault_map(3, 33, "withdrawn_map.v0002")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultFoldersResolved {
                     maps: vec![
                         conformance_vault_map(3, 33, "withdrawn_map.v0002"),
                         conformance_vault_map(1, 11, "scmp_009.v0001"),
-                    ],
+                    ].into_iter().map(Into::into).collect(),
                 }
                 .into(),
             ],
@@ -6965,22 +7038,22 @@ fn cases() -> Vec<Case> {
             vec![
                 MapsEvent::VaultLoading.into(),
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")],
+                    maps: vec![conformance_vault_map(4, 44, "phenom spartiate v2")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultLoaded {
                     maps: vec![
                         conformance_vault_map(1, 11, "scmp_009.v0001"),
                         conformance_vault_map(4, 44, "phenom spartiate v2"),
-                    ],
+                    ].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultFoldersResolved {
-                    maps: vec![conformance_vault_map(5, 55, "old_map")],
+                    maps: vec![conformance_vault_map(5, 55, "old_map")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
                 MapsEvent::VaultLoaded {
-                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")],
+                    maps: vec![conformance_vault_map(1, 11, "scmp_009.v0001")].into_iter().map(Into::into).collect(),
                 }
                 .into(),
             ],
@@ -8791,15 +8864,15 @@ fn transition_cases() -> Vec<Case> {
             ],
         ),
         case("map catalogue deltas replace versions, remove hidden maps and preserve folder lookups", vec![
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")] }.into(),
-            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")] }.into(),
-            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }] }.into(),
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001"), conformance_vault_map(2, 22, "second.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(9, 99, "resolved.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(3, 33, "third.v0001"), VaultMap { hidden: true, ..conformance_vault_map(2, 22, "second.v0001") }].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(3, 33, "third.v0001")].into_iter().map(Into::into).collect()}.into(),
         ]),
         case("a map catalogue delta keeps a looked-up older version of a changed map and lists each version once", vec![
-            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")] }.into(),
-            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")] }.into(),
-            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")] }.into(),
+            MapsEvent::VaultLoaded { maps: vec![conformance_vault_map(1, 11, "first.v0001")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultFoldersResolved { maps: vec![conformance_vault_map(1, 10, "first.v0000")].into_iter().map(Into::into).collect()}.into(),
+            MapsEvent::VaultUpdated { maps: vec![conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 12, "first.v0002"), conformance_vault_map(1, 10, "first.v0000")].into_iter().map(Into::into).collect()}.into(),
         ]),
         case("a mod catalogue delta that lists a mod twice holds it once", vec![
             ModsEvent::VaultLoaded { mods: vec![vault_mod(1, "old")] }.into(),
@@ -9272,6 +9345,15 @@ fn transition_cases() -> Vec<Case> {
                 }
                 .into(),
                 NotificationEvent::Read { id: "n2".into() }.into(),
+                NotificationEvent::Added {
+                    notification: notification("n3", NotificationKind::FriendOnline),
+                }
+                .into(),
+                // A batch marks every id it names and skips the unknown one.
+                NotificationEvent::ReadMany {
+                    ids: vec!["n1".into(), "n3".into(), "n9".into()],
+                }
+                .into(),
                 NotificationEvent::Cleared.into(),
             ],
         ),
@@ -9393,6 +9475,7 @@ fn transition_cases() -> Vec<Case> {
                 SettingsEvent::NotificationsChanged {
                     preferences: Box::new(NotificationPreferences {
                         enabled: false,
+                        flash_taskbar: false,
                         ..NotificationPreferences::default()
                     }),
                 }
@@ -9912,6 +9995,7 @@ fn history_query(player_id: i32) -> RatingHistoryQuery {
         period: RatingHistoryPeriod::All,
         page: 1,
         page_size: 1_000,
+        latest_games: None,
     }
 }
 

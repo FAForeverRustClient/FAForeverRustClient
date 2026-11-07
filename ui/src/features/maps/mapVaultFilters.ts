@@ -40,6 +40,14 @@ export interface MapFilterState {
   height: number;
 }
 
+export const DEFAULT_MAP_FILTERS: MapFilterState = {
+  search: "", author: "", sort: "rating", ranked: "all", installFilter: "all",
+  createdAfter: "", createdBefore: "", showHidden: false, minimumRating: null, maximumRating: null,
+  minimumPlayers: null, maximumPlayers: null, width: 0, height: 0,
+};
+
+export const MAP_FILTER_CHOICES = { sort: VAULT_SORTS, ranked: ["all", "ranked", "unranked"], installFilter: ["all", "installed", "available"] };
+
 /**
  * The tab's filter state as the API query it stands for.
  *

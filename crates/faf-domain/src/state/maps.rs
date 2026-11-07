@@ -8,6 +8,9 @@
 //! scans that same folder. Vault entries carry the discovery, rating and
 //! version metadata used by the richer Python and Java vault views.
 
+mod catalogue;
+pub use catalogue::{CatalogueMap, MapSummary, MapUrls};
+
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
@@ -223,7 +226,7 @@ pub struct MapsState {
     /// The whole catalogue, kept as a lookup index: nine features resolve a
     /// map from a folder name through it (`shared/mapPresentation.ts`). It is
     /// deliberately not what the Maps tab browses; see `browse` below.
-    pub vault: Vec<VaultMap>,
+    pub vault: Vec<CatalogueMap>,
     /// Versions explicitly resolved for live folders, retained across full refreshes.
     #[serde(default)]
     pub resolved_vault_versions: Vec<i32>,
@@ -294,11 +297,11 @@ pub enum MapsEvent {
         reason: String,
     },
     VaultLoaded {
-        maps: Vec<VaultMap>,
+        maps: Vec<CatalogueMap>,
     },
     /// Apply a quiet catalogue delta without replacing unrelated folder lookups.
     VaultUpdated {
-        maps: Vec<VaultMap>,
+        maps: Vec<CatalogueMap>,
     },
     VaultLoadFailed {
         reason: String,
@@ -308,7 +311,7 @@ pub enum MapsEvent {
     /// catalogue that was never fetched. Added to `vault`, never replacing
     /// anything in it.
     VaultFoldersResolved {
-        maps: Vec<VaultMap>,
+        maps: Vec<CatalogueMap>,
     },
     InstalledLoading,
     InstalledLoaded {
@@ -706,7 +709,15 @@ pub fn reduce(state: &mut MapsState, event: &MapsEvent) {
             for map in state
                 .browse
                 .iter_mut()
-                .chain(state.vault.iter_mut())
+                .filter(|map| map.version_id == *version_id)
+            {
+                map.hidden = *hidden;
+            }
+            // Filter before taking a mutable dereference: only the changed
+            // shared record needs a copy, not every catalogue entry.
+            for map in state
+                .vault
+                .iter_mut()
                 .filter(|map| map.version_id == *version_id)
             {
                 map.hidden = *hidden;
@@ -804,7 +815,10 @@ mod tests {
         reduce(
             &mut s,
             &MapsEvent::VaultLoaded {
-                maps: vec![vault_map("scmp_009.v0001")],
+                maps: vec![vault_map("scmp_009.v0001")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
             },
         );
         assert_eq!(s.vault_status, MapListStatus::Ready);
@@ -834,7 +848,7 @@ mod tests {
         // leaving it stale there would outlive the page this was done on.
         let mut s = MapsState {
             browse: vec![vault_map("scmp_009.v0001")],
-            vault: vec![vault_map("scmp_009.v0001")],
+            vault: vec![vault_map("scmp_009.v0001").into()],
             ..MapsState::default()
         };
 
@@ -1171,7 +1185,10 @@ mod tests {
         reduce(
             &mut state,
             &MapsEvent::VaultLoaded {
-                maps: vec![vault_map("scmp_009.v0001")],
+                maps: vec![vault_map("scmp_009.v0001")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
             },
         );
         let mut withdrawn = vault_map("withdrawn.v0002");
@@ -1181,7 +1198,10 @@ mod tests {
             reduce(
                 &mut state,
                 &MapsEvent::VaultFoldersResolved {
-                    maps: vec![withdrawn.clone(), vault_map("scmp_009.v0001")],
+                    maps: vec![withdrawn.clone(), vault_map("scmp_009.v0001")]
+                        .into_iter()
+                        .map(Into::into)
+                        .collect(),
                 },
             );
         }
@@ -1206,13 +1226,16 @@ mod tests {
         reduce(
             &mut state,
             &MapsEvent::VaultFoldersResolved {
-                maps: vec![old_map],
+                maps: vec![old_map].into_iter().map(Into::into).collect(),
             },
         );
         reduce(
             &mut state,
             &MapsEvent::VaultLoaded {
-                maps: vec![vault_map("scmp_009.v0001")],
+                maps: vec![vault_map("scmp_009.v0001")]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
             },
         );
         assert_eq!(
@@ -1242,13 +1265,16 @@ mod tests {
         reduce(
             &mut state,
             &MapsEvent::VaultLoaded {
-                maps: vec![first.clone(), second.clone()],
+                maps: vec![first.clone(), second.clone()]
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
             },
         );
         reduce(
             &mut state,
             &MapsEvent::VaultFoldersResolved {
-                maps: vec![resolved.clone()],
+                maps: vec![resolved.clone()].into_iter().map(Into::into).collect(),
             },
         );
         let replacement = VaultMap {
@@ -1268,7 +1294,10 @@ mod tests {
                     hidden: true,
                     ..second
                 },
-            ],
+            ]
+            .into_iter()
+            .map(Into::into)
+            .collect(),
         };
         reduce(&mut state, &change);
         assert_eq!(
@@ -1283,7 +1312,7 @@ mod tests {
         reduce(
             &mut state,
             &MapsEvent::VaultLoaded {
-                maps: vec![added.clone()],
+                maps: vec![added.clone()].into_iter().map(Into::into).collect(),
             },
         );
         assert_eq!(state.vault, vec![added, resolved]);

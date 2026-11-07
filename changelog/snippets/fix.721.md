@@ -1,0 +1,2 @@
+- Generated maps you did not keep are deleted when the client closes, as the Java client does.
+- Pressing Tab on a name nobody in the chat has keeps the cursor in the message box instead of jumping to the emoji button.
