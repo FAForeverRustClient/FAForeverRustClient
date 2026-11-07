@@ -1,2 +1,0 @@
-- Save named map and mod searches, including filters and sorting.
-- Replay events can be filtered by multiple players and event types, with unit and upgrade icons.

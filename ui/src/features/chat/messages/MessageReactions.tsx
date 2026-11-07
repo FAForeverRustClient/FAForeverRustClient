@@ -18,8 +18,6 @@ import { QUICK_REACTIONS, reactionGlyph, reactionFaction } from "../../../shared
 import { FactionIcon } from "../../../shared/components/FactionIcon";
 import { factionLabel } from "../../../shared/factions";
 
-/** The shortlist offered inline. The full picker lives in the composer. */
-
 interface Props {
   msgid: string;
   reactions: readonly Reaction[];

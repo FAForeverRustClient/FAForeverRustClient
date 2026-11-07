@@ -1,4 +1,1 @@
 - Changing factions while queued now asks for confirmation before removing your party from matchmaking.
-- Chat reactions use Java-compatible emoticons and server-backed removal.
-- Removed chat messages disappear from open and retained conversations.
-- Private conversations retrieve available server history when opened.

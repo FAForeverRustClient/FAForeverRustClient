@@ -2122,7 +2122,6 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.insights.everyone": "Все игроки",
   "replays.insights.unknownPlayer": "Неизвестный игрок",
   "replays.insights.noEvents": "В реплее нет событий. Их записывает игровой мод уведомлений; без него события не сохраняются.",
-  "replays.insights.noEventsForPlayer": "У этого игрока нет событий.",
   "replays.insights.noPoints": "В реплее нет приказов с координатами на карте.",
   "replays.insights.noGameStats": "В реплее нет итоговой статистики. Игра передаёт её с 2023 года; если матч закончился раньше, статистики не будет.",
   "replays.insights.graphAria": "Действия в минуту за всю игру",

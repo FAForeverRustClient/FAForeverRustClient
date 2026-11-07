@@ -17,6 +17,7 @@ const GROUPS: readonly [string, ...string[]][] = [
 const GLYPHS = new Map(GROUPS.flatMap(([glyph, ...aliases]) => aliases.map((alias) => [alias, glyph] as const)));
 const FACTIONS: Readonly<Record<string, number>> = { ":uef:": 1, ":aeon:": 2, ":cybran:": 3, ":seraphim:": 4 };
 
+/** The reactions a message offers inline, in the Java client's wire spelling. */
 export const QUICK_REACTIONS = [":+1:", ":rofl:", ":heart:", ":thinking:", ":sunglasses:", ":weary:", ":uef:", ":cybran:", ":aeon:", ":seraphim:"] as const;
 export const reactionGlyph = (value: string): string => GLYPHS.get(value) ?? value;
 export const reactionFaction = (value: string): number | undefined => FACTIONS[value];

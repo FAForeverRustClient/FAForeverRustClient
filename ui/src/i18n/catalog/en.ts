@@ -2861,7 +2861,6 @@ export const en = {
   "replays.insights.everyone": "Everyone",
   "replays.insights.unknownPlayer": "Unknown",
   "replays.insights.noEvents": "This replay announced nothing. The in-game notification mod writes these, so a game played without it has none.",
-  "replays.insights.noEventsForPlayer": "Nothing announced by this player.",
   "replays.insights.noPoints": "No order in this replay named a place on the map.",
   "replays.insights.noGameStats": "This replay carries no end-of-game statistics. The simulation started sending them in 2023, and a game that ended early never sends them at all.",
   "replays.insights.graphAria": "Actions per minute over the length of the game",

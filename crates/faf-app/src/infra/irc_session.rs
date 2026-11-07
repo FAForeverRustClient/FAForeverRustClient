@@ -686,7 +686,16 @@ pub(crate) fn handle_line(
                 return effects;
             }
 
-            if let Some(state) = line.tag("+typing") {
+            // With echo-message our own typing notices come back, and event
+            // playback can replay old ones inside a history batch. Neither is
+            // somebody composing now.
+            let replayed = line
+                .tag("batch")
+                .is_some_and(|batch| state.history_batches.contains(batch));
+            let typing = line
+                .tag("+typing")
+                .filter(|_| !replayed && !state.is_me(sender));
+            if let Some(state) = typing {
                 effects.push(Effect::Emit(ChatUpdate::Typing {
                     channel: channel.clone(),
                     nickname: sender.to_string(),
@@ -1681,6 +1690,23 @@ mod reference_chat_tests {
         );
         assert!(line(&mut state, "@msgid=m1 :Bob!u@h PRIVMSG #a :removed text").is_empty());
     }
+    #[test]
+    fn reference_chat_ignores_echoed_and_replayed_typing_notices() {
+        let mut state = state();
+        assert!(line(&mut state, "@+typing=active :Ada!u@h TAGMSG #a").is_empty());
+        line(&mut state, "BATCH +h1 chathistory #a");
+        assert!(line(&mut state, "@batch=h1;+typing=active :Bob!u@h TAGMSG #a").is_empty());
+        line(&mut state, "BATCH -h1");
+        assert_eq!(
+            line(&mut state, "@+typing=active :Bob!u@h TAGMSG #a"),
+            vec![Effect::Emit(ChatUpdate::Typing {
+                channel: "#a".into(),
+                nickname: "Bob".into(),
+                composing: true,
+            })]
+        );
+    }
+
     #[test]
     fn reference_chat_private_history_is_capability_gated_and_deduplicated() {
         let mut state = state();

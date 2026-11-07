@@ -2478,7 +2478,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.insights.everyone": "Alle",
   "replays.insights.unknownPlayer": "Unbekannt",
   "replays.insights.noEvents": "Dieses Replay meldet nichts. Die Meldungen stammen vom Notify-Mod im Spiel; ohne ihn gibt es keine.",
-  "replays.insights.noEventsForPlayer": "Von diesem Spieler wurde nichts gemeldet.",
   "replays.insights.noPoints": "Kein Befehl in diesem Replay nennt einen Ort auf der Karte.",
   "replays.insights.noGameStats": "Dieses Replay enth\u00e4lt keine Endstatistik. Die Simulation sendet sie erst seit 2023, und ein fr\u00fch beendetes Spiel sendet sie gar nicht.",
   "replays.insights.graphAria": "Aktionen pro Minute \u00fcber die L\u00e4nge des Spiels",
