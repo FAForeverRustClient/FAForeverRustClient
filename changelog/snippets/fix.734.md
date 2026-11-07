@@ -1,0 +1,3 @@
+- Chat reactions use the Java client's emoticons, and removing one reaches every client.
+- Messages deleted by the server disappear from open and retained conversations.
+- Private conversations load their available server history when opened.
