@@ -692,6 +692,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "lobby.matchmaker.factions": "Fraktionen",
   "lobby.matchmaker.factions.aria": "Fraktionen, die du spielen möchtest",
+  "lobby.matchmaker.factions.confirmTitle": "Fraktionen ändern und die Warteschlange verlassen?",
+  "lobby.matchmaker.factions.confirmBody": "Wenn du deine Fraktionsauswahl änderst, verlassen du und deine Gruppe die Matchmaking-Warteschlange, auch wenn du nicht der Gruppenleiter bist. Möchtest du fortfahren?",
+  "lobby.matchmaker.factions.confirmAction": "Fraktionen ändern",
   "lobby.matchmaker.partyChat": "Gruppenchat",
   "lobby.matchmaker.openProfile": "Vollständiges Spielerprofil öffnen",
   "lobby.matchmaker.detailsUnavailable": "Einige Wettbewerbsdaten sind nicht verfügbar",

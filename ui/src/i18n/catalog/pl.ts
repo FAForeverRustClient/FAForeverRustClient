@@ -2042,6 +2042,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
 
   "lobby.matchmaker.factions": "Frakcje",
   "lobby.matchmaker.factions.aria": "Frakcje, którymi chcesz grać",
+  "lobby.matchmaker.factions.confirmTitle": "Zmienić frakcje i opuścić kolejkę?",
+  "lobby.matchmaker.factions.confirmBody": "Zmiana wybranych frakcji usunie ciebie i twoją grupę z kolejki matchmakingu, nawet jeśli nie jesteś liderem grupy. Czy chcesz kontynuować?",
+  "lobby.matchmaker.factions.confirmAction": "Zmień frakcje",
   "lobby.matchmaker.partyChat": "Czat drużyny",
   "lobby.matchmaker.openProfile": "Otwórz pełny profil gracza",
   "lobby.matchmaker.detailsUnavailable": "Część danych rywalizacji jest niedostępna",

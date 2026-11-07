@@ -2018,6 +2018,9 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "lobby.matchmaker.factions": "Factions",
   "lobby.matchmaker.factions.aria": "Factions que vous acceptez de jouer",
+  "lobby.matchmaker.factions.confirmTitle": "Changer de factions et quitter la file ?",
+  "lobby.matchmaker.factions.confirmBody": "Changer votre sélection de factions vous fera quitter la file de matchmaking avec tout votre groupe, même si vous n'en êtes pas le chef. Voulez-vous continuer ?",
+  "lobby.matchmaker.factions.confirmAction": "Changer de factions",
   "lobby.matchmaker.partyChat": "Discussion du groupe",
   "lobby.matchmaker.openProfile": "Ouvrir le profil complet du joueur",
   "lobby.matchmaker.detailsUnavailable": "Certaines données compétitives sont indisponibles",

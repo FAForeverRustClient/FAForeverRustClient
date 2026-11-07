@@ -2278,6 +2278,9 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "lobby.matchmaker.factions": "Фракции",
   "lobby.matchmaker.factions.aria": "Фракции, которыми вы готовы играть",
+  "lobby.matchmaker.factions.confirmTitle": "Изменить фракции и покинуть очередь?",
+  "lobby.matchmaker.factions.confirmBody": "Изменение выбранных фракций выведет вас и всю вашу группу из очереди подбора игры, даже если вы не лидер группы. Продолжить?",
+  "lobby.matchmaker.factions.confirmAction": "Изменить фракции",
   "lobby.matchmaker.partyChat": "Чат группы",
   "lobby.matchmaker.openProfile": "Открыть полный профиль игрока",
   "lobby.matchmaker.detailsUnavailable": "Часть соревновательных данных недоступна",
