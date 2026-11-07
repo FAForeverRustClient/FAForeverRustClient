@@ -2016,6 +2016,9 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "lobby.matchmaker.factions": "Facciones",
   "lobby.matchmaker.factions.aria": "Facciones con las que estás dispuesto a jugar",
+  "lobby.matchmaker.factions.confirmTitle": "¿Cambiar de facciones y salir de la cola?",
+  "lobby.matchmaker.factions.confirmBody": "Cambiar tu selección de facciones os sacará a ti y a tu grupo de la cola de emparejamiento, aunque no seas el líder del grupo. ¿Quieres continuar?",
+  "lobby.matchmaker.factions.confirmAction": "Cambiar facciones",
   "lobby.matchmaker.partyChat": "Chat del grupo",
   "lobby.matchmaker.openProfile": "Abrir el perfil completo del jugador",
   "lobby.matchmaker.detailsUnavailable": "Algunos datos competitivos no están disponibles",

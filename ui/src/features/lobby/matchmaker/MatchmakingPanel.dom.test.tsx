@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppCommand, MatchmakerPlayerProfile, MatchmakerQueue, MatchmakingState, PartyState } from "../../../ipc/bindings";
 import { formatNumber } from "../../../i18n";
 import { failOnConsoleError } from "../../../testing/consoleGuard";
-import { applyEvent, seedStore, sentCommands } from "../../../testing/mounted";
+import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../../testing/mounted";
 import { LobbyView } from "../LobbyView";
 
 vi.mock("../../../ipc/client");
@@ -91,8 +91,118 @@ function queueCard(title: "1 vs 1" | "2 vs 2") {
 }
 
 const searchButton = () => screen.getByRole("button", { name: /^(Start search|Stop searching|Match found|Game starting)$/ });
+const factionButton = (faction = "UEF") => within(screen.getByRole("group", { name: "Factions you are willing to play" })).getByRole("button", { name: new RegExp(`^${faction}\\b`) });
 
 describe("MatchmakingPanel, mounted", () => {
+  const parties: { role: string; party: PartyState }[] = [
+    { role: "solo player", party: { ownerId: null, members: [] } },
+    ...[ME.id, 8].map((ownerId) => ({
+      role: ownerId === ME.id ? "party leader" : "party member",
+      party: {
+        ownerId,
+        members: [
+          { playerId: ME.id, name: "Me", factions: ["uef", "aeon", "cybran", "seraphim"] },
+          { playerId: 8, name: "Buddy", factions: ["aeon"] },
+        ],
+      },
+    })),
+  ];
+
+  it.each(parties.flatMap(({ role, party }) => (["preparing", "searching"] as const).map((phase) => ({ role, party, phase }))))(
+    "asks a $role before changing factions while $phase and sends the change only after confirmation",
+    async ({ party, phase }) => {
+      const user = userEvent.setup();
+      mountMatchmaker(party);
+      matchmaking({ type: phase, payload: { queueNames: ["tmm2v2"] } });
+      clearSentCommands();
+
+      await user.click(factionButton());
+
+      const dialog = screen.getByRole("dialog", { name: "Change factions and leave the queue?" });
+      expect(within(dialog).getByText(/take you and your party out of the matchmaking queue, even if you are not the party leader/)).toBeDefined();
+      expect(factionButton().getAttribute("aria-pressed")).toBe("true");
+      expect(sentCommands()).toEqual([]);
+
+      await user.click(within(dialog).getByRole("button", { name: "Change factions" }));
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(factionButton().getAttribute("aria-pressed")).toBe("false");
+      expect(sentCommands()).toEqual([
+        ...(phase === "preparing" ? [{ kind: "Lobby", command: { type: "matchmake", payload: { queueName: "tmm2v2", start: false } } }] : []),
+        { kind: "Settings", command: { type: "patchBrowsing", payload: { patch: { matchmakerFactions: ["Aeon", "Cybran", "Seraphim"] } } } },
+        { kind: "Lobby", command: { type: "setPartyFactions", payload: { factions: ["Aeon", "Cybran", "Seraphim"] } } },
+      ]);
+    },
+  );
+
+  it.each(["Cancel", "Escape", "Close", "backdrop"])("keeps the factions and search when the confirmation is dismissed with %s", async (dismissal) => {
+    const user = userEvent.setup();
+    mountMatchmaker();
+    matchmaking({ type: "searching", payload: { queueNames: ["tmm2v2"] } });
+    clearSentCommands();
+    await user.click(factionButton());
+    const dialog = screen.getByRole("dialog");
+
+    if (dismissal === "Escape") await user.keyboard("{Escape}");
+    else if (dismissal === "backdrop") await user.click(dialog.parentElement!);
+    else await user.click(within(dialog).getByRole("button", { name: dismissal }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(factionButton().getAttribute("aria-pressed")).toBe("true");
+    expect(searchButton().textContent).toBe("Stop searching");
+    expect(sentCommands()).toEqual([]);
+  });
+
+  it("changes factions immediately outside a search and cannot deselect the last faction", async () => {
+    const user = userEvent.setup();
+    mountMatchmaker();
+    clearSentCommands();
+
+    for (const faction of ["Aeon", "Cybran", "Seraphim"]) {
+      await user.click(factionButton(faction));
+    }
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(lobbySent("setPartyFactions")).toHaveLength(3);
+    clearSentCommands();
+    matchmaking({ type: "searching", payload: { queueNames: ["tmm2v2"] } });
+
+    await user.click(factionButton());
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(factionButton().getAttribute("aria-pressed")).toBe("true");
+    expect(sentCommands()).toEqual([]);
+  });
+
+  it.each(["matchFound", "launching", "idle"] as const)("discards an unanswered faction change when the search becomes %s", async (phase) => {
+    const user = userEvent.setup();
+    mountMatchmaker();
+    matchmaking({ type: "searching", payload: { queueNames: ["tmm2v2"] } });
+    await user.click(factionButton());
+    clearSentCommands();
+
+    matchmaking(phase === "idle" ? { type: phase } : { type: phase, payload: { queueName: "tmm2v2" } });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(factionButton().getAttribute("aria-pressed")).toBe("true");
+    expect(sentCommands()).toEqual([]);
+    matchmaking({ type: "searching", payload: { queueNames: ["tmm2v2"] } });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("discards an unanswered faction change when the party changes", async () => {
+    const user = userEvent.setup();
+    mountMatchmaker(parties[2].party);
+    matchmaking({ type: "searching", payload: { queueNames: ["tmm2v2"] } });
+    await user.click(factionButton());
+    clearSentCommands();
+
+    applyEvent({ kind: "Lobby", event: { type: "partyUpdated", payload: { party: parties[1].party } } });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(factionButton().getAttribute("aria-pressed")).toBe("true");
+    expect(sentCommands()).toEqual([]);
+  });
+
   it("starts a search with one startSearch for every selected queue and waits for the backend", async () => {
     const user = userEvent.setup();
     mountMatchmaker();
