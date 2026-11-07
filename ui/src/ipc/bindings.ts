@@ -3529,6 +3529,13 @@ export type GamePreferences = {
 	 *  game itself set to windowed. Off by default. Windows only.
 	 */
 	borderlessWindow?: boolean,
+	/**
+	 *  Let FAF move Forged Alliance off the first two logical cores, where the
+	 *  operating system does most of its own work, on machines with six or
+	 *  more. FAF's init script does it when `fa_path.lua` says
+	 *  `ForceAffinity = "true"`. On by default, as in both reference clients.
+	 */
+	forceAffinity?: boolean,
 };
 
 /**
@@ -3551,6 +3558,7 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	forceAffinity?: boolean,
 };
 
 export type GeneralPreferences = {

@@ -4741,6 +4741,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Entfernt den Rahmen des Spielfensters und zieht es über den ganzen Bildschirm, solange das Spiel läuft. Forged Alliance selbst muss dafür auf Fenstermodus stehen.",
   "settings.game.borderlessWindow": "Randloses Fenster",
+  "settings.game.forceAffinity": "Spiel von den ersten CPU-Kernen fernhalten",
+  "settings.game.forceAffinityHint": "Auf Rechnern mit sechs oder mehr logischen Kernen meidet Forged Alliance die ersten beiden, auf denen das System den Großteil seiner eigenen Arbeit erledigt. Gilt ab dem nächsten Spiel.",
   "lobby.joinDownload.title": "Diese Lobby braucht Mods, die du nicht hast",
   "lobby.joinDownload.body": {
     one: "Der Beitritt zu „{title}“ lädt 1 Simulationsmod herunter:",

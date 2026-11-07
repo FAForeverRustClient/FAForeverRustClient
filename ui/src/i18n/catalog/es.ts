@@ -2439,6 +2439,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Quita el marco de la ventana del juego y la extiende por toda la pantalla mientras se ejecuta. Forged Alliance debe estar en modo ventana.",
   "settings.game.borderlessWindow": "Ventana sin bordes",
+  "settings.game.forceAffinity": "Mantener el juego fuera de los primeros núcleos",
+  "settings.game.forceAffinityHint": "En equipos con seis o más núcleos lógicos, Forged Alliance evita los dos primeros, donde el sistema hace la mayor parte de su propio trabajo. Se aplica desde la próxima partida.",
   "lobby.modConflict.title": "¿Reemplazar los mods instalados?",
   "lobby.modConflict.body": { one: "Esta partida usa una versión distinta de un mod que ya tienes instalado. Todavía no se ha cambiado nada.", other: "Esta partida usa versiones distintas de {count} mods que ya tienes instalados. Todavía no se ha cambiado nada." },
   "lobby.modConflict.versions": "Esta partida: v{required}. Instalado: {installed} v{version}, en {folder}",
