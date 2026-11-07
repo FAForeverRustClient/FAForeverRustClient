@@ -14,6 +14,53 @@
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
+/// How many companion results the slice keeps: one per entry the list can
+/// hold, and as many again for entries removed since their last start.
+pub const MAX_COMPANION_RUNS: usize = 32;
+
+/// What the last attempt to start one companion program came to.
+///
+/// Runtime state like the rest of this slice: a start reported before the
+/// client was restarted says nothing about the program now.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionRun {
+    /// The entry's id in Settings, Game.
+    pub id: String,
+    /// The entry's name when it was started, for a report that outlives it.
+    pub name: String,
+    pub outcome: CompanionOutcome,
+    /// Unix seconds.
+    pub at: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(
+    tag = "type",
+    content = "payload",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum CompanionOutcome {
+    /// Started, as this process.
+    Started { pid: u32 },
+    /// Not started: the process the client started for it last time is
+    /// still running.
+    AlreadyRunning { pid: u32 },
+    /// Not started: a process with the file name the entry names is running.
+    SkippedRunningImage { image: String },
+    /// Could not be started, and why. The game started anyway.
+    Failed { reason: String },
+    /// Closed because the game it came with exited.
+    Closed { pid: u32 },
+}
+
+impl CompanionOutcome {
+    pub fn is_failure(&self) -> bool {
+        matches!(self, Self::Failed { .. })
+    }
+}
+
 /// Where each configurable location currently resolves to.
 ///
 /// Reported by the backend rather than worked out in the interface: the
@@ -67,6 +114,8 @@ pub struct InstallState {
     /// from a file written by an older build, and the attribute would only
     /// make the field optional in the generated TypeScript for nothing.
     pub resolved: ResolvedPaths,
+    /// The last start of each companion program, by entry, oldest first.
+    pub companions: Vec<CompanionRun>,
 }
 
 impl InstallState {
@@ -94,6 +143,8 @@ pub enum InstallEvent {
         replay_pending: bool,
         resolved: ResolvedPaths,
     },
+    /// A companion program was started, skipped, closed or failed to start.
+    CompanionReported { run: CompanionRun },
 }
 
 pub fn reduce(state: &mut InstallState, event: &InstallEvent) {
@@ -111,6 +162,14 @@ pub fn reduce(state: &mut InstallState, event: &InstallEvent) {
             state.replay_pending = *replay_pending;
             state.resolved = resolved.clone();
             state.checked = true;
+        }
+        InstallEvent::CompanionReported { run } => {
+            // Replaces the entry's previous report and moves it to the end,
+            // so the oldest are the ones that go once the list is full.
+            state.companions.retain(|existing| existing.id != run.id);
+            state.companions.push(run.clone());
+            let excess = state.companions.len().saturating_sub(MAX_COMPANION_RUNS);
+            state.companions.drain(..excess);
         }
     }
 }
@@ -158,6 +217,7 @@ mod tests {
                 maps_dir: "D:/old/maps".into(),
                 ..ResolvedPaths::default()
             },
+            companions: Vec::new(),
         };
         reduce(
             &mut s,
@@ -176,5 +236,43 @@ mod tests {
         assert!(s.nothing_ready());
         // The check reports where things resolve now, not where they used to.
         assert_eq!(s.resolved.maps_dir, "D:/new/maps");
+    }
+
+    #[test]
+    fn a_companion_report_replaces_the_entry_before_and_the_list_stays_bounded() {
+        let run = |id: &str, outcome: CompanionOutcome| CompanionRun {
+            id: id.into(),
+            name: id.into(),
+            outcome,
+            at: 1,
+        };
+        let mut s = InstallState::default();
+        let report = |s: &mut InstallState, run: CompanionRun| {
+            reduce(s, &InstallEvent::CompanionReported { run })
+        };
+        report(&mut s, run("a", CompanionOutcome::Started { pid: 7 }));
+        report(
+            &mut s,
+            run(
+                "b",
+                CompanionOutcome::Failed {
+                    reason: "gone".into(),
+                },
+            ),
+        );
+        report(&mut s, run("a", CompanionOutcome::Closed { pid: 7 }));
+        let ids: Vec<&str> = s.companions.iter().map(|run| run.id.as_str()).collect();
+        assert_eq!(ids, ["b", "a"]);
+        assert_eq!(s.companions[1].outcome, CompanionOutcome::Closed { pid: 7 });
+        assert!(s.companions[0].outcome.is_failure());
+
+        for n in 0..MAX_COMPANION_RUNS + 3 {
+            report(
+                &mut s,
+                run(&format!("c{n}"), CompanionOutcome::Started { pid: 1 }),
+            );
+        }
+        assert_eq!(s.companions.len(), MAX_COMPANION_RUNS);
+        assert_eq!(s.companions[0].id, "c3", "the oldest reports go first");
     }
 }

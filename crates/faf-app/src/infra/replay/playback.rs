@@ -158,6 +158,10 @@ impl ReplayPlayback {
         // install, and doing that to a directory the previous replay's Forged
         // Alliance still has open leaves an install the next launch sits on a
         // loading screen over. See `ProcessPort::stop_replay`.
+        // Before the stop, which hands the stopped replay's companions to a
+        // pending replacement and then waits: a request cancelled during that
+        // wait still lets them go.
+        let _replacement = super::ReplacementGuard(Arc::clone(&self.process));
         self.process.stop_replay().await;
         // A live replay on the pipe transport may still be relaying into the
         // window just closed; nothing will read from it again.

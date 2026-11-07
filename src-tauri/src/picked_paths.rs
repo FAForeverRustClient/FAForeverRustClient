@@ -15,9 +15,11 @@
 //! stored, or an empty one (a reset). The page learning the path is no secret:
 //! it is what the settings show anyway.
 //!
-//! Two settings that decide what is started have no dialog, because they are
-//! typed: the launch wrapper and the extra game arguments. A change to either
-//! is confirmed by the player in a native dialog, which the page cannot click.
+//! Three settings that decide what is started are typed rather than picked:
+//! the launch wrapper, the extra game arguments and the companion programs
+//! started alongside the game. A change to any of them that would run
+//! something new is confirmed by the player in a native dialog, which the
+//! page cannot click.
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -26,7 +28,8 @@ use std::time::{Duration, Instant};
 
 use faf_domain::protocol::map_generator::split_command_line;
 use faf_domain::state::settings::{
-    GamePreferences, GamePreferencesPatch, PathPreferences, PathPreferencesPatch,
+    CompanionCommand, CompanionProgram, CompanionProgramPatch, GamePreferences,
+    GamePreferencesPatch, PathPreferences, PathPreferencesPatch,
 };
 use faf_domain::state::{GeneratorOptions, SettingsState};
 use faf_domain::AppCommand;
@@ -217,10 +220,29 @@ where
         PathRule::ReplayGamePath(path) => admit_path(picked, path, &settings().replay_game_path),
         PathRule::Paths(patch) => admit_paths(picked, patch, &settings().paths),
         PathRule::Generator(options) => admit_generator(picked, options, &settings().map_generator),
+        // Companion programs change one entry at a time, where each change is
+        // checked against the entry it was made for; the settings service
+        // ignores a list here as well.
+        PathRule::Launch(patch) if patch.companions.is_some() => {
+            Err("companion programs are changed one entry at a time".into())
+        }
         PathRule::Launch(patch) => match launch_change(patch, &settings().game) {
             Some(change) => confirm(change).await,
             None => Ok(()),
         },
+        PathRule::AddCompanion(companion) => {
+            if companion.has_command() {
+                Err("a new companion entry starts without a program".into())
+            } else {
+                Ok(())
+            }
+        }
+        PathRule::PatchCompanion(id, base, patch) => {
+            match companion_patch_change(id, base, patch, &settings().game)? {
+                Some(change) => confirm(change).await,
+                None => Ok(()),
+            }
+        }
         PathRule::ReplayFile(path) => admit_local_replay(picked, path).await,
         PathRule::ReplayRead(path) => admit_replay_read(picked, path),
         PathRule::Upload(path) => match path {
@@ -417,6 +439,8 @@ fn raw_argument_folder_flag(arguments: &str) -> Option<&'static str> {
 struct LaunchChange {
     wrapper: Option<String>,
     arguments: Option<Vec<String>>,
+    /// The companion programs that would run something not confirmed before.
+    companions: Vec<CompanionProgram>,
 }
 
 /// Compared the way `GamePreferences::normalized` stores them, so a field
@@ -426,6 +450,8 @@ fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Opt
     let GamePreferencesPatch {
         additional_arguments,
         launch_wrapper,
+        // Refused before this is asked: see `admit_with_confirmation`.
+        companions: _,
         auto_generate_maps: _,
         confirm_downloads_before_joining: _,
         show_join_progress: _,
@@ -465,27 +491,99 @@ fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Opt
                 .collect();
             !arguments.is_empty() && arguments.iter().map(String::as_str).ne(stored)
         });
-    (wrapper.is_some() || arguments.is_some()).then_some(LaunchChange { wrapper, arguments })
+    (wrapper.is_some() || arguments.is_some()).then_some(LaunchChange {
+        wrapper,
+        arguments,
+        companions: Vec::new(),
+    })
+}
+
+/// The confirmation a change to one companion entry needs.
+///
+/// Nothing to confirm for a patch that leaves what the entry runs alone (a
+/// switch, a name, when it starts). One that touches it has to name the
+/// command it was made against, the entry has to be there and still run it,
+/// and only a different resulting command is asked about. The settings
+/// service checks the same `base` again when it applies the patch, so the
+/// entry cannot become a different one between this question and the
+/// change.
+fn companion_patch_change(
+    id: &str,
+    base: Option<&CompanionCommand>,
+    patch: &CompanionProgramPatch,
+    current: &GamePreferences,
+) -> Result<Option<LaunchChange>, String> {
+    if !patch.changes_command() {
+        return Ok(None);
+    }
+    let entry = current
+        .companions
+        .iter()
+        .find(|entry| entry.id == id)
+        .ok_or_else(|| "there is no companion entry with that id".to_string())?;
+    if !base.is_some_and(|base| entry.runs(base)) {
+        return Err("the companion entry changed meanwhile; try again".into());
+    }
+    let merged = CompanionProgramPatch {
+        id: None,
+        ..patch.clone()
+    }
+    .apply_to(entry.clone());
+    Ok((merged.command() != entry.command()).then(|| LaunchChange {
+        wrapper: None,
+        arguments: None,
+        companions: vec![merged],
+    }))
+}
+
+/// What the confirmation says. Built from the command lines alone: an
+/// entry's name comes from the page, which is exactly what this must not
+/// take its words from, and a program is what it runs, not what it is called.
+fn confirmation_message(change: &LaunchChange) -> String {
+    let mut message = String::new();
+    if change.wrapper.is_some() || change.arguments.is_some() {
+        message.push_str("Forged Alliance will be started ");
+        if let Some(wrapper) = &change.wrapper {
+            message.push_str(&format!("through:\n\n{wrapper}\n\n"));
+        }
+        if let Some(arguments) = &change.arguments {
+            if change.wrapper.is_some() {
+                message.push_str("and ");
+            }
+            message.push_str(&format!(
+                "with these extra arguments:\n\n{}\n\n",
+                arguments.join(" ")
+            ));
+        }
+    }
+    if !change.companions.is_empty() {
+        message.push_str(if message.is_empty() {
+            "These programs will be started alongside Forged Alliance:\n\n"
+        } else {
+            "These programs will be started alongside it:\n\n"
+        });
+        for companion in &change.companions {
+            let (program, arguments, folder) = companion.command();
+            message.push_str(program);
+            if !arguments.is_empty() {
+                message.push(' ');
+                message.push_str(arguments);
+            }
+            if !folder.is_empty() {
+                message.push_str(&format!("\n(in {folder})"));
+            }
+            message.push_str("\n\n");
+        }
+    }
+    message.push_str("Allow this only if you entered it yourself in Settings.");
+    message
 }
 
 /// Ask the player, natively, whether the game may be started this way.
 /// English, like the tray and the exit warning: the page's language lives in
 /// the page, and the page is exactly what this must not take its words from.
 async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> Result<(), String> {
-    let mut message = String::from("Forged Alliance will be started ");
-    if let Some(wrapper) = &change.wrapper {
-        message.push_str(&format!("through:\n\n{wrapper}\n\n"));
-    }
-    if let Some(arguments) = &change.arguments {
-        if change.wrapper.is_some() {
-            message.push_str("and ");
-        }
-        message.push_str(&format!(
-            "with these extra arguments:\n\n{}\n\n",
-            arguments.join(" ")
-        ));
-    }
-    message.push_str("Allow this only if you entered it yourself in Settings.");
+    let message = confirmation_message(&change);
 
     let dialog = window
         .dialog()
@@ -504,8 +602,12 @@ async fn confirm_launch_change(window: &tauri::Window, change: LaunchChange) -> 
         .await
         .map_err(|error| format!("the confirmation could not be shown: {error}"))?;
     if allowed {
+        // What changed, not what it changed to: these are programs of the
+        // player's own, and the client log is shared with bug reports.
         tracing::info!(
-            ?change,
+            launch_command = change.wrapper.is_some(),
+            extra_arguments = change.arguments.as_ref().map_or(0, Vec::len),
+            companion_programs = change.companions.len(),
             "launch settings changed, confirmed in the native dialog"
         );
         Ok(())
@@ -990,7 +1092,8 @@ mod tests {
             launch_change(&patch(Some("cmd /c calc"), None), &current),
             Some(LaunchChange {
                 wrapper: Some("cmd /c calc".into()),
-                arguments: None
+                arguments: None,
+                companions: Vec::new(),
             })
         );
         assert_eq!(
@@ -1001,7 +1104,230 @@ mod tests {
             Some(LaunchChange {
                 wrapper: None,
                 arguments: Some(vec!["/nomovie".into(), "/init".into(), "x.lua".into()]),
+                companions: Vec::new(),
             })
         );
+    }
+
+    fn companion(id: &str, program: &str) -> CompanionProgram {
+        CompanionProgram {
+            id: id.into(),
+            name: format!("{id} tool"),
+            program: program.into(),
+            arguments: "\"C:/Settings/helper.ini\"".into(),
+            ..CompanionProgram::default()
+        }
+    }
+
+    fn base_of(entry: &CompanionProgram) -> CompanionCommand {
+        CompanionCommand {
+            program: entry.program.clone(),
+            arguments: entry.arguments.clone(),
+            working_dir: entry.working_dir.clone(),
+        }
+    }
+
+    fn stored_with(companions: Vec<CompanionProgram>) -> SettingsState {
+        SettingsState {
+            game: GamePreferences {
+                companions,
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    /// Admit `command` against `settings`, answering any question with "no",
+    /// and say what was asked.
+    async fn admit_declining(
+        command: AppCommand,
+        settings: SettingsState,
+    ) -> (Result<(), String>, Vec<Vec<CompanionProgram>>) {
+        let asked = std::cell::RefCell::new(Vec::new());
+        let result = admit_with_confirmation(
+            &command,
+            &PickedPaths::default(),
+            || settings,
+            |change| {
+                asked.borrow_mut().push(change.companions);
+                std::future::ready(Err("declined".into()))
+            },
+        )
+        .await;
+        (result, asked.into_inner())
+    }
+
+    fn patch_command(
+        id: &str,
+        base: Option<CompanionCommand>,
+        patch: CompanionProgramPatch,
+    ) -> AppCommand {
+        SettingsCommand::PatchCompanion {
+            id: id.into(),
+            base,
+            patch,
+        }
+        .into()
+    }
+
+    #[tokio::test]
+    async fn a_whole_companion_list_is_refused() {
+        let command: AppCommand = SettingsCommand::PatchGame {
+            patch: Box::new(GamePreferencesPatch {
+                companions: Some(vec![companion("helper", "C:/Tools/helper.exe")]),
+                ..Default::default()
+            }),
+        }
+        .into();
+        let (result, asked) = admit_declining(command, SettingsState::default()).await;
+        assert!(result.is_err());
+        assert!(asked.is_empty(), "refused outright, not asked about");
+    }
+
+    #[tokio::test]
+    async fn one_entry_changed_on_its_own_asks_only_when_its_command_changes() {
+        let stored = companion("helper", "C:/Tools/helper.exe");
+        let settings = || stored_with(vec![stored.clone()]);
+        let base = Some(base_of(&stored));
+
+        // A switch, a rename, a removal: nothing new runs, and none of them
+        // needs to say what the entry ran.
+        for quiet in [
+            patch_command(
+                "helper",
+                None,
+                CompanionProgramPatch {
+                    enabled: Some(false),
+                    ..Default::default()
+                },
+            ),
+            patch_command(
+                "helper",
+                None,
+                CompanionProgramPatch {
+                    close_with_game: Some(true),
+                    ..Default::default()
+                },
+            ),
+            patch_command(
+                "helper",
+                None,
+                CompanionProgramPatch {
+                    name: Some("renamed".into()),
+                    ..Default::default()
+                },
+            ),
+            SettingsCommand::RemoveCompanion {
+                id: "helper".into(),
+            }
+            .into(),
+        ] {
+            let (result, asked) = admit_declining(quiet, settings()).await;
+            assert!(result.is_ok() && asked.is_empty());
+        }
+        // The command saved again unchanged asks nothing either.
+        let same = patch_command(
+            "helper",
+            base.clone(),
+            CompanionProgramPatch {
+                program: Some(stored.program.clone()),
+                ..Default::default()
+            },
+        );
+        let (result, asked) = admit_declining(same, settings()).await;
+        assert!(result.is_ok() && asked.is_empty());
+
+        // New arguments on the stored entry ask, about the entry as it will
+        // be stored, and declining refuses the change.
+        let changed = patch_command(
+            "helper",
+            base,
+            CompanionProgramPatch {
+                arguments: Some("/c calc".into()),
+                ..Default::default()
+            },
+        );
+        let (result, asked) = admit_declining(changed, settings()).await;
+        assert_eq!(result, Err("declined".into()));
+        assert_eq!(asked.len(), 1);
+        assert_eq!(asked[0][0].arguments, "/c calc");
+        assert_eq!(asked[0][0].program, "C:/Tools/helper.exe");
+    }
+
+    #[tokio::test]
+    async fn a_command_change_for_a_missing_or_different_entry_is_refused_without_asking() {
+        let stored = companion("helper", "C:/Tools/helper.exe");
+        let program = CompanionProgramPatch {
+            program: Some("C:/Windows/System32/cmd.exe".into()),
+            ..Default::default()
+        };
+        for refused in [
+            // No entry with that id yet: one added meanwhile is not the one
+            // this was meant for.
+            patch_command("other", Some(CompanionCommand::default()), program.clone()),
+            // No base at all.
+            patch_command("helper", None, program.clone()),
+            // A base the entry no longer runs.
+            patch_command("helper", Some(CompanionCommand::default()), program.clone()),
+            // A new entry that comes with a program.
+            SettingsCommand::AddCompanion {
+                companion: companion("new", "C:/Tools/obs64.exe"),
+            }
+            .into(),
+        ] {
+            let (result, asked) = admit_declining(refused, stored_with(vec![stored.clone()])).await;
+            assert!(result.is_err());
+            assert!(asked.is_empty());
+        }
+        // A new entry starts empty and needs nothing.
+        let empty = CompanionProgram {
+            id: "empty".into(),
+            ..CompanionProgram::default()
+        };
+        let (result, _) = admit_declining(
+            SettingsCommand::AddCompanion { companion: empty }.into(),
+            SettingsState::default(),
+        )
+        .await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn a_test_start_names_a_stored_entry_and_needs_no_confirmation() {
+        let command = SettingsCommand::TestCompanion {
+            id: "helper".into(),
+            expected: None,
+        }
+        .into();
+        assert_eq!(path_rule(&command), PathRule::NoSelection);
+        assert!(
+            check(&command, &PickedPaths::default(), SettingsState::default())
+                .await
+                .is_ok()
+        );
+    }
+
+    #[test]
+    fn the_confirmation_shows_the_command_lines_and_not_the_names() {
+        let message = confirmation_message(&LaunchChange {
+            wrapper: None,
+            arguments: None,
+            companions: vec![CompanionProgram {
+                name: "Official FAF helper".into(),
+                working_dir: "C:/Scripts".into(),
+                ..companion("helper", "C:/Tools/helper.exe")
+            }],
+        });
+        assert!(message.starts_with("These programs will be started alongside Forged Alliance"));
+        assert!(message.contains("C:/Tools/helper.exe \"C:/Settings/helper.ini\"\n(in C:/Scripts)"));
+        assert!(!message.contains("Official FAF helper"), "{message}");
+
+        let both = confirmation_message(&LaunchChange {
+            wrapper: Some("gamemoderun".into()),
+            arguments: None,
+            companions: vec![companion("helper", "C:/Tools/helper.exe")],
+        });
+        assert!(both.starts_with("Forged Alliance will be started through:\n\ngamemoderun"));
+        assert!(both.contains("These programs will be started alongside it:"));
     }
 }

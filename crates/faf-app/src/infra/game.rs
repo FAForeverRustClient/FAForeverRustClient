@@ -26,15 +26,17 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read as _;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use std::time::Duration;
 
 use async_trait::async_trait;
+use faf_domain::state::{CompanionLaunchKind, CompanionProgram, CompanionRun, CompanionTiming};
 use tokio::process::{Child, Command};
-use tokio::sync::Notify;
+use tokio::sync::{mpsc, Notify};
 
+use crate::infra::companions::{Companions, LaunchId};
 use crate::ports::{DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort};
 
 const MANAGED_EXE: &str = "ForgedAlliance.exe";
@@ -85,6 +87,8 @@ impl GameConfig {
 struct Running {
     child: Child,
     exe: PathBuf,
+    /// Which launch this is, for the companion programs it holds.
+    launch: LaunchId,
 }
 
 /// A path in a form two spellings of the same file agree on.
@@ -118,6 +122,17 @@ enum Slot {
     Replay,
 }
 
+impl Slot {
+    /// The launch a companion program has to come with to come with this
+    /// one.
+    fn companion_kind(self) -> CompanionLaunchKind {
+        match self {
+            Self::Game => CompanionLaunchKind::Game,
+            Self::Replay => CompanionLaunchKind::Replay,
+        }
+    }
+}
+
 pub struct GameProcess {
     /// Check both process slots and publish a new child as one operation.
     launching: Mutex<()>,
@@ -149,6 +164,17 @@ pub struct GameProcess {
     steam_presence: AtomicBool,
     /// Make the game's window borderless; see `infra::borderless`.
     borderless_window: AtomicBool,
+    /// The player's own programs started alongside each launch; see
+    /// `infra::companions`. Shared with the exit watchers, which close the
+    /// ones that asked to go with the game.
+    companions: Arc<Companions>,
+    /// Numbers each launch, so a companion is closed with the launches that
+    /// held it and not with an older one that ended late.
+    next_launch: AtomicU64,
+    /// A replay stopped to make room for the next one: its launch still
+    /// holds its companions until the next replay has taken them over, or
+    /// the replacement is given up (`ProcessPort::release_replay_replacement`).
+    pending_replacement: Mutex<Option<LaunchId>>,
 }
 
 impl GameProcess {
@@ -163,6 +189,9 @@ impl GameProcess {
             replay_relay: None,
             steam_presence: AtomicBool::new(false),
             borderless_window: AtomicBool::new(false),
+            companions: Arc::new(Companions::system()),
+            next_launch: AtomicU64::new(1),
+            pending_replacement: Mutex::new(None),
         }
     }
 
@@ -249,6 +278,9 @@ impl GameProcess {
         let Some(mut previous) = self.slot(slot).lock().unwrap().take() else {
             return;
         };
+        // A replay ended to make room for the next: its companions stay
+        // until that one has taken them over, or the replacement is given up.
+        self.hold_for_replacement(previous.launch);
         if matches!(previous.child.try_wait(), Ok(Some(_))) {
             return;
         }
@@ -321,7 +353,9 @@ impl GameProcess {
         let wrapper = split_command(&config.launch_wrapper);
         tracing::info!(
             argument_count = args.len(),
-            wrapper = wrapper.first().map(String::as_str).unwrap_or(""),
+            // Whether, not what: the launch command is a program of the
+            // player's own, and the log is shared with bug reports.
+            through_launch_command = !wrapper.is_empty(),
             "launching Forged Alliance"
         );
 
@@ -374,7 +408,20 @@ impl GameProcess {
         };
         drop(config);
 
-        let child = command.spawn().map_err(|e| match &launched {
+        // Only once nothing above has refused the launch: a companion for a
+        // game that never starts is one nobody asked for. Never a reason to
+        // refuse it either; whatever goes wrong is reported, not returned.
+        let launch = self.next_launch.fetch_add(1, Ordering::Relaxed);
+        self.companions
+            .start_with(slot.companion_kind(), CompanionTiming::Before, launch);
+
+        let spawned = command.spawn();
+        if spawned.is_err() {
+            // The game will not exit, since it never started: let go of what
+            // was started before it as if it had.
+            end_launch(self.companions.clone(), launch);
+        }
+        let child = spawned.map_err(|e| match &launched {
             // Naming the wrapper matters more than naming the executable here:
             // "no such file" for `wine` on a machine without Wine installed
             // otherwise reads as the game being missing, which it is not.
@@ -396,10 +443,12 @@ impl GameProcess {
         let running = Running {
             child,
             exe: install_key(&exe),
+            launch,
         };
-        if let Some(mut prev) = current.replace(running) {
+        let replaced = current.replace(running).map(|mut prev| {
             let _ = prev.child.start_kill();
-        }
+            prev.launch
+        });
         drop(current);
         self.watch_for_exit(slot);
 
@@ -422,7 +471,26 @@ impl GameProcess {
                 crate::infra::borderless::start(game_pid, through);
             }
         }
+        self.companions
+            .start_with(slot.companion_kind(), CompanionTiming::After, launch);
+        // Only now, with this launch holding what it needs, do the replays it
+        // replaced let go: a companion they shared is never closed in between.
+        if let Some(previous) = replaced {
+            end_launch(self.companions.clone(), previous);
+        }
+        if slot == Slot::Replay {
+            self.release_replay_replacement();
+        }
         Ok(())
+    }
+
+    /// Keep a replay's companions for the replay replacing it, letting go of
+    /// any earlier one still waiting: only the latest replacement is pending.
+    fn hold_for_replacement(&self, launch: LaunchId) {
+        let superseded = self.pending_replacement.lock().unwrap().replace(launch);
+        if let Some(superseded) = superseded {
+            end_launch(self.companions.clone(), superseded);
+        }
     }
 
     /// Poll the tracked child until it exits, then wake [`Self::wait_for_exit`].
@@ -438,9 +506,14 @@ impl GameProcess {
         // Ended" because somebody finished watching a replay is how a live
         // game would lose its launch out from under it.
         let exited = (slot == Slot::Game).then(|| self.exited.clone());
+        // The launch lets go of its companions when its process ends by
+        // itself. `kill` does that on its own, and a replay replaced by the
+        // next one hands them on (`hold_for_replacement`).
+        let companions = self.companions.clone();
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
+                let mut ended = None;
                 let finished = {
                     let mut guard = child.lock().unwrap();
                     match guard.as_mut() {
@@ -449,6 +522,7 @@ impl GameProcess {
                         None => true,
                         Some(process) => match process.child.try_wait() {
                             Ok(Some(_status)) => {
+                                ended = Some(process.launch);
                                 *guard = None;
                                 true
                             }
@@ -456,6 +530,7 @@ impl GameProcess {
                             // The handle is unusable; treat it as gone rather
                             // than spinning on it forever.
                             Err(_) => {
+                                ended = Some(process.launch);
                                 *guard = None;
                                 true
                             }
@@ -463,6 +538,9 @@ impl GameProcess {
                     }
                 };
                 if finished {
+                    if let Some(launch) = ended {
+                        end_launch(companions.clone(), launch);
+                    }
                     if let Some(exited) = &exited {
                         exited.notify_waiters();
                     }
@@ -611,8 +689,10 @@ impl ProcessPort for GameProcess {
     /// This is the lobby service tearing a game session down, and a replay the
     /// user is watching in a second window is no part of that session.
     fn kill(&self) {
-        if let Some(mut running) = self.game_child.lock().unwrap().take() {
+        let taken = self.game_child.lock().unwrap().take();
+        if let Some(mut running) = taken {
             let _ = running.child.start_kill();
+            end_launch(self.companions.clone(), running.launch);
         }
     }
 
@@ -650,6 +730,18 @@ impl ProcessPort for GameProcess {
 
     fn set_borderless_window(&self, enabled: bool) {
         self.borderless_window.store(enabled, Ordering::Relaxed);
+    }
+
+    fn set_companions(&self, companions: Vec<CompanionProgram>) {
+        self.companions.set_entries(companions);
+    }
+
+    async fn start_companion(&self, companion: CompanionProgram) -> CompanionRun {
+        self.companions.start_now(&companion)
+    }
+
+    async fn companion_reports(&self) -> mpsc::UnboundedReceiver<CompanionRun> {
+        self.companions.take_reports()
     }
 
     fn game_argument_path(&self, path: &Path) -> String {
@@ -704,6 +796,25 @@ impl ProcessPort for GameProcess {
     async fn stop_replay(&self) {
         self.end_previous(Slot::Replay).await;
     }
+
+    fn release_replay_replacement(&self) {
+        let pending = self.pending_replacement.lock().unwrap().take();
+        if let Some(pending) = pending {
+            end_launch(self.companions.clone(), pending);
+        }
+    }
+}
+
+/// `launch` is over: let go of its companion programs, and close those no
+/// other launch holds, on a thread of their own. Each close gives the program
+/// a moment to go, and the launcher must not wait for that.
+fn end_launch(companions: Arc<Companions>, launch: LaunchId) {
+    let spawned = std::thread::Builder::new()
+        .name("fa-companions".into())
+        .spawn(move || companions.launch_ended(launch));
+    if let Err(error) = spawned {
+        tracing::warn!(%error, "could not close the companion programs");
+    }
 }
 
 /// Set the `game.prefs` flag that lets this launch start next to a Forged
@@ -736,7 +847,7 @@ async fn allow_second_instance(game_path: &str) {
 /// Linux path with a space in it is quoted with whichever one is at hand. A
 /// quote that is never closed ends the argument at the end of the line, which
 /// is the reading that loses the least of what somebody typed.
-fn split_command(input: &str) -> Vec<String> {
+pub(crate) fn split_command(input: &str) -> Vec<String> {
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut started = false;
@@ -1534,6 +1645,7 @@ mod tests {
         *process.replay_child.lock().unwrap() = Some(Running {
             child,
             exe: install_key(&exe),
+            launch: 0,
         });
 
         process.end_previous(Slot::Replay).await;
@@ -1588,6 +1700,7 @@ mod tests {
         *process.game_child.lock().unwrap() = Some(Running {
             child,
             exe: PathBuf::from("managed-game"),
+            launch: 0,
         });
 
         // A valid executable ensures refusal happens before any second spawn.
@@ -1865,5 +1978,68 @@ mod tests {
         assert!(
             reference_retail_install_paths_from(&prefs, &temp.path().join("absent.ini")).is_empty()
         );
+    }
+}
+
+#[cfg(test)]
+mod companion_tests {
+    use super::*;
+    use crate::infra::companions::fake;
+    use faf_domain::state::{CompanionLaunches, CompanionProgram};
+
+    fn until(check: impl Fn() -> bool) -> bool {
+        for _ in 0..200 {
+            if check() {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        false
+    }
+
+    /// A replay stopped to make room for the next one keeps its companions
+    /// for that one, and lets them go when the replacement is given up: a
+    /// file that does not open, a preparation that fails or is called off.
+    #[test]
+    fn a_stopped_replay_hands_its_companions_on_or_lets_them_go() {
+        let (companions, state) = fake::companions();
+        let mut process = GameProcess::faf();
+        process.companions = Arc::new(companions);
+        let program = if cfg!(windows) {
+            "C:/Tools/helper.exe"
+        } else {
+            "/Tools/helper.exe"
+        };
+        process.companions.set_entries(vec![CompanionProgram {
+            id: "helper".into(),
+            program: program.into(),
+            close_with_game: true,
+            launches: CompanionLaunches::Replays,
+            ..CompanionProgram::default()
+        }]);
+
+        // Replay 7 holds it and is stopped for a replacement, which starts
+        // and takes it over: nothing is closed in between.
+        process
+            .companions
+            .start_with(CompanionLaunchKind::Replay, CompanionTiming::After, 7);
+        process.hold_for_replacement(7);
+        process
+            .companions
+            .start_with(CompanionLaunchKind::Replay, CompanionTiming::After, 8);
+        process.release_replay_replacement();
+        std::thread::sleep(Duration::from_millis(200));
+        assert!(state.lock().unwrap().closed.is_empty());
+        assert_eq!(state.lock().unwrap().spawned.len(), 1);
+
+        // Replay 8 is stopped for one that never comes.
+        process.hold_for_replacement(8);
+        process.release_replay_replacement();
+        assert!(until(|| state.lock().unwrap().closed == [1001]));
+
+        // Giving up twice, or with nothing pending, does nothing more.
+        process.release_replay_replacement();
+        std::thread::sleep(Duration::from_millis(100));
+        assert_eq!(state.lock().unwrap().closed, [1001]);
     }
 }

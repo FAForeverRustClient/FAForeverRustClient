@@ -256,6 +256,8 @@ impl LiveStreamer {
         // transport's named pipe is created with `first_pipe_instance`, and
         // the previous live replay's relay may still hold it after its game
         // has gone.
+        // Before the stop, for the reason given in `launch_replay_file`.
+        let _replacement = super::ReplacementGuard(Arc::clone(process));
         process.stop_replay().await;
         self.end_session().await;
         let token = self

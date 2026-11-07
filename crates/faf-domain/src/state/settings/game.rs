@@ -218,6 +218,10 @@ pub struct GamePreferences {
     /// game itself set to windowed. Off by default. Windows only.
     #[serde(default)]
     pub borderless_window: bool,
+    /// Programs of the player's own started alongside the game, such as a
+    /// recording tool. See [`CompanionProgram`].
+    #[serde(default)]
+    pub companions: Vec<CompanionProgram>,
     /// Before hosting, switch the chosen map to its newest vault version and
     /// update every enabled mod that has a newer one (the Java client's "map
     /// and mod auto update"). Off by default, unlike the Java client: an
@@ -269,6 +273,7 @@ impl Default for GamePreferences {
             map_generator_instances: 0,
             steam_presence: false,
             borderless_window: false,
+            companions: Vec::new(),
             auto_update_map_and_mods: false,
             force_affinity: true,
         }
@@ -290,6 +295,7 @@ impl GamePreferences {
         self.map_generator_instances = self
             .map_generator_instances
             .min(MAX_MAP_GENERATOR_INSTANCES);
+        self.companions = normalize_companions(self.companions);
         self
     }
 }
@@ -311,7 +317,8 @@ preference_patch! {
 
 preference_patch! {
     /// A change to [`GamePreferences`]. The two cache limits are optional
-    /// preferences, so `null` for either is "no limit", not "unchanged".
+    /// preferences, so `null` for either is "no limit", not "unchanged". The
+    /// companion list is replaced whole, like every list.
     GamePreferencesPatch for GamePreferences {
         additional_arguments: Vec<String>,
         launch_wrapper: String,
@@ -328,6 +335,7 @@ preference_patch! {
         map_generator_instances: u32,
         steam_presence: bool,
         borderless_window: bool,
+        companions: Vec<CompanionProgram>,
         auto_update_map_and_mods: bool,
         force_affinity: bool,
     }

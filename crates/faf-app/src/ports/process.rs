@@ -6,7 +6,9 @@
 //! spawns the game; the fake is inert.
 
 use async_trait::async_trait;
+use faf_domain::state::{CompanionOutcome, CompanionProgram, CompanionRun};
 use std::path::{Path, PathBuf};
+use tokio::sync::mpsc;
 
 /// Parameters for one game launch.
 #[derive(Debug, Clone)]
@@ -231,6 +233,33 @@ pub trait ProcessPort: Send + Sync {
     /// defaulted to nothing for a launcher that starts no process.
     fn set_borderless_window(&self, _enabled: bool) {}
 
+    /// Replace the companion programs started alongside every game and
+    /// replay this launcher starts (Settings, Game). Read at each launch, and
+    /// defaulted to nothing for a launcher that starts no process.
+    fn set_companions(&self, _companions: Vec<CompanionProgram>) {}
+
+    /// Start one companion program now, without a game: Settings' "Test
+    /// start". The process is the entry's from then on, so the next game does
+    /// not start a second copy of it.
+    async fn start_companion(&self, companion: CompanionProgram) -> CompanionRun {
+        CompanionRun {
+            id: companion.id,
+            name: companion.name,
+            outcome: CompanionOutcome::Failed {
+                reason: "this client starts no programs".into(),
+            },
+            at: 0,
+        }
+    }
+
+    /// What became of the companion programs started with launches: every
+    /// start, skip, failure and close. Called once at startup; the receiver
+    /// stays open for the life of the client. A launcher that starts nothing
+    /// hands out a channel that is already closed.
+    async fn companion_reports(&self) -> mpsc::UnboundedReceiver<CompanionRun> {
+        mpsc::unbounded_channel().1
+    }
+
     /// Spell a path the way the game this launcher starts will be able to open
     /// it.
     ///
@@ -324,6 +353,13 @@ pub trait ProcessPort: Send + Sync {
     /// Defaulted to doing nothing, like the rest of the process-shaped answers:
     /// a fake launcher has no process to end.
     async fn stop_replay(&self) {}
+
+    /// The replay stopped by [`Self::stop_replay`] will not be replaced after
+    /// all: the new one failed to prepare, could not start, or was called
+    /// off. Its launch then lets go of its companion programs, which close if
+    /// they asked to and nothing else holds them. A replay that does start
+    /// takes them over by itself, so calling this afterwards changes nothing.
+    fn release_replay_replacement(&self) {}
 
     /// Whether `path` names the install live games are launched from.
     ///

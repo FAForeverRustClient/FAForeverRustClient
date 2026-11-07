@@ -4733,6 +4733,40 @@ fn cases() -> Vec<Case> {
             }
             .into()],
         ),
+        case(
+            "a companion program's latest result replaces its earlier one",
+            vec![
+                InstallEvent::CompanionReported {
+                    run: CompanionRun {
+                        id: "helper".into(),
+                        name: "Helper".into(),
+                        outcome: CompanionOutcome::Started { pid: 4100 },
+                        at: 1_700_000_000,
+                    },
+                }
+                .into(),
+                InstallEvent::CompanionReported {
+                    run: CompanionRun {
+                        id: "obs".into(),
+                        name: "obs64.exe".into(),
+                        outcome: CompanionOutcome::Failed {
+                            reason: "the program was not found".into(),
+                        },
+                        at: 1_700_000_005,
+                    },
+                }
+                .into(),
+                InstallEvent::CompanionReported {
+                    run: CompanionRun {
+                        id: "helper".into(),
+                        name: "Helper".into(),
+                        outcome: CompanionOutcome::Closed { pid: 4100 },
+                        at: 1_700_003_600,
+                    },
+                }
+                .into(),
+            ],
+        ),
         // ── chat ─────────────────────────────────────────────────────────
         case(
             "chat joins, counts unread, and clears on select",

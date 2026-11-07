@@ -1243,3 +1243,86 @@
   text-align: right;
   white-space: nowrap;
 }
+
+/* Companion programs (Settings, Game): one block per program. The head holds
+   the switch, the name and the two actions; each field below is a label
+   column and an input that takes the rest of the row. */
+.companion-entry {
+  gap: var(--space-2);
+}
+
+.companion-add {
+  align-items: flex-start;
+}
+
+.companion-entry-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.companion-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.companion-entry-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.companion-field {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.companion-field-label {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.companion-field-input {
+  display: flex;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.companion-field-input .settings-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.companion-field-group {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}
+
+.companion-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.companion-result {
+  overflow-wrap: anywhere;
+}
+
+.companion-result.is-failed {
+  color: var(--color-error-text);
+}
+
+@media (max-width: 720px) {
+  .companion-field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+}

@@ -1,7 +1,10 @@
 //! Explicit picker-admission decisions for the complete command surface.
 //! A new command or direct payload field requires this policy to be revisited.
 
-use faf_domain::state::settings::{GamePreferencesPatch, PathPreferencesPatch};
+use faf_domain::state::settings::{
+    CompanionCommand, CompanionProgram, CompanionProgramPatch, GamePreferencesPatch,
+    PathPreferencesPatch,
+};
 use faf_domain::state::{
     AuthCommand, ChangelogCommand, ChatCommand, ClanCommand, ClientUpdateCommand,
     ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GeneratorOptions,
@@ -24,6 +27,12 @@ pub(super) enum PathRule<'a> {
     Paths(&'a PathPreferencesPatch),
     Generator(&'a GeneratorOptions),
     Launch(&'a GamePreferencesPatch),
+    AddCompanion(&'a CompanionProgram),
+    PatchCompanion(
+        &'a str,
+        Option<&'a CompanionCommand>,
+        &'a CompanionProgramPatch,
+    ),
     ReplayFile(&'a str),
     ReplayRead(&'a str),
     Upload(Option<&'a str>),
@@ -40,6 +49,12 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
             PathRule::Generator(preferences)
         }
         AppCommand::Settings(SettingsCommand::PatchGame { patch }) => PathRule::Launch(patch),
+        AppCommand::Settings(SettingsCommand::AddCompanion { companion }) => {
+            PathRule::AddCompanion(companion)
+        }
+        AppCommand::Settings(SettingsCommand::PatchCompanion { id, base, patch }) => {
+            PathRule::PatchCompanion(id, base.as_ref(), patch)
+        }
         AppCommand::MapGenerator(
             MapGeneratorCommand::Generate { options }
             | MapGeneratorCommand::SetOptions { options }
@@ -791,7 +806,13 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
             | SettingsCommand::DeleteSearchPreset { list: _, name: _ }
             | SettingsCommand::CheckInstalls
             | SettingsCommand::RefreshGameCache
-            | SettingsCommand::ClearGameCache,
+            | SettingsCommand::ClearGameCache
+            // Starts the stored entry by id: what it runs was confirmed when
+            // the entry was set (`launch_change`), and the page names nothing
+            // else.
+            | SettingsCommand::TestCompanion { id: _, expected: _ }
+            // Taking a program out never runs one.
+            | SettingsCommand::RemoveCompanion { id: _ },
         )
         | AppCommand::Connectivity(
             ConnectivityCommand::RunCheck | ConnectivityCommand::RefreshRelayStatus,

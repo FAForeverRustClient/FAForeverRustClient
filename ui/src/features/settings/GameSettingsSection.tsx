@@ -8,6 +8,7 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
 import { LinuxRuntimeSettings } from "./LinuxRuntimeSettings";
+import { CompanionProgramsSettings } from "./CompanionProgramsSettings";
 
 /// Mirrors `faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES`, so the
 /// list never offers a count the backend would quietly clamp.
@@ -290,6 +291,7 @@ export function GameSettingsSection() {
           </div>
         </div>
       </SettingsGroup>
+      <CompanionProgramsSettings />
     </>
   );
 }

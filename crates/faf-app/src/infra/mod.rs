@@ -29,8 +29,11 @@
 //!   `ice_pioneer` and `ice_select` (the connectivity adapter and how one is
 //!   chosen), `connectivity` (the connectivity check: relay probes, the
 //!   adapters on disk, the adapter log), `java_runtime`, `map_generator`, `galactic_war`, and
-//!   `client_update` (the installer), and `steam_presence`, which is this
-//!   client's own executable started again to show a game on Steam.
+//!   `client_update` (the installer), `steam_presence`, which is this
+//!   client's own executable started again to show a game on Steam, and
+//!   `companions`, the player's own programs started alongside the game.
+//!   `process_list` is the Windows process snapshot `companions` and
+//!   `borderless` read.
 //! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
 //!   `game_updater` and `updater` (patching; `updater` holds the port impl,
 //!   `game_updater` its cache and manifest logic), `game_logs`, `scmap`,
@@ -67,6 +70,7 @@ pub mod changelog;
 pub mod chat_fake;
 pub mod clan;
 pub mod client_update;
+pub mod companions;
 pub mod connectivity;
 pub mod coop;
 pub mod discord;
@@ -107,6 +111,8 @@ pub mod oauth;
 pub mod paths;
 pub mod player_card;
 pub mod png;
+#[cfg(windows)]
+pub(crate) mod process_list;
 pub mod relay;
 mod release_metadata;
 pub mod replay;

@@ -30,6 +30,23 @@ use crate::infra::env_or;
 use crate::infra::session::TokenStore;
 use crate::ports::{MapGeneratorPort, ProcessPort};
 
+/// Gives up the replacement of a stopped replay when it is dropped, unless a
+/// new replay took it over first (which makes this a no-op).
+///
+/// Made just before `ProcessPort::stop_replay` by both ways a replay is
+/// opened, so every early return, error and cancelled future from the stop,
+/// which can wait for the old window to close, to the launch lets the
+/// stopped replay's companion programs go: a
+/// file that does not parse or a preparation that fails would otherwise
+/// leave them running with nothing left to close them.
+struct ReplacementGuard(Arc<dyn ProcessPort>);
+
+impl Drop for ReplacementGuard {
+    fn drop(&mut self) {
+        self.0.release_replay_replacement();
+    }
+}
+
 mod codec;
 mod details;
 mod fake;

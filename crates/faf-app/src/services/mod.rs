@@ -69,6 +69,7 @@ pub mod changelog;
 pub mod chat;
 pub mod clan;
 pub mod client_update;
+pub mod companions;
 pub mod connectivity;
 pub mod coop;
 pub mod discord;

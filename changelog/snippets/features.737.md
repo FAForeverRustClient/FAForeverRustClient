@@ -1,0 +1,1 @@
+- Settings › Game can start other programs together with Forged Alliance, such as a recording tool, for games, replays or both, and close them when the game exits.

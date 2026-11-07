@@ -6521,6 +6521,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -8610,6 +8611,7 @@
           },
           "expected": {
             "checked": true,
+            "companions": [],
             "gamePending": false,
             "gameReady": true,
             "replayPending": true,
@@ -8628,6 +8630,7 @@
           "update": {
             "event": {
               "checked": true,
+              "companions": [],
               "gamePending": false,
               "gameReady": true,
               "replayPending": true,
@@ -8640,6 +8643,307 @@
                 "modsDir": "D:/faf/vault/mods",
                 "replaysDir": "C:/ProgramData/FAForever/replays",
                 "vaultDir": "D:/faf/vault",
+                "winePrefix": ""
+              }
+            },
+            "kind": "Install"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a companion program's latest result replaces its earlier one",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "run": {
+                  "at": 1700000000,
+                  "id": "helper",
+                  "name": "Helper",
+                  "outcome": {
+                    "payload": {
+                      "pid": 4100
+                    },
+                    "type": "started"
+                  }
+                }
+              },
+              "type": "companionReported"
+            },
+            "kind": "Install"
+          },
+          "expected": {
+            "checked": false,
+            "companions": [
+              {
+                "at": 1700000000,
+                "id": "helper",
+                "name": "Helper",
+                "outcome": {
+                  "payload": {
+                    "pid": 4100
+                  },
+                  "type": "started"
+                }
+              }
+            ],
+            "gamePending": false,
+            "gameReady": false,
+            "replayPending": false,
+            "replayReady": false,
+            "resolved": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": "",
+              "winePrefix": ""
+            }
+          },
+          "update": {
+            "event": {
+              "checked": false,
+              "companions": [
+                {
+                  "at": 1700000000,
+                  "id": "helper",
+                  "name": "Helper",
+                  "outcome": {
+                    "payload": {
+                      "pid": 4100
+                    },
+                    "type": "started"
+                  }
+                }
+              ],
+              "gamePending": false,
+              "gameReady": false,
+              "replayPending": false,
+              "replayReady": false,
+              "resolved": {
+                "gamePrefsPath": "",
+                "javaPath": "",
+                "mapGeneratorDir": "",
+                "mapsDir": "",
+                "modsDir": "",
+                "replaysDir": "",
+                "vaultDir": "",
+                "winePrefix": ""
+              }
+            },
+            "kind": "Install"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "run": {
+                  "at": 1700000005,
+                  "id": "obs",
+                  "name": "obs64.exe",
+                  "outcome": {
+                    "payload": {
+                      "reason": "the program was not found"
+                    },
+                    "type": "failed"
+                  }
+                }
+              },
+              "type": "companionReported"
+            },
+            "kind": "Install"
+          },
+          "expected": {
+            "checked": false,
+            "companions": [
+              {
+                "at": 1700000000,
+                "id": "helper",
+                "name": "Helper",
+                "outcome": {
+                  "payload": {
+                    "pid": 4100
+                  },
+                  "type": "started"
+                }
+              },
+              {
+                "at": 1700000005,
+                "id": "obs",
+                "name": "obs64.exe",
+                "outcome": {
+                  "payload": {
+                    "reason": "the program was not found"
+                  },
+                  "type": "failed"
+                }
+              }
+            ],
+            "gamePending": false,
+            "gameReady": false,
+            "replayPending": false,
+            "replayReady": false,
+            "resolved": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": "",
+              "winePrefix": ""
+            }
+          },
+          "update": {
+            "event": {
+              "checked": false,
+              "companions": [
+                {
+                  "at": 1700000000,
+                  "id": "helper",
+                  "name": "Helper",
+                  "outcome": {
+                    "payload": {
+                      "pid": 4100
+                    },
+                    "type": "started"
+                  }
+                },
+                {
+                  "at": 1700000005,
+                  "id": "obs",
+                  "name": "obs64.exe",
+                  "outcome": {
+                    "payload": {
+                      "reason": "the program was not found"
+                    },
+                    "type": "failed"
+                  }
+                }
+              ],
+              "gamePending": false,
+              "gameReady": false,
+              "replayPending": false,
+              "replayReady": false,
+              "resolved": {
+                "gamePrefsPath": "",
+                "javaPath": "",
+                "mapGeneratorDir": "",
+                "mapsDir": "",
+                "modsDir": "",
+                "replaysDir": "",
+                "vaultDir": "",
+                "winePrefix": ""
+              }
+            },
+            "kind": "Install"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "run": {
+                  "at": 1700003600,
+                  "id": "helper",
+                  "name": "Helper",
+                  "outcome": {
+                    "payload": {
+                      "pid": 4100
+                    },
+                    "type": "closed"
+                  }
+                }
+              },
+              "type": "companionReported"
+            },
+            "kind": "Install"
+          },
+          "expected": {
+            "checked": false,
+            "companions": [
+              {
+                "at": 1700000005,
+                "id": "obs",
+                "name": "obs64.exe",
+                "outcome": {
+                  "payload": {
+                    "reason": "the program was not found"
+                  },
+                  "type": "failed"
+                }
+              },
+              {
+                "at": 1700003600,
+                "id": "helper",
+                "name": "Helper",
+                "outcome": {
+                  "payload": {
+                    "pid": 4100
+                  },
+                  "type": "closed"
+                }
+              }
+            ],
+            "gamePending": false,
+            "gameReady": false,
+            "replayPending": false,
+            "replayReady": false,
+            "resolved": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "",
+              "modsDir": "",
+              "replaysDir": "",
+              "vaultDir": "",
+              "winePrefix": ""
+            }
+          },
+          "update": {
+            "event": {
+              "checked": false,
+              "companions": [
+                {
+                  "at": 1700000005,
+                  "id": "obs",
+                  "name": "obs64.exe",
+                  "outcome": {
+                    "payload": {
+                      "reason": "the program was not found"
+                    },
+                    "type": "failed"
+                  }
+                },
+                {
+                  "at": 1700003600,
+                  "id": "helper",
+                  "name": "Helper",
+                  "outcome": {
+                    "payload": {
+                      "pid": 4100
+                    },
+                    "type": "closed"
+                  }
+                }
+              ],
+              "gamePending": false,
+              "gameReady": false,
+              "replayPending": false,
+              "replayReady": false,
+              "resolved": {
+                "gamePrefsPath": "",
+                "javaPath": "",
+                "mapGeneratorDir": "",
+                "mapsDir": "",
+                "modsDir": "",
+                "replaysDir": "",
+                "vaultDir": "",
                 "winePrefix": ""
               }
             },
@@ -68679,6 +68983,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -68994,6 +69299,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -69319,6 +69625,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -69648,6 +69955,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -69969,6 +70277,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -70301,6 +70610,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -70647,6 +70957,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -70985,6 +71296,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -71333,6 +71645,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -71760,6 +72073,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -72194,6 +72508,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -72584,6 +72899,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -73142,6 +73458,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -90656,6 +90973,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -90994,6 +91312,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -91367,6 +91686,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -91760,6 +92080,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -91939,6 +92260,7 @@
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
                   "cacheSizeAlertGb": null,
+                  "companions": [],
                   "confirmDownloadsBeforeJoining": true,
                   "forceAffinity": true,
                   "keepGeneratedMaps": false,
@@ -92119,6 +92441,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -92263,6 +92586,7 @@
                 "cacheLifetimeDays": 30,
                 "cacheRollingBranches": false,
                 "cacheSizeAlertGb": null,
+                "companions": [],
                 "confirmDownloadsBeforeJoining": true,
                 "forceAffinity": true,
                 "keepGeneratedMaps": false,
@@ -92456,6 +92780,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -92782,6 +93107,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -93135,6 +93461,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -93481,6 +93808,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -93816,6 +94144,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -94153,6 +94482,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": null,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -94466,6 +94796,7 @@
                     "cacheLifetimeDays": 30,
                     "cacheRollingBranches": false,
                     "cacheSizeAlertGb": 10,
+                    "companions": [],
                     "confirmDownloadsBeforeJoining": true,
                     "forceAffinity": true,
                     "keepGeneratedMaps": false,
@@ -94768,6 +95099,7 @@
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
               "cacheSizeAlertGb": 10,
+              "companions": [],
               "confirmDownloadsBeforeJoining": true,
               "forceAffinity": true,
               "keepGeneratedMaps": false,
@@ -95068,6 +95400,7 @@
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
                   "cacheSizeAlertGb": 10,
+                  "companions": [],
                   "confirmDownloadsBeforeJoining": true,
                   "forceAffinity": true,
                   "keepGeneratedMaps": false,
@@ -136689,6 +137022,7 @@
     },
     "install": {
       "checked": false,
+      "companions": [],
       "gamePending": false,
       "gameReady": false,
       "replayPending": false,
@@ -137333,6 +137667,7 @@
         "cacheLifetimeDays": 30,
         "cacheRollingBranches": false,
         "cacheSizeAlertGb": 10,
+        "companions": [],
         "confirmDownloadsBeforeJoining": true,
         "forceAffinity": true,
         "keepGeneratedMaps": false,
