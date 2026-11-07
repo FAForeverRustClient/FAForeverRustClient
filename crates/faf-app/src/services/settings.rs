@@ -518,6 +518,14 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             persist(ctx, out).await;
         }
         SettingsCommand::PatchGame { patch } => {
+            // Companion programs change one entry at a time, where what an
+            // entry runs is checked as the change is applied. A whole list
+            // here would bring back entries removed since, and commands
+            // nobody confirmed against what is stored now.
+            let mut patch = *patch;
+            if patch.companions.take().is_some() {
+                tracing::warn!("ignored a companion list in a game settings change");
+            }
             let (old_lifetime, new_lifetime) = merge(ctx, out, |settings| {
                 let mut next = settings.clone();
                 let old_lifetime = next.game.cache_lifetime_days;
@@ -549,7 +557,152 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             ctx.ports.game_cache.clear().await;
             sync_game_cache(ctx, out).await;
         }
+        SettingsCommand::AddCompanion { companion } => {
+            update_companions(ctx, out, |companions| add_companion(companions, companion)).await;
+        }
+        SettingsCommand::PatchCompanion { id, base, patch } => {
+            update_companions(ctx, out, |companions| {
+                patch_companion(companions, &id, base.as_ref(), patch)
+            })
+            .await;
+        }
+        SettingsCommand::RemoveCompanion { id } => {
+            update_companions(ctx, out, |companions| {
+                companions.retain(|entry| entry.id != id);
+                Ok(())
+            })
+            .await;
+        }
+        SettingsCommand::TestCompanion { id, expected } => {
+            // The stored entry, never one from the page: see the command.
+            let companion = out.with_state(|state| {
+                state
+                    .settings
+                    .game
+                    .companions
+                    .iter()
+                    .find(|companion| companion.id == id)
+                    .cloned()
+            });
+            let Some(companion) = companion else {
+                tracing::warn!(%id, "no companion program to test with that id");
+                return;
+            };
+            if expected.is_some_and(|expected| !companion.runs(&expected)) {
+                // The change the page meant to test was refused or overtaken:
+                // what is stored now is not what the player asked to start.
+                let run = faf_domain::state::CompanionRun {
+                    id: companion.id.clone(),
+                    name: companion_name(&companion),
+                    outcome: faf_domain::state::CompanionOutcome::Failed {
+                        reason: "the entry changed before it was started, so nothing was started"
+                            .into(),
+                    },
+                    at: now_seconds(),
+                };
+                crate::services::companions::report(out, run);
+                return;
+            }
+            let run = ctx.ports.process.start_companion(companion).await;
+            crate::services::companions::report(out, run);
+        }
     }
+}
+
+/// Change the companion list in the backend's copy, as one step against
+/// every other settings command, then save it and hand it to the launcher.
+///
+/// The check of a change and its application happen under the one settings
+/// lock, against the list as it is at that moment: the shell confirmed the
+/// change against the list it saw earlier, and what decides whether it may
+/// run is what is stored when it lands. A refused change changes nothing.
+async fn update_companions(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    change: impl FnOnce(&mut Vec<domain::CompanionProgram>) -> Result<(), String>,
+) {
+    let applied = merge(ctx, out, |settings| {
+        let mut next = settings.clone();
+        match change(&mut next.game.companions) {
+            Ok(()) => (
+                Some(SettingsEvent::GameChanged {
+                    preferences: next.normalized().game,
+                }),
+                Ok(()),
+            ),
+            Err(reason) => (None, Err(reason)),
+        }
+    });
+    if let Err(reason) = applied {
+        tracing::warn!(%reason, "companion program change refused");
+        // Said where the player sees it: the page's fields still show the
+        // change, and a Test start after it is refused too (`TestCompanion`'s
+        // `expected`).
+        notifications::add_failure(
+            out,
+            notifications::Text::new("notifications.msg.companionChangeRefused"),
+            "A companion program change was not saved",
+            reason,
+        );
+        return;
+    }
+    persist(ctx, out).await;
+    sync_launch_preferences(ctx, out);
+}
+
+/// What a report calls the entry: its name, or its program's file name.
+fn companion_name(companion: &domain::CompanionProgram) -> String {
+    match companion.name.trim() {
+        "" => std::path::Path::new(companion.program.trim())
+            .file_name()
+            .map(|file| file.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+        name => name.to_owned(),
+    }
+}
+
+fn now_seconds() -> u32 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|since| since.as_secs() as u32)
+        .unwrap_or(0)
+}
+
+/// A new entry starts with nothing to run. The program is set afterwards by a
+/// patch, which the shell confirms and [`patch_companion`] checks.
+fn add_companion(
+    companions: &mut Vec<domain::CompanionProgram>,
+    companion: domain::CompanionProgram,
+) -> Result<(), String> {
+    if companion.has_command() {
+        return Err("a new companion entry starts without a program".into());
+    }
+    if companions.iter().any(|entry| entry.id == companion.id) {
+        return Err("a companion entry with that id exists".into());
+    }
+    companions.push(companion);
+    Ok(())
+}
+
+/// Apply `patch` to the entry with `id`. A patch that changes what the entry
+/// runs is applied only while the entry still runs `base`, the command it
+/// was confirmed against: an entry that is missing, was removed and made
+/// again, or was changed in between is a different one now.
+fn patch_companion(
+    companions: &mut [domain::CompanionProgram],
+    id: &str,
+    base: Option<&domain::CompanionCommand>,
+    patch: domain::CompanionProgramPatch,
+) -> Result<(), String> {
+    let Some(entry) = companions.iter_mut().find(|entry| entry.id == id) else {
+        return Err("no companion entry with that id".into());
+    };
+    if patch.changes_command() && !base.is_some_and(|base| entry.runs(base)) {
+        return Err("the companion entry changed since this change was confirmed".into());
+    }
+    let patch = domain::CompanionProgramPatch { id: None, ..patch };
+    *entry = patch.apply_to(entry.clone());
+    Ok(())
 }
 
 /// Read the settings, work out the change, and emit it, as one step against
@@ -954,10 +1107,11 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
-    let (borderless_window, force_affinity) = out.with_state(|state| {
+    let (borderless_window, force_affinity, companions) = out.with_state(|state| {
         (
             state.settings.game.borderless_window,
             state.settings.game.force_affinity,
+            state.settings.game.companions.clone(),
         )
     });
     // Written into `fa_path.lua` by every install pass, replays included.
@@ -965,6 +1119,7 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
     ctx.ports.process.set_additional_arguments(arguments);
     ctx.ports.process.set_steam_presence(steam_presence);
     ctx.ports.process.set_borderless_window(borderless_window);
+    ctx.ports.process.set_companions(companions);
     // The two halves of "run a Windows game on Linux" arrive from two
     // different preference groups, because that is where each one belongs: the
     // wrapper is about launching, the prefix is a path. The launcher needs

@@ -24,7 +24,8 @@ export const INITIAL_STATE: AppState = {
       "mapGeneratorDir": "",
       "javaPath": "",
       "winePrefix": ""
-    }
+    },
+    "companions": []
   },
   "auth": {
     "status": "loggedOut",
@@ -942,6 +943,7 @@ export const INITIAL_STATE: AppState = {
       "mapGeneratorInstances": 0,
       "steamPresence": false,
       "borderlessWindow": false,
+      "companions": [],
       "autoUpdateMapAndMods": false,
       "forceAffinity": true
     },

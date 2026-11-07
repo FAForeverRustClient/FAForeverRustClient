@@ -228,4 +228,42 @@ pub enum SettingsCommand {
     CheckInstalls,
     RefreshGameCache,
     ClearGameCache,
+    /// Add one companion program to the end of the list. It starts without
+    /// anything to run: the program is set afterwards, with
+    /// `PatchCompanion`, which is confirmed.
+    ///
+    /// The companion commands change one entry of the backend's list rather
+    /// than replacing the list, for the reason `SetListMember` exists: a
+    /// whole list sent from the page carries the page's copy of every other
+    /// entry, and two quick changes would undo each other.
+    AddCompanion {
+        companion: CompanionProgram,
+    },
+    /// Change the fields `patch` names on the entry with this id. A patch
+    /// that changes what the entry runs names the command it was made
+    /// against in `base`, and is refused unless the entry still runs exactly
+    /// that; an id with no entry changes nothing.
+    PatchCompanion {
+        id: String,
+        base: Option<CompanionCommand>,
+        patch: CompanionProgramPatch,
+    },
+    /// Remove the entry with this id.
+    RemoveCompanion {
+        id: String,
+    },
+    /// Start one companion program now, without a game ("Test start").
+    ///
+    /// Names the entry rather than carrying it: what runs is what is stored,
+    /// which the shell confirmed when it was set, never a program the page
+    /// sends along with the click.
+    ///
+    /// `expected` is the command the page showed when Test start was
+    /// clicked. Given, the entry is started only while it still runs exactly
+    /// that, so a change refused or overtaken in between starts nothing
+    /// rather than whatever else is stored.
+    TestCompanion {
+        id: String,
+        expected: Option<CompanionCommand>,
+    },
 }

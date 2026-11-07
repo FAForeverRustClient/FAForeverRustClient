@@ -78,6 +78,8 @@ pub fn game_attention(
 
 #[cfg(windows)]
 mod system {
+    use crate::infra::process_list::all as all_processes;
+
     type Handle = isize;
     type Hwnd = isize;
 
@@ -115,42 +117,12 @@ mod system {
     const SWP_NOZORDER: u32 = 0x0004;
     const SWP_FRAMECHANGED: u32 = 0x0020;
     const SWP_NOOWNERZORDER: u32 = 0x0200;
-    /// From `tlhelp32.h`.
-    const TH32CS_SNAPPROCESS: u32 = 0x0000_0002;
-    const INVALID_HANDLE_VALUE: Handle = -1;
-    const MAX_PATH: usize = 260;
-
-    /// `PROCESSENTRY32W`.
-    #[repr(C)]
-    struct ProcessEntry {
-        size: u32,
-        usage: u32,
-        process_id: u32,
-        default_heap_id: usize,
-        module_id: u32,
-        threads: u32,
-        parent_process_id: u32,
-        priority_class_base: i32,
-        flags: u32,
-        exe_file: [u16; MAX_PATH],
-    }
-
-    /// A running process, as a snapshot names it.
-    struct Process {
-        id: u32,
-        parent: u32,
-        /// The executable's file name, lowercase.
-        file: String,
-    }
 
     #[link(name = "kernel32")]
     extern "system" {
         fn OpenProcess(access: u32, inherit: i32, process_id: u32) -> Handle;
         fn WaitForSingleObject(handle: Handle, milliseconds: u32) -> u32;
         fn CloseHandle(handle: Handle) -> i32;
-        fn CreateToolhelp32Snapshot(flags: u32, process_id: u32) -> Handle;
-        fn Process32FirstW(snapshot: Handle, entry: *mut ProcessEntry) -> i32;
-        fn Process32NextW(snapshot: Handle, entry: *mut ProcessEntry) -> i32;
     }
 
     #[link(name = "user32")]
@@ -249,49 +221,6 @@ mod system {
             })
             .map(|process| process.id)
             .collect()
-    }
-
-    fn all_processes() -> Vec<Process> {
-        // Sound: plain integer arguments; a failure returns
-        // `INVALID_HANDLE_VALUE`.
-        let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
-        if snapshot == INVALID_HANDLE_VALUE {
-            return Vec::new();
-        }
-        let mut entry = ProcessEntry {
-            size: std::mem::size_of::<ProcessEntry>() as u32,
-            usage: 0,
-            process_id: 0,
-            default_heap_id: 0,
-            module_id: 0,
-            threads: 0,
-            parent_process_id: 0,
-            priority_class_base: 0,
-            flags: 0,
-            exe_file: [0; MAX_PATH],
-        };
-        let mut processes = Vec::new();
-        // Sound: a snapshot handle from the call above and a pointer to a
-        // local entry whose `size` is set, which is what both calls require.
-        let mut more = unsafe { Process32FirstW(snapshot, &mut entry) } != 0;
-        while more {
-            let length = entry
-                .exe_file
-                .iter()
-                .position(|&unit| unit == 0)
-                .unwrap_or(MAX_PATH);
-            processes.push(Process {
-                id: entry.process_id,
-                parent: entry.parent_process_id,
-                file: String::from_utf16_lossy(&entry.exe_file[..length]).to_lowercase(),
-            });
-            // Sound: as for `Process32FirstW` above.
-            more = unsafe { Process32NextW(snapshot, &mut entry) } != 0;
-        }
-        // Sound: the snapshot handle came from a successful call and is
-        // closed exactly once, here.
-        unsafe { CloseHandle(snapshot) };
-        processes
     }
 
     struct Search<'a> {

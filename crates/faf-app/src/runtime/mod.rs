@@ -794,6 +794,10 @@ impl AppLoop {
         // from: a sign-in, a finished replay scan, a game that just ended.
         services::training::spawn(ctx.clone(), self.sink.clone());
 
+        // And a companion program started with a game is reported when the
+        // launcher gets to it, not in answer to a command.
+        services::companions::spawn(ctx.clone(), self.sink.clone());
+
         let sink = self.sink.clone();
         // Admitted here, synchronously, as the command leaves its queue: see
         // `CommandAdmission` for why the place is taken before the task starts.

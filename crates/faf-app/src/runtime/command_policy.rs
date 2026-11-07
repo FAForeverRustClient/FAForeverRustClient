@@ -836,7 +836,11 @@ fn settings(command: &SettingsCommand) -> CommandPolicy {
         | SettingsCommand::DeleteSearchPreset { .. }
         | SettingsCommand::CheckInstalls
         | SettingsCommand::RefreshGameCache
-        | SettingsCommand::ClearGameCache => service_guarded(ServiceGuard::Settings),
+        | SettingsCommand::ClearGameCache
+        | SettingsCommand::AddCompanion { .. }
+        | SettingsCommand::PatchCompanion { .. }
+        | SettingsCommand::RemoveCompanion { .. }
+        | SettingsCommand::TestCompanion { .. } => service_guarded(ServiceGuard::Settings),
     }
 }
 

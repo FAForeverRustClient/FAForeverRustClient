@@ -2067,6 +2067,145 @@ export type ClientVersions = {
 	latestVersion?: string | null,
 };
 
+/**
+ *  What a companion entry runs: the part a change to has to be confirmed.
+ *
+ *  A change to it names the command it was made against
+ *  (`SettingsCommand::PatchCompanion`), and the settings service applies it
+ *  only while the entry still runs exactly that. The shell confirms a change
+ *  against the entry it sees; this is what keeps the entry from being a
+ *  different one by the time the change arrives.
+ */
+export type CompanionCommand = {
+	program: string,
+	arguments: string,
+	workingDir: string,
+};
+
+/**  Which launches a companion program comes with. */
+export type CompanionLaunches =
+/**  Games: online, offline, skirmish, tutorials and lessons. */
+"games" |
+/**  Replays, recorded and live. */
+"replays" |
+/**  Both. */
+"both";
+
+export type CompanionOutcome =
+/**  Started, as this process. */
+{ type: "started"; payload: {
+	pid: number,
+} } |
+/**
+ *  Not started: the process the client started for it last time is
+ *  still running.
+ */
+{ type: "alreadyRunning"; payload: {
+	pid: number,
+} } |
+/**  Not started: a process with the file name the entry names is running. */
+{ type: "skippedRunningImage"; payload: {
+	image: string,
+} } |
+/**  Could not be started, and why. The game started anyway. */
+{ type: "failed"; payload: {
+	reason: string,
+} } |
+/**  Closed because the game it came with exited. */
+{ type: "closed"; payload: {
+	pid: number,
+} };
+
+/**
+ *  A program the client starts alongside Forged Alliance.
+ *
+ *  Started with the player's own rights and without a console window, and
+ *  only when the process the client started for it last time is no longer
+ *  running, so a launch never stacks a second copy on the first. A program
+ *  that is missing or fails to start is reported and the game starts anyway.
+ */
+export type CompanionProgram = {
+	/**
+	 *  Stable for the life of the entry, so the process started for it is
+	 *  still recognised after the entry is renamed or moved in the list.
+	 */
+	id?: string,
+	enabled?: boolean,
+	/**  What the settings call it. Shown, never run. */
+	name?: string,
+	/**  The executable: a complete path to an existing file. */
+	program?: string,
+	/**
+	 *  Its command line after the program. Split the way the launch command
+	 *  is (quotes group words, nothing else is interpreted), never handed to a
+	 *  shell.
+	 */
+	arguments?: string,
+	/**  Where it runs. Empty is the program's own folder. */
+	workingDir?: string,
+	launches?: CompanionLaunches,
+	timing?: CompanionTiming,
+	/**
+	 *  Close it when the game it came with exits. Only ever the process the
+	 *  client started for this entry, never another copy of the program.
+	 */
+	closeWithGame?: boolean,
+	/**
+	 *  An executable's file name, such as `obs64.exe`. While a process of
+	 *  that name is running the program is not started again, whoever
+	 *  started it. Empty checks nothing. Windows only.
+	 */
+	skipIfRunning?: string,
+};
+
+/**
+ *  A change to one [`CompanionProgram`], naming only the fields it
+ *  touches. Applied by the settings service to its own copy of the entry
+ *  (`SettingsCommand::PatchCompanion`), so a switch flipped while
+ *  another change is still on its way cannot carry that change's old
+ *  value back. `id` is listed because every field has to be; the
+ *  service never changes an entry's id.
+ */
+export type CompanionProgramPatch = {
+	id?: string,
+	enabled?: boolean,
+	name?: string,
+	program?: string,
+	arguments?: string,
+	workingDir?: string,
+	launches?: CompanionLaunches,
+	timing?: CompanionTiming,
+	closeWithGame?: boolean,
+	skipIfRunning?: string,
+};
+
+/**
+ *  What the last attempt to start one companion program came to.
+ *
+ *  Runtime state like the rest of this slice: a start reported before the
+ *  client was restarted says nothing about the program now.
+ */
+export type CompanionRun = {
+	/**  The entry's id in Settings, Game. */
+	id: string,
+	/**  The entry's name when it was started, for a report that outlives it. */
+	name: string,
+	outcome: CompanionOutcome,
+	/**  Unix seconds. */
+	at: number,
+};
+
+/**
+ *  Whether a companion program starts before the game's process or right
+ *  after it.
+ */
+export type CompanionTiming = "before" |
+/**
+ *  After, by default: a tool that watches for the game finds it at once,
+ *  and one that fails to start cannot hold the game up.
+ */
+"after";
+
 /**  Team size and shape. */
 export type Competition = "team" | "freeForAll";
 
@@ -3530,6 +3669,11 @@ export type GamePreferences = {
 	 */
 	borderlessWindow?: boolean,
 	/**
+	 *  Programs of the player's own started alongside the game, such as a
+	 *  recording tool. See [`CompanionProgram`].
+	 */
+	companions?: CompanionProgram[],
+	/**
 	 *  Before hosting, switch the chosen map to its newest vault version and
 	 *  update every enabled mod that has a newer one (the Java client's "map
 	 *  and mod auto update"). Off by default, unlike the Java client: an
@@ -3548,7 +3692,8 @@ export type GamePreferences = {
 
 /**
  *  A change to [`GamePreferences`]. The two cache limits are optional
- *  preferences, so `null` for either is "no limit", not "unchanged".
+ *  preferences, so `null` for either is "no limit", not "unchanged". The
+ *  companion list is replaced whole, like every list.
  */
 export type GamePreferencesPatch = {
 	additionalArguments?: string[],
@@ -3566,6 +3711,7 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	companions?: CompanionProgram[],
 	autoUpdateMapAndMods?: boolean,
 	forceAffinity?: boolean,
 };
@@ -4192,6 +4338,10 @@ export type InstallEvent =
 	gamePending: boolean,
 	replayPending: boolean,
 	resolved: ResolvedPaths,
+} } |
+/**  A companion program was started, skipped, closed or failed to start. */
+{ type: "companionReported"; payload: {
+	run: CompanionRun,
 } };
 
 export type InstallState = {
@@ -4229,6 +4379,8 @@ export type InstallState = {
 	 *  make the field optional in the generated TypeScript for nothing.
 	 */
 	resolved: ResolvedPaths,
+	/**  The last start of each companion program, by entry, oldest first. */
+	companions: CompanionRun[],
 };
 
 /**
@@ -10424,7 +10576,51 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 { type: "deleteSearchPreset"; payload: {
 	list: string,
 	name: string,
-} } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" };
+} } | { type: "checkInstalls" } | { type: "refreshGameCache" } | { type: "clearGameCache" } |
+/**
+ *  Add one companion program to the end of the list. It starts without
+ *  anything to run: the program is set afterwards, with
+ *  `PatchCompanion`, which is confirmed.
+ *
+ *  The companion commands change one entry of the backend's list rather
+ *  than replacing the list, for the reason `SetListMember` exists: a
+ *  whole list sent from the page carries the page's copy of every other
+ *  entry, and two quick changes would undo each other.
+ */
+{ type: "addCompanion"; payload: {
+	companion: CompanionProgram,
+} } |
+/**
+ *  Change the fields `patch` names on the entry with this id. A patch
+ *  that changes what the entry runs names the command it was made
+ *  against in `base`, and is refused unless the entry still runs exactly
+ *  that; an id with no entry changes nothing.
+ */
+{ type: "patchCompanion"; payload: {
+	id: string,
+	base: CompanionCommand | null,
+	patch: CompanionProgramPatch,
+} } |
+/**  Remove the entry with this id. */
+{ type: "removeCompanion"; payload: {
+	id: string,
+} } |
+/**
+ *  Start one companion program now, without a game ("Test start").
+ *
+ *  Names the entry rather than carrying it: what runs is what is stored,
+ *  which the shell confirmed when it was set, never a program the page
+ *  sends along with the click.
+ *
+ *  `expected` is the command the page showed when Test start was
+ *  clicked. Given, the entry is started only while it still runs exactly
+ *  that, so a change refused or overtaken in between starts nothing
+ *  rather than whatever else is stored.
+ */
+{ type: "testCompanion"; payload: {
+	id: string,
+	expected: CompanionCommand | null,
+} };
 
 export type SettingsEvent = { type: "loaded"; payload: {
 	settings: SettingsState,

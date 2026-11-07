@@ -85,7 +85,7 @@ pub use guides::{
     GuidesIdentity, GuidesState, GuidesStatus, GuidesWrite, RejectReason, SubmissionPull,
     SubmitStatus, CATALOGUE_PATH, GUIDES_REPO, SUBMISSION_LABEL,
 };
-pub use install::{InstallEvent, InstallState, ResolvedPaths};
+pub use install::{CompanionOutcome, CompanionRun, InstallEvent, InstallState, ResolvedPaths};
 pub use leaderboard::{
     BoardRating, LeaderboardCommand, LeaderboardEntry, LeaderboardEvent, LeaderboardMode,
     LeaderboardState, LeaderboardStatus, LeaderboardTier, League, LeagueSeason, PlayerRatings,
@@ -161,6 +161,7 @@ pub use reviews::{
 pub use session::{ConnectionStatus, SessionCommand, SessionEvent, SessionState};
 pub use settings::{
     AppearancePreferences, BrowsingPreferences, CachedGameVersion, ChatNameColors, ChatPreferences,
+    CompanionLaunchKind, CompanionLaunches, CompanionProgram, CompanionTiming,
     ConnectivityPreferences, CustomGameBrowserPreferences, CustomGameFilterConstraint,
     CustomGameFilterField, CustomGameFilterRule, CustomGameSort, CustomGameView, DebugPreferences,
     DesktopNotificationStyle, DiscordPreferences, EventReminder, EventsPreferences, FilterMemory,
