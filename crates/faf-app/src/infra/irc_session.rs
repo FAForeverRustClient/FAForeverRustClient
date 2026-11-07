@@ -26,11 +26,15 @@ use crate::ports::ChatUpdate;
 
 /// Capabilities worth asking for. Anything the server does not offer is
 /// dropped from the request rather than risking a `NAK`.
-pub(crate) const WANTED_CAPS: [&str; 8] = [
+pub(crate) const WANTED_CAPS: [&str; 9] = [
     "sasl",
     "server-time",
     "message-tags",
     "multi-prefix",
+    // History arrives inside a `chathistory` batch only when this is on
+    // (Ergo leaves the framing out otherwise), and the batch is how backfill
+    // is told apart from live traffic.
+    "batch",
     "draft/chathistory",
     "echo-message",
     "draft/message-redaction",
@@ -215,9 +219,28 @@ impl SessionState {
     }
 }
 
+/// Membership, identity and channel-state changes, which only mean something
+/// when they happen now. See [`handle_line`].
+const REPLAY_ONLY_IN_LIVE: [&str; 11] = [
+    "JOIN", "PART", "QUIT", "KICK", "NICK", "MODE", "TOPIC", "AWAY", "CHGHOST", "SETNAME",
+    "ACCOUNT",
+];
+
+/// Whether `line` arrived inside a history batch, directly or nested.
+fn in_history_batch(line: &irc::IrcLine, state: &SessionState) -> bool {
+    line.tag("batch")
+        .is_some_and(|batch| state.history_batches.contains(batch))
+}
+
 fn request_history(channel: &str, state: &mut SessionState) -> Vec<Effect> {
+    // A private conversation's backfill is only safe with batch framing: an
+    // unframed old message reads as a new one, and a private message alerts.
+    // Channels have always asked, and their overlap with what is already on
+    // screen is dropped further on.
+    let private_without_framing = !channel.starts_with('#') && !state.caps.contains("batch");
     if !state.registered
         || !state.caps.contains("draft/chathistory")
+        || private_without_framing
         || !state.history_asked.insert(channel.to_ascii_lowercase())
     {
         return Vec::new();
@@ -301,15 +324,25 @@ pub(crate) fn handle_line(
 ) -> Vec<Effect> {
     let mut effects = Vec::new();
 
+    // Event playback replays joins, parts, renames and mode or topic changes
+    // from the past. They describe who was where then, not now: applied, a
+    // replayed part of our own closed the open channel and a replayed rename
+    // gave us our old nick back. Messages, reactions and redactions in
+    // history are still handled below.
+    if in_history_batch(line, state) && REPLAY_ONLY_IN_LIVE.contains(&line.command.as_str()) {
+        return effects;
+    }
+
     match line.command.as_str() {
         "BATCH" => {
             if let Some(batch) = line.params.first() {
                 if let Some(id) = batch.strip_prefix('-') {
                     state.history_batches.remove(id);
-                } else if line
+                } else if (line
                     .params
                     .get(1)
                     .is_some_and(|kind| kind.contains("chathistory"))
+                    || in_history_batch(line, state))
                     && state.history_batches.len() < 64
                 {
                     if let Some(id) = batch.strip_prefix('+') {
@@ -1622,11 +1655,64 @@ mod reference_chat_tests {
                 "message-tags",
                 "echo-message",
                 "draft/message-redaction",
+                "batch",
                 "draft/chathistory",
             ]
             .map(str::to_string),
         );
         state
+    }
+
+    #[test]
+    fn reference_chat_asks_for_batch_framing() {
+        assert!(WANTED_CAPS.contains(&"batch"));
+    }
+
+    #[test]
+    fn reference_chat_withholds_private_history_without_batch_framing() {
+        let mut state = state();
+        state.caps.remove("batch");
+        assert!(outgoing(Outgoing::PrivateHistory("Bob".into()), &mut state).is_empty());
+        // Channels keep asking, as they always have.
+        assert_eq!(
+            request_history("#aeolus", &mut state),
+            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 500".into())]
+        );
+    }
+
+    #[test]
+    fn reference_chat_replayed_part_and_rename_leave_the_live_session_alone() {
+        let mut state = state();
+        state.rosters.entry("#aeolus".into()).or_default();
+        line(&mut state, "BATCH +h1 chathistory #aeolus");
+        assert!(line(&mut state, "@batch=h1 :Ada!u@h PART #aeolus").is_empty());
+        assert!(line(&mut state, "@batch=h1 :Ada!u@h NICK OldAda").is_empty());
+        assert!(line(&mut state, "@batch=h1 :Bob!u@h JOIN #aeolus").is_empty());
+        assert_eq!(state.nick, "Ada");
+        assert!(state.rosters.contains_key("#aeolus"));
+        // A message replayed in the same batch still arrives, marked as history.
+        assert!(matches!(
+            line(
+                &mut state,
+                "@batch=h1;msgid=m1 :Bob!u@h PRIVMSG #aeolus :hello"
+            )
+            .as_slice(),
+            [Effect::Message { history: true, .. }]
+        ));
+        line(&mut state, "BATCH -h1");
+        // Live again once the batch ends.
+        assert!(!line(&mut state, ":Ada!u@h PART #aeolus").is_empty());
+    }
+
+    #[test]
+    fn reference_chat_a_batch_nested_in_history_is_history_too() {
+        let mut state = state();
+        line(&mut state, "BATCH +h1 chathistory Bob");
+        line(&mut state, "@batch=h1 BATCH +m1 draft/multiline Bob");
+        assert!(matches!(
+            line(&mut state, "@batch=m1;msgid=m2 :Bob!u@h PRIVMSG Ada :old").as_slice(),
+            [Effect::Message { history: true, .. }]
+        ));
     }
     #[test]
     fn reference_chat_retracts_java_reactions_by_their_server_event_id() {
@@ -1725,6 +1811,9 @@ mod reference_chat_tests {
         other.registered = true;
         assert!(outgoing(request(), &mut other).is_empty());
         other.caps.insert("draft/chathistory".into());
+        // History without batch framing would arrive looking live.
+        assert!(outgoing(request(), &mut other).is_empty());
+        other.caps.insert("batch".into());
         assert_eq!(
             outgoing(request(), &mut other),
             vec![Effect::Send("CHATHISTORY LATEST Bob * 500".into())]

@@ -172,11 +172,17 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             let operations = &ctx.lobby.operations;
             let operation = operations.begin();
             // Newest map version and mod updates first, when asked for, so
-            // the preparation below downloads the map that is hosted. Not
-            // run under `operations.run`: a mod update replaces a folder and
-            // must not be dropped half-way, so a call-off is checked after.
+            // the preparation below downloads the map that is hosted. Scoped
+            // to this host's operation, so a call-off stops the lookups and
+            // downloads that follow it, while a mod swap already under way
+            // still finishes.
             let config = if ctx.ports.process.supports_live_launch() {
-                super::host_updates::bring_up_to_date(config, ctx, out).await
+                operations
+                    .run(
+                        operation,
+                        super::host_updates::bring_up_to_date(config, operation, ctx, out),
+                    )
+                    .await
             } else {
                 config
             };
