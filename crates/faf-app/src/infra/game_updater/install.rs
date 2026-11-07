@@ -8,6 +8,7 @@
 
 use std::io::{Seek as _, SeekFrom, Write as _};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::content_store;
 
@@ -392,7 +393,27 @@ pub(super) fn finish_install(
 ) -> Result<(), String> {
     let retail = retail_install_dir(target_dir);
     copy_retail_binaries(&retail, target_dir)?;
-    write_fa_path_lua(target_dir, &retail, featured_mod, version)
+    write_fa_path_lua(
+        target_dir,
+        &retail,
+        featured_mod,
+        version,
+        FORCE_AFFINITY.load(Ordering::Relaxed),
+    )
+}
+
+/// The player's `force_affinity` preference, as the next `fa_path.lua` should
+/// carry it. One value for every install pass: live games, replays, cached
+/// builds, training and tutorials all finish through [`finish_install`], and
+/// threading a flag through each of their call chains would say the same
+/// thing many times over. The settings service sets it on load and on every
+/// change, through `GameUpdaterPort::set_force_affinity`. On until then, the
+/// preference's own default.
+static FORCE_AFFINITY: AtomicBool = AtomicBool::new(true);
+
+/// See [`FORCE_AFFINITY`].
+pub fn set_force_affinity(enabled: bool) {
+    FORCE_AFFINITY.store(enabled, Ordering::Relaxed);
 }
 
 /// The files a FAF install's `bin` needs from the game the player owns.
@@ -544,12 +565,13 @@ fn write_fa_path_lua(
     retail_dir: &Path,
     featured_mod: &str,
     version: i32,
+    force_affinity: bool,
 ) -> Result<(), String> {
     // Written inside a Lua string literal that FA executes on start.
     super::require_featured_mod_name(featured_mod)?;
     let vault_path = documents_vault_dir().unwrap_or_else(|| target_dir.join("vault"));
     let content = format!(
-        "fa_path = \"{}\"\ncustom_vault_path = \"{}\"\nGameType = \"{featured_mod}\"\nGameVersion = \"{version}\"\nClientVersion = \"{}\"\nForceAffinity = false\n",
+        "fa_path = \"{}\"\ncustom_vault_path = \"{}\"\nGameType = \"{featured_mod}\"\nGameVersion = \"{version}\"\nClientVersion = \"{}\"\nForceAffinity = \"{force_affinity}\"\n",
         slashed(retail_dir),
         slashed(&vault_path),
         env!("CARGO_PKG_VERSION"),
@@ -969,17 +991,28 @@ mod tests {
     }
 
     #[test]
+    fn fa_path_lua_carries_a_disabled_affinity_as_the_string_false() {
+        let dir = tempfile::tempdir().unwrap();
+        write_fa_path_lua(dir.path(), &dir.path().join("retail"), "faf", 3840, false)
+            .expect("should write");
+        let content = std::fs::read_to_string(dir.path().join("fa_path.lua")).unwrap();
+        assert!(content.contains("ForceAffinity = \"false\""), "{content}");
+    }
+
+    #[test]
     fn writes_fa_path_lua_with_expected_fields() {
         let dir = std::env::temp_dir().join(format!("forge-lua-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
 
         let retail = dir.join("retail-install");
-        write_fa_path_lua(&dir, &retail, "ladder1v1", 3684).expect("should write");
+        write_fa_path_lua(&dir, &retail, "ladder1v1", 3684, true).expect("should write");
         let content = std::fs::read_to_string(dir.join("fa_path.lua")).unwrap();
 
         assert!(content.contains("GameType = \"ladder1v1\""));
         assert!(content.contains("GameVersion = \"3684\""));
-        assert!(content.contains("ForceAffinity = false"));
+        // A string: FAF's init script tests `ForceAffinity == "true"`, which
+        // a bare Lua `true` never equals.
+        assert!(content.contains("ForceAffinity = \"true\""));
         assert!(!content.contains('\\'), "paths must use forward slashes");
         // fa_path must be the retail install root, never the FAF patch dir,
         // the game mounts movies/sounds/fonts from it (the bug this guards).

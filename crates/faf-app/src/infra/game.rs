@@ -16,9 +16,11 @@
 //! Authenticated sessions use this launcher by default. Explicit offline/test
 //! sessions inject [`FakeGame`] so the rest of the app remains install-free.
 //!
-//! Known gaps (later phases, see the plan): no replay server (`/savereplay`
-//! omitted), no client-derived rating args, and no game-bin/init staging: the
-//! FAF `init_<mod>.lua` must already be present beside the executable.
+//! The player's own arguments (`/mean`, `/deviation`, `/country`, `/clan`,
+//! `/numgames` and the matchmaker's `/team`, `/players`, `/startspot`) are
+//! added by `services::launcher` before the launch reaches this file, and the
+//! install, including `init_<mod>.lua` and `fa_path.lua`, is staged by
+//! `infra::game_updater`.
 
 use std::collections::HashSet;
 use std::fs::File;

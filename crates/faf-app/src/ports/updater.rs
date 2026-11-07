@@ -125,6 +125,10 @@ pub trait GameUpdaterPort: Send + Sync {
     /// is due, exactly as both reference clients do.
     async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress>;
 
+    /// Whether the next install pass writes `ForceAffinity = "true"` into
+    /// `fa_path.lua`, from the player's `force_affinity` preference.
+    fn set_force_affinity(&self, _enabled: bool) {}
+
     /// [`Self::prepare`], stopping once `called_off` is cancelled.
     ///
     /// The run stops where stopping leaves nothing half written: between two

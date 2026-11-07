@@ -225,6 +225,12 @@ pub struct GamePreferences {
     /// for example while developing it, would be overwritten.
     #[serde(default)]
     pub auto_update_map_and_mods: bool,
+    /// Let FAF move Forged Alliance off the first two logical cores, where the
+    /// operating system does most of its own work, on machines with six or
+    /// more. FAF's init script does it when `fa_path.lua` says
+    /// `ForceAffinity = "true"`. On by default, as in both reference clients.
+    #[serde(default = "default_true")]
+    pub force_affinity: bool,
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -264,6 +270,7 @@ impl Default for GamePreferences {
             steam_presence: false,
             borderless_window: false,
             auto_update_map_and_mods: false,
+            force_affinity: true,
         }
     }
 }
@@ -322,5 +329,30 @@ preference_patch! {
         steam_presence: bool,
         borderless_window: bool,
         auto_update_map_and_mods: bool,
+        force_affinity: bool,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn force_affinity_is_on_unless_the_player_turned_it_off() {
+        // A settings file from before the preference existed.
+        let older: GamePreferences = serde_json::from_str("{}").unwrap();
+        assert!(older.force_affinity);
+        assert!(GamePreferences::default().force_affinity);
+
+        let patch: GamePreferencesPatch =
+            serde_json::from_str(r#"{"forceAffinity":false}"#).unwrap();
+        let changed = patch.apply_to(GamePreferences::default());
+        assert!(!changed.force_affinity);
+        let saved = serde_json::to_string(&changed).unwrap();
+        assert!(
+            !serde_json::from_str::<GamePreferences>(&saved)
+                .unwrap()
+                .force_affinity
+        );
     }
 }

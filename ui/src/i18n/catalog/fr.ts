@@ -2444,6 +2444,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Retire le cadre de la fenêtre du jeu et l'étend sur tout l'écran pendant la partie. Forged Alliance doit lui-même être en mode fenêtré.",
   "settings.game.borderlessWindow": "Fenêtre sans bordure",
+  "settings.game.forceAffinity": "Tenir le jeu à l'écart des premiers cœurs",
+  "settings.game.forceAffinityHint": "Sur les ordinateurs à six cœurs logiques ou plus, Forged Alliance évite les deux premiers, où le système fait l'essentiel de son propre travail. S'applique à partir de la prochaine partie.",
   "lobby.modConflict.title": "Remplacer les mods installés ?",
   "lobby.modConflict.body": { one: "Cette partie utilise une autre version d'un mod que vous avez déjà installé. Rien n'a encore été modifié.", other: "Cette partie utilise d'autres versions de {count} mods que vous avez déjà installés. Rien n'a encore été modifié." },
   "lobby.modConflict.versions": "Cette partie : v{required}. Installé : {installed} v{version}, dans {folder}",

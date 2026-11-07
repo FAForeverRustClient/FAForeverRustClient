@@ -5171,6 +5171,8 @@ export const en = {
 
   "settings.game.borderlessWindowHint": "Takes the frame off the game's window and stretches it over the screen while it runs. Set Forged Alliance itself to windowed for this to apply.",
   "settings.game.borderlessWindow": "Borderless window",
+  "settings.game.forceAffinity": "Keep the game off the first CPU cores",
+  "settings.game.forceAffinityHint": "On computers with six or more logical cores, Forged Alliance skips the first two, where the system does most of its own work. Applies from the next game.",
   // Joining used to fetch whatever a lobby required the moment you
   // double-clicked it. Two dialogs answer that: what is about to arrive, and
   // then what is arriving.

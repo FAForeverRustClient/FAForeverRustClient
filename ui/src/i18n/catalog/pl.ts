@@ -2478,6 +2478,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Usuwa ramkę okna gry i rozciąga je na cały ekran, dopóki gra działa. Samo Forged Alliance musi być ustawione na tryb okienkowy.",
   "settings.game.borderlessWindow": "Okno bez ramki",
+  "settings.game.forceAffinity": "Trzymaj grę z dala od pierwszych rdzeni",
+  "settings.game.forceAffinityHint": "Na komputerach z sześcioma lub więcej rdzeniami logicznymi Forged Alliance omija dwa pierwsze, na których system wykonuje większość własnej pracy. Działa od następnej gry.",
   "lobby.modConflict.title": "Zastąpić zainstalowane mody?",
   "lobby.modConflict.body": { one: "Ta gra używa innej wersji moda, który już masz zainstalowany. Nic jeszcze nie zostało zmienione.", few: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione.", many: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione.", other: "Ta gra używa innych wersji {count} modów, które już masz zainstalowane. Nic jeszcze nie zostało zmienione." },
   "lobby.modConflict.versions": "Ta gra: v{required}. Zainstalowano: {installed} v{version}, w {folder}",

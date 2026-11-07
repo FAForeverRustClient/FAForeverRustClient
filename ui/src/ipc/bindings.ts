@@ -3537,6 +3537,13 @@ export type GamePreferences = {
 	 *  for example while developing it, would be overwritten.
 	 */
 	autoUpdateMapAndMods?: boolean,
+	/**
+	 *  Let FAF move Forged Alliance off the first two logical cores, where the
+	 *  operating system does most of its own work, on machines with six or
+	 *  more. FAF's init script does it when `fa_path.lua` says
+	 *  `ForceAffinity = "true"`. On by default, as in both reference clients.
+	 */
+	forceAffinity?: boolean,
 };
 
 /**
@@ -3560,6 +3567,7 @@ export type GamePreferencesPatch = {
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
 	autoUpdateMapAndMods?: boolean,
+	forceAffinity?: boolean,
 };
 
 export type GeneralPreferences = {

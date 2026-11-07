@@ -220,6 +220,17 @@ export function GameSettingsSection() {
         )}
 
         <SettingRow
+          label={t("settings.game.forceAffinity")}
+          hint={t("settings.game.forceAffinityHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.forceAffinity ?? true}
+            onChange={(forceAffinity) => void save({ forceAffinity })}
+            label={t("settings.game.forceAffinity")}
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.game.pipeLiveReplay")}
           hint={t("settings.game.pipeLiveReplayHint")}
         >
