@@ -954,7 +954,14 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
-    let borderless_window = out.with_state(|state| state.settings.game.borderless_window);
+    let (borderless_window, force_affinity) = out.with_state(|state| {
+        (
+            state.settings.game.borderless_window,
+            state.settings.game.force_affinity,
+        )
+    });
+    // Written into `fa_path.lua` by every install pass, replays included.
+    ctx.ports.updater.set_force_affinity(force_affinity);
     ctx.ports.process.set_additional_arguments(arguments);
     ctx.ports.process.set_steam_presence(steam_presence);
     ctx.ports.process.set_borderless_window(borderless_window);
