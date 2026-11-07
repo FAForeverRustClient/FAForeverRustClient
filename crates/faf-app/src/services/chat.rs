@@ -229,7 +229,9 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
     } {
         let connected = matches!(&update, ChatUpdate::Status(ChatStatus::Connected, _));
         let mut quiet_history = false;
-        if let ChatUpdate::Message { channel, message } = &update {
+        if let ChatUpdate::Message { channel, message }
+        | ChatUpdate::HistoryMessage { channel, message } = &update
+        {
             let (
                 is_quiet_history,
                 held,
@@ -277,7 +279,8 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                     ),
                 )
             });
-            quiet_history = is_quiet_history;
+            quiet_history =
+                matches!(&update, ChatUpdate::HistoryMessage { .. }) || is_quiet_history;
             // A line the channel already shows is the history backfill
             // overlapping the scrollback after a reconnect or a rejoin (#471).
             // The reducer would drop it; skipping it here also keeps its
@@ -458,6 +461,12 @@ fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String, rep
 
 fn to_event(update: ChatUpdate, quiet_history: bool) -> ChatEvent {
     match update {
+        ChatUpdate::HistoryMessage { channel, message } => {
+            ChatEvent::MessageReceivedQuietly { channel, message }
+        }
+        ChatUpdate::MessageRedacted { channel, msgid } => {
+            ChatEvent::MessageRedacted { channel, msgid }
+        }
         ChatUpdate::Status(ChatStatus::Connected, username) => ChatEvent::Connected { username },
         ChatUpdate::Status(ChatStatus::Connecting, _) => ChatEvent::Connecting,
         ChatUpdate::Status(ChatStatus::Disconnected, _) => ChatEvent::Disconnected,

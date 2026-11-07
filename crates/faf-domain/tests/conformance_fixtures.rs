@@ -5125,6 +5125,20 @@ fn cases() -> Vec<Case> {
                 .into(),
             ],
         ),
+        case(
+            "chat redaction removes open and retained content without reopening a conversation",
+            vec![
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "unknown".into() }.into(),
+                ChatEvent::ChannelJoined { channel: "Bob".into() }.into(),
+                ChatEvent::MessageReceived { channel: "Bob".into(), message: chat_message("Bob", "remove me") }.into(),
+                ChatEvent::MessageReceived { channel: "Bob".into(), message: chat_message("Bob", "keep me") }.into(),
+                ChatEvent::ReactionReceived { channel: "Bob".into(), msgid: "srv-Bob-remove me".into(), emoji: ":+1:".into(), sender: "Ada".into() }.into(),
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "srv-Bob-remove me".into() }.into(),
+                ChatEvent::ChannelLeft { channel: "Bob".into() }.into(),
+                ChatEvent::MessageRedacted { channel: "Bob".into(), msgid: "srv-Bob-keep me".into() }.into(),
+                ChatEvent::ChannelJoined { channel: "Bob".into() }.into(),
+            ],
+        ),
         // ── lobby ────────────────────────────────────────────────────────
         case(
             "lobby runs the join state machine",

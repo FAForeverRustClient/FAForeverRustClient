@@ -11308,6 +11308,371 @@
       ]
     },
     {
+      "name": "chat redaction removes open and retained content without reopening a conversation",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "msgid": "unknown"
+              },
+              "type": "messageRedacted"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "message": {
+                  "content": "remove me",
+                  "id": "m-Bob-remove me",
+                  "kind": "message",
+                  "msgid": "srv-Bob-remove me",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "remove me",
+                    "id": "m-Bob-remove me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-remove me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 1,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "message": {
+                  "content": "keep me",
+                  "id": "m-Bob-keep me",
+                  "kind": "message",
+                  "msgid": "srv-Bob-keep me",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "remove me",
+                    "id": "m-Bob-remove me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-remove me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "keep me",
+                    "id": "m-Bob-keep me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-keep me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 2,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "emoji": ":+1:",
+                "msgid": "srv-Bob-remove me",
+                "sender": "Ada"
+              },
+              "type": "reactionReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "remove me",
+                    "id": "m-Bob-remove me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-remove me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "keep me",
+                    "id": "m-Bob-keep me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-keep me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Bob",
+                "reactions": [
+                  {
+                    "entries": [
+                      {
+                        "emoji": ":+1:",
+                        "senders": [
+                          "Ada"
+                        ]
+                      }
+                    ],
+                    "msgid": "srv-Bob-remove me"
+                  }
+                ],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 2,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "msgid": "srv-Bob-remove me"
+              },
+              "type": "messageRedacted"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "keep me",
+                    "id": "m-Bob-keep me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-keep me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 2,
+                "unreadMentions": 2,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob"
+              },
+              "type": "channelLeft"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [
+              {
+                "channel": "Bob",
+                "messages": [
+                  {
+                    "content": "keep me",
+                    "id": "m-Bob-keep me",
+                    "kind": "message",
+                    "msgid": "srv-Bob-keep me",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ]
+              }
+            ],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "msgid": "srv-Bob-keep me"
+              },
+              "type": "messageRedacted"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [
+              {
+                "channel": "Bob",
+                "messages": []
+              }
+            ],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "Bob",
+            "channels": [
+              {
+                "messages": [],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
       "name": "lobby runs the join state machine",
       "steps": [
         {

@@ -17,7 +17,7 @@
 //! make a port type part of the domain. The pure/IO seam is clean here: the
 //! crate seam is not.
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 
 use faf_domain::protocol::irc;
 use faf_domain::state::{ChatMessageKind, ChatStatus, ChatUser};
@@ -26,13 +26,39 @@ use crate::ports::ChatUpdate;
 
 /// Capabilities worth asking for. Anything the server does not offer is
 /// dropped from the request rather than risking a `NAK`.
-pub(crate) const WANTED_CAPS: [&str; 5] = [
+pub(crate) const WANTED_CAPS: [&str; 8] = [
     "sasl",
     "server-time",
     "message-tags",
     "multi-prefix",
     "draft/chathistory",
+    "echo-message",
+    "draft/message-redaction",
+    "draft/event-playback",
 ];
+
+const MAX_REACTION_EVENTS: usize = 4096;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Outgoing {
+    Line(String),
+    PrivateHistory(String),
+    ClosePrivate(String),
+    Unreact {
+        channel: String,
+        msgid: String,
+        emoji: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ReactionEvent {
+    id: String,
+    channel: String,
+    msgid: String,
+    emoji: String,
+    sender: String,
+}
 
 /// How much backlog to pull when a channel opens.
 pub(crate) const HISTORY_LINES: u32 = 500;
@@ -78,6 +104,7 @@ pub(crate) enum Effect {
         /// The `msgid` this line answers (`+draft/reply`), empty when it
         /// answers nothing.
         reply_to: String,
+        history: bool,
     },
     /// Whether the server granted `message-tags`.
     ///
@@ -86,6 +113,7 @@ pub(crate) enum Effect {
     /// `TAGMSG` carries nothing, and a rejected one is a wasted round trip on
     /// every keystroke.
     TagsEnabled(bool),
+    EchoEnabled(bool),
     /// Our nick changed. Published so the rest of the client can see it.
     NickChanged(String),
     /// Stop trying to rejoin a channel: we were kicked from it.
@@ -111,6 +139,7 @@ impl Effect {
             // so nothing can react to it. That is the correct outcome.
             msgid: String::new(),
             reply_to: String::new(),
+            history: false,
         }
     }
 }
@@ -143,6 +172,9 @@ pub(crate) struct SessionState {
     /// second NAK is treated as fatal instead of looping.
     pub sasl_only_retry: bool,
     pub registered: bool,
+    reaction_events: VecDeque<ReactionEvent>,
+    redacted: VecDeque<String>,
+    history_batches: BTreeSet<String>,
 }
 
 impl SessionState {
@@ -156,6 +188,9 @@ impl SessionState {
             history_asked: BTreeSet::new(),
             sasl_only_retry: false,
             registered: false,
+            reaction_events: VecDeque::new(),
+            redacted: VecDeque::new(),
+            history_batches: BTreeSet::new(),
         }
     }
 
@@ -180,6 +215,79 @@ impl SessionState {
     }
 }
 
+fn request_history(channel: &str, state: &mut SessionState) -> Vec<Effect> {
+    if !state.registered
+        || !state.caps.contains("draft/chathistory")
+        || !state.history_asked.insert(channel.to_ascii_lowercase())
+    {
+        return Vec::new();
+    }
+    vec![Effect::Send(irc::format_line(
+        "CHATHISTORY",
+        &["LATEST", channel, "*", &HISTORY_LINES.to_string()],
+    ))]
+}
+
+pub(crate) fn outgoing(frame: Outgoing, state: &mut SessionState) -> Vec<Effect> {
+    match frame {
+        Outgoing::Line(line) => vec![Effect::Send(line)],
+        Outgoing::PrivateHistory(channel) => request_history(&channel, state),
+        Outgoing::ClosePrivate(channel) => {
+            state.history_asked.remove(&channel.to_ascii_lowercase());
+            Vec::new()
+        }
+        Outgoing::Unreact {
+            channel,
+            msgid,
+            emoji,
+        } => {
+            if state.caps.contains("draft/message-redaction") && state.caps.contains("echo-message")
+            {
+                let ids: Vec<String> = state
+                    .reaction_events
+                    .iter()
+                    .filter(|event| {
+                        event.channel.eq_ignore_ascii_case(&channel)
+                            && event.msgid == msgid
+                            && event.emoji == emoji
+                            && state.is_me(&event.sender)
+                    })
+                    .map(|event| event.id.clone())
+                    .collect();
+                ids.into_iter()
+                    .map(|id| Effect::Send(irc::format_line("REDACT", &[&channel, &id])))
+                    .collect()
+            } else if state.caps.contains("message-tags") {
+                // Compatibility with older Rust clients on servers without
+                // standard redaction support. FAF uses the REDACT path above.
+                vec![
+                    Effect::Send(irc::format_tagged_line(
+                        &[("+draft/reply", &msgid), ("+draft/unreact", &emoji)],
+                        "TAGMSG",
+                        &[&channel],
+                    )),
+                    Effect::Emit(ChatUpdate::ReactionRemoved {
+                        channel,
+                        msgid,
+                        emoji,
+                        sender: state.nick.clone(),
+                    }),
+                ]
+            } else {
+                Vec::new()
+            }
+        }
+    }
+}
+
+fn conversation(target: &str, sender: &str, state: &SessionState) -> String {
+    if target.starts_with('#') || state.is_me(sender) {
+        target.to_string()
+    } else {
+        sender.to_string()
+    }
+}
+
 /// Decide what one inbound line means.
 ///
 /// Mutates `state` and returns the effects the caller must perform. Note that
@@ -194,6 +302,22 @@ pub(crate) fn handle_line(
     let mut effects = Vec::new();
 
     match line.command.as_str() {
+        "BATCH" => {
+            if let Some(batch) = line.params.first() {
+                if let Some(id) = batch.strip_prefix('-') {
+                    state.history_batches.remove(id);
+                } else if line
+                    .params
+                    .get(1)
+                    .is_some_and(|kind| kind.contains("chathistory"))
+                    && state.history_batches.len() < 64
+                {
+                    if let Some(id) = batch.strip_prefix('+') {
+                        state.history_batches.insert(id.to_string());
+                    }
+                }
+            }
+        }
         "PING" => {
             let payload = line.params.first().cloned().unwrap_or_default();
             effects.push(Effect::Send(irc::format_line("PONG", &[&payload])));
@@ -229,6 +353,7 @@ pub(crate) fn handle_line(
                     state.caps.extend(capability_names(caps));
                 }
                 effects.push(Effect::TagsEnabled(state.caps.contains("message-tags")));
+                effects.push(Effect::EchoEnabled(state.caps.contains("echo-message")));
                 effects.push(Effect::Send("AUTHENTICATE PLAIN".to_string()));
             }
             Some("NAK") => {
@@ -284,7 +409,11 @@ pub(crate) fn handle_line(
                 state.nick.clone(),
             )));
             for channel in &ctx.wanted_channels {
-                effects.push(Effect::Send(irc::format_line("JOIN", &[channel])));
+                if channel.starts_with('#') {
+                    effects.push(Effect::Send(irc::format_line("JOIN", &[channel])));
+                } else {
+                    effects.extend(request_history(channel, state));
+                }
             }
         }
         // RPL_NAMREPLY: the trailing param is a space-separated nick list.
@@ -355,12 +484,7 @@ pub(crate) fn handle_line(
                 effects.push(Effect::Emit(ChatUpdate::ChannelJoined(channel.clone())));
                 state.rosters.entry(channel.clone()).or_default();
                 // Backfill the conversation so the tab doesn't open empty.
-                if state.history_asked.insert(channel.clone()) {
-                    effects.push(Effect::Send(irc::format_line(
-                        "CHATHISTORY",
-                        &["LATEST", channel, "*", &HISTORY_LINES.to_string()],
-                    )));
-                }
+                effects.extend(request_history(channel, state));
             } else {
                 state
                     .rosters
@@ -385,7 +509,7 @@ pub(crate) fn handle_line(
             };
             if state.is_me(nick) {
                 state.rosters.remove(channel);
-                state.history_asked.remove(channel);
+                state.history_asked.remove(&channel.to_ascii_lowercase());
                 effects.push(Effect::Emit(ChatUpdate::ChannelLeft(channel.clone())));
             } else {
                 if let Some(roster) = state.rosters.get_mut(channel) {
@@ -409,7 +533,7 @@ pub(crate) fn handle_line(
             };
             if state.is_me(nick) {
                 state.rosters.remove(channel);
-                state.history_asked.remove(channel);
+                state.history_asked.remove(&channel.to_ascii_lowercase());
                 effects.push(Effect::ForgetChannel(channel.clone()));
                 effects.push(Effect::Emit(ChatUpdate::ChannelLeft(channel.clone())));
             } else {
@@ -520,11 +644,13 @@ pub(crate) fn handle_line(
 
             // A message addressed to us personally opens a conversation named
             // after the sender; anything else belongs to its channel.
-            let channel = if target.starts_with('#') {
-                target.clone()
-            } else {
-                sender.to_string()
-            };
+            let channel = conversation(target, sender, state);
+            if line
+                .tag("msgid")
+                .is_some_and(|id| state.redacted.iter().any(|held| held == id))
+            {
+                return effects;
+            }
             let (kind, text) = match irc::parse_ctcp_action(content) {
                 Some(action) => (ChatMessageKind::Action, action.to_string()),
                 None if line.command == "NOTICE" => (ChatMessageKind::Notice, content.clone()),
@@ -540,6 +666,9 @@ pub(crate) fn handle_line(
                 timestamp: line.server_time().map(str::to_string),
                 msgid: line.tag("msgid").unwrap_or_default().to_string(),
                 reply_to: line.tag("+draft/reply").unwrap_or_default().to_string(),
+                history: line
+                    .tag("batch")
+                    .is_some_and(|batch| state.history_batches.contains(batch)),
             });
         }
         // A message that is nothing but tags. Two client tags matter here:
@@ -549,13 +678,13 @@ pub(crate) fn handle_line(
             let (Some(sender), Some(target)) = (line.prefix_nick(), line.params.first()) else {
                 return effects;
             };
-            let channel = if target.starts_with('#') {
-                target.clone()
-            } else {
-                // A TAGMSG sent to us personally belongs to the conversation
-                // with its sender, exactly as a private PRIVMSG does.
-                sender.to_string()
-            };
+            let channel = conversation(target, sender, state);
+            if line
+                .tag("msgid")
+                .is_some_and(|id| state.redacted.iter().any(|held| held == id))
+            {
+                return effects;
+            }
 
             if let Some(state) = line.tag("+typing") {
                 effects.push(Effect::Emit(ChatUpdate::Typing {
@@ -587,6 +716,20 @@ pub(crate) fn handle_line(
                 // on whatever happened to arrive last.
                 let msgid = line.tag("+draft/reply").unwrap_or_default();
                 if !msgid.is_empty() && !emoji.is_empty() {
+                    if let Some(id) = line.tag("msgid").filter(|id| !id.is_empty()) {
+                        if !state.reaction_events.iter().any(|event| event.id == id) {
+                            state.reaction_events.push_back(ReactionEvent {
+                                id: id.to_string(),
+                                channel: channel.clone(),
+                                msgid: msgid.to_string(),
+                                emoji: emoji.to_string(),
+                                sender: sender.to_string(),
+                            });
+                            if state.reaction_events.len() > MAX_REACTION_EVENTS {
+                                state.reaction_events.pop_front();
+                            }
+                        }
+                    }
                     effects.push(Effect::Emit(ChatUpdate::Reaction {
                         channel,
                         msgid: msgid.to_string(),
@@ -594,6 +737,50 @@ pub(crate) fn handle_line(
                         sender: sender.to_string(),
                     }));
                 }
+            }
+        }
+        "REDACT" => {
+            let (Some(target), Some(id)) = (line.params.first(), line.params.get(1)) else {
+                return effects;
+            };
+            let sender = line.prefix_nick().unwrap_or_default();
+            let channel = conversation(target, sender, state);
+            if !state.redacted.iter().any(|held| held == id) {
+                state.redacted.push_back(id.clone());
+                if state.redacted.len() > MAX_REACTION_EVENTS {
+                    state.redacted.pop_front();
+                }
+            }
+            if let Some(index) = state
+                .reaction_events
+                .iter()
+                .position(|event| event.id == *id && event.channel.eq_ignore_ascii_case(&channel))
+            {
+                let event = state
+                    .reaction_events
+                    .remove(index)
+                    .expect("reaction index exists");
+                if !state.reaction_events.iter().any(|other| {
+                    other.channel.eq_ignore_ascii_case(&event.channel)
+                        && other.msgid == event.msgid
+                        && other.emoji == event.emoji
+                        && other.sender.eq_ignore_ascii_case(&event.sender)
+                }) {
+                    effects.push(Effect::Emit(ChatUpdate::ReactionRemoved {
+                        channel: event.channel,
+                        msgid: event.msgid,
+                        emoji: event.emoji,
+                        sender: event.sender,
+                    }));
+                }
+            } else {
+                state.reaction_events.retain(|event| {
+                    !(event.channel.eq_ignore_ascii_case(&channel) && event.msgid == *id)
+                });
+                effects.push(Effect::Emit(ChatUpdate::MessageRedacted {
+                    channel,
+                    msgid: id.clone(),
+                }));
             }
         }
         // A refused JOIN, and the rest of the channel-command errors that
@@ -697,6 +884,7 @@ mod tests {
     fn registered() -> SessionState {
         let mut state = SessionState::new("Ada".into());
         state.registered = true;
+        state.caps.insert("draft/chathistory".into());
         state
     }
 
@@ -1052,6 +1240,7 @@ mod tests {
                 timestamp: None,
                 msgid: String::new(),
                 reply_to: String::new(),
+                history: false,
             }]
         );
     }
@@ -1165,6 +1354,7 @@ mod tests {
                 timestamp: None,
                 msgid: "srv-1".into(),
                 reply_to: String::new(),
+                history: false,
             }]
         );
     }
@@ -1398,6 +1588,145 @@ mod tests {
         assert_eq!(
             membership_mode_changes("+ov", &args(&["a", "a"])),
             vec![("a".to_string(), "+o+v".to_string())]
+        );
+    }
+}
+
+#[cfg(test)]
+mod reference_chat_tests {
+    use super::*;
+    fn context() -> SessionContext {
+        SessionContext {
+            username: "Ada".into(),
+            sasl_token: "test".into(),
+            wanted_channels: vec!["Bob".into()],
+        }
+    }
+    fn line(state: &mut SessionState, raw: &str) -> Vec<Effect> {
+        handle_line(&irc::parse_line(raw).unwrap(), state, &context())
+    }
+    fn state() -> SessionState {
+        let mut state = SessionState::new("Ada".into());
+        state.registered = true;
+        state.caps.extend(
+            [
+                "message-tags",
+                "echo-message",
+                "draft/message-redaction",
+                "draft/chathistory",
+            ]
+            .map(str::to_string),
+        );
+        state
+    }
+    #[test]
+    fn reference_chat_retracts_java_reactions_by_their_server_event_id() {
+        let mut state = state();
+        line(
+            &mut state,
+            "@msgid=reaction-1;+draft/reply=message-1;+draft/react=:+1: :Ada!u@h TAGMSG Bob",
+        );
+        assert_eq!(
+            outgoing(
+                Outgoing::Unreact {
+                    channel: "Bob".into(),
+                    msgid: "message-1".into(),
+                    emoji: ":+1:".into()
+                },
+                &mut state
+            ),
+            vec![Effect::Send("REDACT Bob reaction-1".into())]
+        );
+        assert_eq!(
+            line(&mut state, ":Ada!u@h REDACT Bob reaction-1"),
+            vec![Effect::Emit(ChatUpdate::ReactionRemoved {
+                channel: "Bob".into(),
+                msgid: "message-1".into(),
+                emoji: ":+1:".into(),
+                sender: "Ada".into()
+            })]
+        );
+        assert!(line(
+            &mut state,
+            "@msgid=reaction-1;+draft/reply=message-1;+draft/react=:+1: :Ada!u@h TAGMSG Bob"
+        )
+        .is_empty());
+    }
+    #[test]
+    fn reference_chat_never_retracts_another_users_reaction() {
+        let mut state = state();
+        line(
+            &mut state,
+            "@msgid=r1;+draft/reply=m1;+draft/react=:thinking: :Bob!u@h TAGMSG #a",
+        );
+        assert!(outgoing(
+            Outgoing::Unreact {
+                channel: "#a".into(),
+                msgid: "m1".into(),
+                emoji: ":thinking:".into()
+            },
+            &mut state
+        )
+        .is_empty());
+    }
+    #[test]
+    fn reference_chat_delivers_server_deletions_and_drops_late_history_copies() {
+        let mut state = state();
+        assert_eq!(
+            line(&mut state, ":Op!u@h REDACT #a m1"),
+            vec![Effect::Emit(ChatUpdate::MessageRedacted {
+                channel: "#a".into(),
+                msgid: "m1".into()
+            })]
+        );
+        assert!(line(&mut state, "@msgid=m1 :Bob!u@h PRIVMSG #a :removed text").is_empty());
+    }
+    #[test]
+    fn reference_chat_private_history_is_capability_gated_and_deduplicated() {
+        let mut state = state();
+        let request = || Outgoing::PrivateHistory("Bob".into());
+        assert_eq!(
+            outgoing(request(), &mut state),
+            vec![Effect::Send("CHATHISTORY LATEST Bob * 500".into())]
+        );
+        assert!(outgoing(Outgoing::PrivateHistory("bob".into()), &mut state).is_empty());
+        assert!(outgoing(Outgoing::ClosePrivate("Bob".into()), &mut state).is_empty());
+        assert_eq!(
+            outgoing(request(), &mut state),
+            vec![Effect::Send("CHATHISTORY LATEST Bob * 500".into())]
+        );
+        let mut other = SessionState::new("Ada".into());
+        other.registered = true;
+        assert!(outgoing(request(), &mut other).is_empty());
+        other.caps.insert("draft/chathistory".into());
+        assert_eq!(
+            outgoing(request(), &mut other),
+            vec![Effect::Send("CHATHISTORY LATEST Bob * 500".into())]
+        );
+        for departure in [":Ada!u@h PART #MixedCase", ":Op!u@h KICK #MixedCase Ada"] {
+            line(&mut state, ":Ada!u@h JOIN #MixedCase");
+            line(&mut state, departure);
+            assert!(line(&mut state, ":Ada!u@h JOIN #MixedCase")
+                .contains(&Effect::Send("CHATHISTORY LATEST #MixedCase * 500".into())));
+        }
+    }
+    #[test]
+    fn reference_chat_reconnect_requests_private_history_without_joining_a_nickname() {
+        let mut state = state();
+        let effects = line(&mut state, ":srv 001 Ada :Welcome");
+        assert!(effects.contains(&Effect::Send("CHATHISTORY LATEST Bob * 500".into())));
+        assert!(!effects.contains(&Effect::Send("JOIN Bob".into())));
+    }
+    #[test]
+    fn reference_chat_backfill_is_quiet_and_own_private_echo_uses_the_recipient() {
+        let mut state = state();
+        line(&mut state, ":srv BATCH +old chathistory Bob");
+        assert!(
+            matches!(&line(&mut state, "@batch=old;msgid=m1 :Bob!u@h PRIVMSG Ada :earlier")[0], Effect::Message { channel, history: true, .. } if channel == "Bob")
+        );
+        line(&mut state, ":srv BATCH -old");
+        assert!(
+            matches!(&line(&mut state, "@msgid=m2 :Ada!u@h PRIVMSG Bob :new")[0], Effect::Message { channel, history: false, .. } if channel == "Bob")
         );
     }
 }

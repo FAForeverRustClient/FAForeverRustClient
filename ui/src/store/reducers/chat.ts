@@ -261,6 +261,21 @@ function mapExistingChannel(
 
 export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
   switch (event.type) {
+    case "messageRedacted": {
+      const { channel, msgid } = event.payload;
+      if (!msgid) return state;
+      return {
+        ...state,
+        channels: state.channels.map((entry) => entry.name === channel ? {
+          ...entry,
+          messages: entry.messages.filter((message) => message.msgid !== msgid),
+          reactions: (entry.reactions ?? []).filter((reaction) => reaction.msgid !== msgid),
+        } : entry),
+        retainedHistories: state.retainedHistories.map((entry) => asciiLower(entry.channel) === asciiLower(channel) ? {
+          ...entry, messages: entry.messages.filter((message) => message.msgid !== msgid),
+        } : entry),
+      };
+    }
     case "connecting":
       return { ...state, status: "connecting" };
     case "connected":
@@ -461,8 +476,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
         const existing = reactions.find((entry) => entry.msgid === msgid);
         const entries = existing ? existing.entries : [];
         const reaction = entries.find((entry) => entry.emoji === emoji);
-        // The draft spec defines no retraction, so a repeat is a duplicate to
-        // swallow rather than a toggle to honour.
+        // Repeated additions are duplicates. Removal arrives separately.
         const alreadyReacted = reaction?.senders.some((s) => asciiLower(s) === asciiLower(sender));
         const nextEntries = reaction
           ? entries.map((entry) =>

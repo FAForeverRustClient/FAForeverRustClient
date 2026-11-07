@@ -1174,19 +1174,17 @@ export type ChatEvent = { type: "connecting" } |
 	emoji: string,
 	sender: string,
 } } |
-/**
- *  Someone took their reaction back.
- *
- *  The IRCv3 draft defines no retraction at all, so this rides on a client
- *  tag of this client's own (`+draft/unreact`). Between two of these
- *  clients it works; a client that does not know the tag keeps showing the
- *  reaction, and there is no way to make it not.
- */
+/**  Someone took their reaction back, including a server REDACT event. */
 { type: "reactionRemoved"; payload: {
 	channel: string,
 	msgid: string,
 	emoji: string,
 	sender: string,
+} } |
+/**  A server-authorized deletion. Remove retained copies and reactions too. */
+{ type: "messageRedacted"; payload: {
+	channel: string,
+	msgid: string,
 } } | { type: "disconnected" };
 
 /**

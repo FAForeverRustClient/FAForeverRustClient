@@ -492,3 +492,15 @@ describe("mentions", () => {
     expect(mentions("anything", "")).toBe(false);
   });
 });
+
+it("removes server-redacted content and its reactions from open and retained conversations", () => {
+  const removed = message({ msgid: "removed", content: "remove this" });
+  const kept = message({ msgid: "kept", content: "keep this" });
+  const before = state({ channels: [channel("Bob", { messages: [removed, kept], reactions: [{ msgid: "removed", entries: [{ emoji: ":+1:", senders: ["Ada"] }] }] })], retainedHistories: [{ channel: "bob", messages: [removed, kept] }] });
+  const after = reduceChat(before, { type: "messageRedacted", payload: { channel: "Bob", msgid: "removed" } });
+  expect(after.channels[0].messages).toEqual([kept]);
+  expect(after.channels[0].reactions).toEqual([]);
+  expect(after.retainedHistories[0].messages).toEqual([kept]);
+  expect(before.channels[0].messages).toHaveLength(2);
+  expect(reduceChat(state(), { type: "messageRedacted", payload: { channel: "absent", msgid: "removed" } }).channels).toEqual([]);
+});
