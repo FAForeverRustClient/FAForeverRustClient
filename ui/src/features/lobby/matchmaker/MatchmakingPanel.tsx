@@ -14,6 +14,7 @@ import { MatchmakerPartyChat } from "./MatchmakerPartyChat";
 import { MatchmakerPartyPanel } from "./MatchmakerPartyPanel";
 import { MatchmakerPlayerCard } from "./MatchmakerPlayerCard";
 import { MatchmakerExplainer } from "./MatchmakerExplainer";
+import { JavaQueueItem, JavaSearchButton } from "./JavaMatchmaker";
 import { MatchmakerQueueCard, queueTitle, type QueueDisplayState } from "./MatchmakerQueueCard";
 import { partyChatWidth, withPartyChatResized } from "./matchmakerLayout";
 import { placementForQueue, ratingForQueue } from "./matchmakerRatings";
@@ -81,6 +82,8 @@ export function MatchmakingPanel({
   const player = useAppStore((state) => state.state.auth.player);
   const playerCard = useAppStore((state) => state.state.playerCard);
   const browsing = useAppStore((state) => state.state.settings.browsing);
+  // The Java Client theme lays this tab out as the Java client does.
+  const javaLayout = useAppStore((state) => state.state.settings.theme === "javaClient");
   const [unselectedQueues, setUnselectedQueues] = useState<string[]>(browsing.matchmakerUnselectedQueues);
   const [selectedFactions, setSelectedFactions] = useState<string[]>(browsing.matchmakerFactions);
   const [pendingFactions, setPendingFactions] = useState<string[] | null>(null);
@@ -321,38 +324,86 @@ export function MatchmakingPanel({
 
   const canSearch = !partyNeedsLeader && compatibleQueues.length > 0 && !searchLocked && membersInGame.length === 0;
   const activeMatchmakerGames = liveGames.filter((game) => game.gameType.toLocaleLowerCase() === "matchmaker");
+  const activeGamesFor = (queue: MatchmakerQueue) =>
+    activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
+
+  const playerCardView = (
+    <MatchmakerPlayerCard
+      playerId={playerId}
+      playerName={playerName}
+      profile={matchmakerProfile}
+      status={playerCard.matchmakerProfileStatus}
+      error={playerCard.matchmakerProfileError}
+      country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
+      queues={sortedQueues}
+      selectedFactions={selectedFactions}
+      // Every member picks their own factions. Sending a change during a
+      // search removes the whole party from queue, so ask before sending it.
+      factionsDisabled={searchLocked}
+      onFactionsChange={requestFactions}
+    />
+  );
+  const partyView = (
+    <MatchmakerPartyPanel
+      party={party}
+      social={social}
+      placements={playerCard.partyPlacements}
+      playerId={playerId}
+      playerName={playerName}
+      searching={isSearching || searchLocked}
+      selectedFactions={selectedFactions}
+      javaLayout={javaLayout}
+    />
+  );
+  const selfInGame = membersInGame.includes(playerName);
 
   return (
     <div
       {...panelProps}
-      className="matchmaking-layout"
+      className={javaLayout ? "matchmaking-layout is-java" : "matchmaking-layout"}
       style={{ "--party-chat-width": `${chatWidth}px` } as CSSProperties}
     >
+      {javaLayout ? (
+        // The Java client's column (`team_matchmaking.fxml`): who you play as,
+        // your party, a separator, the search button, then the queues. No
+        // recent games and no explainer: it has neither.
+        <main className="matchmaker-main java-tmm">
+          <h2 className="java-tmm-heading">{t("lobby.matchmaker.java.playerTitle")}</h2>
+          {playerCardView}
+          {partyView}
+          <hr className="java-tmm-separator" />
+          <JavaSearchButton
+            matchmaking={matchmaking}
+            searching={isSearching}
+            selfInGame={selfInGame}
+            othersInGame={membersInGame.length > (selfInGame ? 1 : 0)}
+            partyNeedsLeader={partyNeedsLeader}
+            queueCount={compatibleQueues.length}
+            disabled={partyNeedsLeader || (!isSearching && !canSearch)}
+            onClick={toggleSearch}
+          />
+          <div className="java-tmm-queues">
+            {sortedQueues.map((queue) => (
+              <JavaQueueItem
+                key={queue.queueName}
+                queue={queue}
+                selected={!unselectedQueues.includes(queue.queueName)}
+                disabled={partyNeedsLeader || searchLocked || preparing}
+                incompatible={party.members.length > queue.teamSize}
+                status={stateForQueue(matchmaking, queue.queueName)}
+                activeGames={activeGamesFor(queue)}
+                secondsUntilPop={secondsUntil(queue, now)}
+                onToggle={() => toggleQueue(queue)}
+                onOpenMapPool={() => openMapPool(queue)}
+              />
+            ))}
+          </div>
+        </main>
+      ) : (
       <main className="matchmaker-main">
-        <MatchmakerPlayerCard
-          playerId={playerId}
-          playerName={playerName}
-          profile={matchmakerProfile}
-          status={playerCard.matchmakerProfileStatus}
-          error={playerCard.matchmakerProfileError}
-          country={social.players.find((entry) => entry.id === playerId)?.country ?? ""}
-          queues={sortedQueues}
-          selectedFactions={selectedFactions}
-          // Every member picks their own factions. Sending a change during a
-          // search removes the whole party from queue, so ask before sending it.
-          factionsDisabled={searchLocked}
-          onFactionsChange={requestFactions}
-        />
+        {playerCardView}
 
-        <MatchmakerPartyPanel
-          party={party}
-          social={social}
-          placements={playerCard.partyPlacements}
-          playerId={playerId}
-          playerName={playerName}
-          searching={isSearching || searchLocked}
-          selectedFactions={selectedFactions}
-        />
+        {partyView}
 
         <section
           className="matchmaker-card surface-panel matchmaker-queues-section"
@@ -374,7 +425,7 @@ export function MatchmakingPanel({
           <div className="matchmaker-queue-grid">
             {sortedQueues.map((queue) => {
               const remaining = secondsUntil(queue, now);
-              const activeGames = activeMatchmakerGames.filter((game) => game.maxPlayers === queue.teamSize * 2).length;
+              const activeGames = activeGamesFor(queue);
               const queueRating = ratingForQueue(matchmakerProfile?.ratings ?? [], queue.queueName, ownLobbyRatings);
               const queuePlacement = placementForQueue(matchmakerProfile?.leaguePlacements ?? [], queue.queueName);
               const searchingThisQueue =
@@ -439,6 +490,7 @@ export function MatchmakingPanel({
 
         <MatchmakerRecentGames playerName={player?.name ?? ""} vault={maps.vault} />
       </main>
+      )}
 
       {/* The divider sits between the two columns rather than on either, so
           dragging it reads as moving the boundary. Double click puts the rail

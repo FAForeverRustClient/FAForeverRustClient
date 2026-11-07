@@ -2,9 +2,12 @@
 // Nav command and the active tab is read from state. No local routing state: the
 // backend is the source of truth, so backend events can switch tabs too.
 
+import { useRef } from "react";
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { GameFoldersMenu } from "../game-folders/GameFoldersMenu";
+import { NavMainMenu } from "./NavMainMenu";
+import { NavOverflowMenu, useOverflowingTabs } from "./NavOverflowMenu";
 import { openTabForMode, TABS, tabsForMode } from "./tabs";
 import type { Tab } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
@@ -90,6 +93,12 @@ export function TabBar({ onPointerSelect }: TabBarProps) {
   const matchmaking = useAppStore((s) => s.state.lobby.matchmaking.type);
   const badgeFor = (id: Tab) => tabBadge(id, mentions, matchmaking, t);
 
+  // The places to play, as many as fit: only a theme that turns the sidebar
+  // into a bar across the top ever has tabs past the group's edge.
+  const placesRef = useRef<HTMLDivElement>(null);
+  const places = tabs.filter((id) => !BOTTOM_TABS.includes(id));
+  const overflowing = useOverflowingTabs(placesRef, [places.join(), t]);
+
   // Ending an offline session puts the login screen back. `logoutTest` is the
   // teardown for a session that never held a token, which is what an offline
   // one is; see `AccountSupportSettingsSection`, where the same control sits
@@ -105,6 +114,9 @@ export function TabBar({ onPointerSelect }: TabBarProps) {
       <button
         key={id}
         className={id === active ? "tab tab-active" : "tab"}
+        data-tab={id}
+        data-overflow={overflowing.includes(id) || undefined}
+        tabIndex={overflowing.includes(id) ? -1 : undefined}
         onClick={(event) => {
           select(id);
           // `detail` counts a pointer's clicks. A tab chosen from the
@@ -132,11 +144,29 @@ export function TabBar({ onPointerSelect }: TabBarProps) {
 
   return (
     <nav className="tabbar" aria-label={t("nav.main")}>
-      <div className="nav-group">
-        {tabs.filter((id) => !BOTTOM_TABS.includes(id)).map(renderTab)}
+      <NavMainMenu
+        tabs={tabs.filter((id) => BOTTOM_TABS.includes(id))}
+        onSelect={(id) => {
+          select(id);
+          onPointerSelect?.();
+        }}
+      />
+      <div className="nav-group nav-places" ref={placesRef}>
+        {places.map(renderTab)}
       </div>
+      {overflowing.length > 0 && (
+        <NavOverflowMenu
+          tabs={overflowing}
+          active={active}
+          badged={overflowing.some((id) => badgeFor(id) !== null)}
+          onSelect={(id) => {
+            select(id);
+            onPointerSelect?.();
+          }}
+        />
+      )}
       <div className="nav-spacer" />
-      <div className="nav-group">
+      <div className="nav-group nav-bottom">
         {/* The way back into an account, in the corner every other session
             keeps its account controls in, and above the settings rather than
             inside them: an offline session is one somebody is trying to leave
