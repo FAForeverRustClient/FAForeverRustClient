@@ -3530,6 +3530,14 @@ export type GamePreferences = {
 	 */
 	borderlessWindow?: boolean,
 	/**
+	 *  Before hosting, switch the chosen map to its newest vault version and
+	 *  update every enabled mod that has a newer one (the Java client's "map
+	 *  and mod auto update"). Off by default, unlike the Java client: an
+	 *  update replaces the mod's folder, and a copy somebody edited by hand,
+	 *  for example while developing it, would be overwritten.
+	 */
+	autoUpdateMapAndMods?: boolean,
+	/**
 	 *  Let FAF move Forged Alliance off the first two logical cores, where the
 	 *  operating system does most of its own work, on machines with six or
 	 *  more. FAF's init script does it when `fa_path.lua` says
@@ -3558,6 +3566,7 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	autoUpdateMapAndMods?: boolean,
 	forceAffinity?: boolean,
 };
 

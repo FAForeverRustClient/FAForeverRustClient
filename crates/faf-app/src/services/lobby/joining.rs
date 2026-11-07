@@ -171,6 +171,19 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             // under an id of its own; see the same note on `Join`.
             let operations = &ctx.lobby.operations;
             let operation = operations.begin();
+            // Newest map version and mod updates first, when asked for, so
+            // the preparation below downloads the map that is hosted. Not
+            // run under `operations.run`: a mod update replaces a folder and
+            // must not be dropped half-way, so a call-off is checked after.
+            let config = if ctx.ports.process.supports_live_launch() {
+                super::host_updates::bring_up_to_date(config, ctx, out).await
+            } else {
+                config
+            };
+            if !operations.is_live(operation) {
+                tracing::info!("lobby: the host was called off while its content updated");
+                return;
+            }
             // The map has to be on disk before the server is asked for a
             // lobby, because its reply will not mention one: see
             // `launcher::prepare_host`. Guarded the way the join path is,

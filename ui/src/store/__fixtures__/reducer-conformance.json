@@ -6516,6 +6516,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -68673,6 +68674,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -68987,6 +68989,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -69311,6 +69314,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -69639,6 +69643,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -69959,6 +69964,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -70290,6 +70296,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -70635,6 +70642,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -70972,6 +70980,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -71319,6 +71328,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -71745,6 +71755,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -72178,6 +72189,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -72567,6 +72579,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -73124,6 +73137,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -90637,6 +90651,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -90974,6 +90989,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -91346,6 +91362,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -91738,6 +91755,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -91916,6 +91934,7 @@
                 "preferences": {
                   "additionalArguments": [],
                   "autoGenerateMaps": true,
+                  "autoUpdateMapAndMods": false,
                   "borderlessWindow": false,
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
@@ -92095,6 +92114,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -92238,6 +92258,7 @@
               "value": {
                 "additionalArguments": [],
                 "autoGenerateMaps": true,
+                "autoUpdateMapAndMods": false,
                 "borderlessWindow": false,
                 "cacheLifetimeDays": 30,
                 "cacheRollingBranches": false,
@@ -92430,6 +92451,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -92755,6 +92777,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -93107,6 +93130,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -93452,6 +93476,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -93786,6 +93811,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -94122,6 +94148,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -94434,6 +94461,7 @@
                   "game": {
                     "additionalArguments": [],
                     "autoGenerateMaps": true,
+                    "autoUpdateMapAndMods": false,
                     "borderlessWindow": false,
                     "cacheLifetimeDays": 30,
                     "cacheRollingBranches": false,
@@ -94735,6 +94763,7 @@
             "game": {
               "additionalArguments": [],
               "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
               "cacheLifetimeDays": 30,
               "cacheRollingBranches": false,
@@ -95034,6 +95063,7 @@
                 "game": {
                   "additionalArguments": [],
                   "autoGenerateMaps": true,
+                  "autoUpdateMapAndMods": false,
                   "borderlessWindow": false,
                   "cacheLifetimeDays": 30,
                   "cacheRollingBranches": false,
@@ -137298,6 +137328,7 @@
       "game": {
         "additionalArguments": [],
         "autoGenerateMaps": true,
+        "autoUpdateMapAndMods": false,
         "borderlessWindow": false,
         "cacheLifetimeDays": 30,
         "cacheRollingBranches": false,

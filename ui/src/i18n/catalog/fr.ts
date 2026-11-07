@@ -307,6 +307,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.linuxRuntimeMissing.body": "Il manque quelque chose que vous seul pouvez installer. Paramètres, Jeu indique quoi et comment l'installer.",
   "notifications.msg.linuxRuntimeFailed.title": "La préparation de Forged Alliance pour Linux a échoué",
   "notifications.msg.offlineGameFailed.title": "Impossible de lancer le jeu hors ligne",
+  "notifications.msg.hostModUpdateFailed.title": "Impossible de mettre à jour {name} avant d'héberger",
   "notifications.msg.mapPublished.title": "Carte publiée",
   "notifications.msg.modPublished.title": "Mod publié",
   "notifications.msg.mapPublished.body": "{name} est dans le vault.",
@@ -1480,6 +1481,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Arguments de lancement supplémentaires",
   "settings.game.autoGenerateMaps": "Générer automatiquement les cartes manquantes",
+  "settings.game.autoUpdateMapAndMods": "Mettre à jour la carte et les mods en hébergeant",
+  "settings.game.autoUpdateMapAndModsHint": "Héberge avec la version la plus récente de la carte choisie et met d'abord à jour les mods activés. Une mise à jour remplace le dossier du mod : les modifications apportées à ses fichiers sont perdues.",
   "settings.game.mapGeneratorInstances": "Générateurs de cartes simultanés",
   "settings.game.mapGeneratorInstancesHint": "Utilisé quand plusieurs styles, symétries ou densités sont sélectionnés et que chaque carte a besoin de son propre générateur. Un générateur occupe environ un cœur et demi et demande jusqu'à environ 3 Go de mémoire pour une carte de 20 km.",
   "settings.game.mapGeneratorInstances.automatic": "Automatique ({count} sur cet ordinateur)",

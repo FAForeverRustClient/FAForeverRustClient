@@ -67,7 +67,7 @@ pub use linux_runtime::{LinuxRuntimePort, NoLinuxRuntime, RuntimeCheck, RuntimeP
 pub use lobby::{LobbyPort, LobbySendError, LobbyUpdate, ServerNoticeStyle};
 pub use map_generator::{GeneratorUpdate, MapGeneratorPort};
 pub use maps::{MapSearchPage, MapsPort, VaultInstallProgress, VaultInstallStep};
-pub use mods::{ModPrepFailure, ModSearchPage, ModsPort};
+pub use mods::{LatestModVersion, ModPrepFailure, ModSearchPage, ModsPort};
 pub use notification_sounds::NotificationSoundsPort;
 pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;

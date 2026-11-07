@@ -942,6 +942,7 @@ export const INITIAL_STATE: AppState = {
       "mapGeneratorInstances": 0,
       "steamPresence": false,
       "borderlessWindow": false,
+      "autoUpdateMapAndMods": false,
       "forceAffinity": true
     },
     "discord": {

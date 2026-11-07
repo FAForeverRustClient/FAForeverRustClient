@@ -314,6 +314,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.linuxRuntimeMissing.body": "Не хватает того, что можете установить только вы. В Настройках, раздел «Игра», сказано, что и как установить.",
   "notifications.msg.linuxRuntimeFailed.title": "Не удалось настроить Forged Alliance для Linux",
   "notifications.msg.offlineGameFailed.title": "Не удалось запустить игру офлайн",
+  "notifications.msg.hostModUpdateFailed.title": "Не удалось обновить {name} перед созданием игры",
   "notifications.msg.mapPublished.title": "Карта опубликована",
   "notifications.msg.modPublished.title": "Мод опубликован",
   "notifications.msg.mapPublished.body": "{name} теперь в хранилище.",
@@ -1554,6 +1555,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.additionalGameLaunch": "Дополнительные аргументы запуска",
   "settings.game.autoGenerateMaps": "Автоматически генерировать карты",
+  "settings.game.autoUpdateMapAndMods": "Обновлять карту и моды при создании игры",
+  "settings.game.autoUpdateMapAndModsHint": "Создаёт игру на новейшей версии выбранной карты и сначала обновляет включённые моды. Обновление заменяет папку мода, поэтому изменения в его файлах будут потеряны.",
   "settings.game.mapGeneratorInstances": "Одновременно работающие генераторы карт",
   "settings.game.mapGeneratorInstancesHint": "Используется, когда выбрано несколько стилей, симметрий или плотностей и каждой карте нужен свой генератор. Один генератор занимает около полутора ядер и требует около 3 ГБ памяти для карты 20 км.",
   "settings.game.mapGeneratorInstances.automatic": "Автоматически ({count} на этом компьютере)",
