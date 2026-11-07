@@ -67,7 +67,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Lane | Policy patterns |
 |---|---|
-| `Ordinary` | 238 |
+| `Ordinary` | 242 |
 | `Priority` | 33 |
 
 ### Priority commands
@@ -96,7 +96,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `SingleFlight` | 22 |
 | `Serial` | 20 |
 | `Latest` | 5 |
-| `ServiceGuarded` | 36 |
+| `ServiceGuarded` | 40 |
 
 ### Keys
 
