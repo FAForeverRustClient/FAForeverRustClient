@@ -61,6 +61,13 @@ export interface ModFilterState {
   maximumRating: number | null;
 }
 
+export const DEFAULT_MOD_FILTERS: ModFilterState = {
+  search: "", searchScope: "name", creator: "", sort: "rating", modType: "all", ranked: "all",
+  installFilter: "all", dateField: "updated", dateAfter: "", dateBefore: "", minimumRating: null, maximumRating: null,
+};
+
+export const MOD_FILTER_CHOICES = { sort: MOD_SORTS, searchScope: ["name", "description", "exact"], modType: ["all", "ui", "sim"], ranked: ["all", "ranked", "unranked"], installFilter: ["all", "installed", "available", "updates"], dateField: ["updated", "uploaded"] };
+
 /**
  * The tab's filter state as the API query it stands for. See `MapsView`.
  */

@@ -115,7 +115,7 @@ impl IrcConfig {
 #[derive(Clone)]
 struct ConnectionSlots {
     updates: Arc<Mutex<Option<mpsc::Sender<ChatUpdate>>>>,
-    outgoing: Arc<Mutex<Option<mpsc::Sender<String>>>>,
+    outgoing: Arc<Mutex<Option<mpsc::Sender<irc_session::Outgoing>>>>,
 }
 
 impl ConnectionSlots {
@@ -148,7 +148,7 @@ pub struct IrcClient {
     cancel: Arc<Mutex<Option<CancellationToken>>>,
     /// Outgoing raw IRC lines for the live connection. The send methods push
     /// here; `run_session` drains it and writes to the socket.
-    outgoing: Arc<Mutex<Option<mpsc::Sender<String>>>>,
+    outgoing: Arc<Mutex<Option<mpsc::Sender<irc_session::Outgoing>>>>,
     /// The live connection's update sender, so the send methods can push the
     /// local echo (and purely local channel opens/closes) onto the same stream
     /// the service is draining.
@@ -156,12 +156,15 @@ pub struct IrcClient {
     /// Our current nick: updated if the server renames us, so local echoes
     /// stay attributed correctly.
     username: Arc<Mutex<String>>,
+    /// Login identity stays stable even if IRC assigns a different nickname.
+    account: Mutex<String>,
     /// Whether the live connection negotiated `message-tags`. Typing notices
     /// and reactions are silently skipped without it rather than sent as
     /// lines the server will reject.
     tags_enabled: Arc<AtomicBool>,
-    /// Public channels we want to be in. Shared with the session task, which
-    /// rejoins all of them after a reconnect.
+    echo_enabled: Arc<AtomicBool>,
+    /// Public channels to rejoin and private conversations to backfill after
+    /// reconnecting. A new account starts with its own set.
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
     next_id: Arc<AtomicU64>,
 }
@@ -176,7 +179,9 @@ impl IrcClient {
             outgoing: Arc::new(Mutex::new(None)),
             updates: Arc::new(Mutex::new(None)),
             username: Arc::new(Mutex::new(String::new())),
+            account: Mutex::new(String::new()),
             tags_enabled: Arc::new(AtomicBool::new(false)),
+            echo_enabled: Arc::new(AtomicBool::new(false)),
             wanted_channels: Arc::new(Mutex::new(BTreeSet::new())),
             next_id: Arc::new(AtomicU64::new(0)),
         }
@@ -195,12 +200,16 @@ impl IrcClient {
     /// is a record of the drop, so a reconnect that loses a burst of JOINs
     /// leaves something behind to read.
     fn send_line(&self, line: String) -> bool {
+        self.send(irc_session::Outgoing::Line(line))
+    }
+
+    fn send(&self, frame: irc_session::Outgoing) -> bool {
         let sent = self
             .outgoing
             .lock()
             .unwrap()
             .as_ref()
-            .map(|tx| tx.try_send(line).is_ok())
+            .map(|tx| tx.try_send(frame).is_ok())
             .unwrap_or(false);
         if !sent {
             tracing::warn!("dropped an outgoing IRC line: no connection, or the queue is full");
@@ -249,8 +258,8 @@ impl IrcClient {
         self.send_line(irc::format_tagged_line(tags, "TAGMSG", &[channel]))
     }
 
-    /// Send `PRIVMSG` and echo it back locally, since we don't negotiate
-    /// `echo-message`. `content` is already in wire form (CTCP-wrapped for an
+    /// Send `PRIVMSG`, using a local echo only without `echo-message`.
+    /// `content` is already in wire form (CTCP-wrapped for an
     /// action), while `display` is what the user should see.
     fn send_privmsg(
         &self,
@@ -260,6 +269,10 @@ impl IrcClient {
         kind: ChatMessageKind,
         reply_to: &str,
     ) {
+        if !channel.starts_with('#') {
+            self.wanted_channels.lock().unwrap().insert(channel.clone());
+            self.send(irc_session::Outgoing::PrivateHistory(channel.clone()));
+        }
         // The reply anchor rides as a client tag on the message itself, unlike
         // a reaction, which is a bare `TAGMSG`. Dropped when the server did not
         // grant `message-tags`: the line must still go out, just without the
@@ -277,6 +290,9 @@ impl IrcClient {
         };
         if !self.send_line(line) {
             tracing::warn!("chat send ignored because there is no active connection");
+            return;
+        }
+        if self.echo_enabled.load(Ordering::SeqCst) {
             return;
         }
         let message = ChatMessage {
@@ -309,6 +325,12 @@ impl ChatPort for IrcClient {
         if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
             prev.cancel();
         }
+        let mut account = self.account.lock().unwrap();
+        if !account.is_empty() && !account.eq_ignore_ascii_case(&username) {
+            self.wanted_channels.lock().unwrap().clear();
+        }
+        *account = username.clone();
+        drop(account);
         *self.username.lock().unwrap() = username.clone();
         self.wanted_channels
             .lock()
@@ -317,7 +339,7 @@ impl ChatPort for IrcClient {
 
         let (tx, rx) = mpsc::channel(256);
         *self.updates.lock().unwrap() = Some(tx.clone());
-        let (out_tx, out_rx) = mpsc::channel::<String>(64);
+        let (out_tx, out_rx) = mpsc::channel::<irc_session::Outgoing>(64);
         *self.outgoing.lock().unwrap() = Some(out_tx);
 
         let supervisor = Supervisor {
@@ -337,6 +359,7 @@ impl ChatPort for IrcClient {
             wanted_channels: self.wanted_channels.clone(),
             current_nick: self.username.clone(),
             tags_enabled: self.tags_enabled.clone(),
+            echo_enabled: self.echo_enabled.clone(),
             emitter: ChatEmitter {
                 tx,
                 next_id: self.next_id.clone(),
@@ -367,9 +390,11 @@ impl ChatPort for IrcClient {
     }
 
     fn join_channel(&self, channel: String) {
+        self.wanted_channels.lock().unwrap().insert(channel.clone());
         if !channel.starts_with('#') {
-            // A private conversation is purely client-side: there is nothing to
-            // join server-side, the tab just opens.
+            // Private conversations have no server JOIN. Open locally and
+            // ask for their history once the connection is ready.
+            self.send(irc_session::Outgoing::PrivateHistory(channel.clone()));
             self.push(ChatUpdate::ChannelJoined(channel));
             return;
         }
@@ -386,6 +411,9 @@ impl ChatPort for IrcClient {
 
     fn leave_channel(&self, channel: String, reason: String) {
         self.wanted_channels.lock().unwrap().remove(&channel);
+        if !channel.starts_with('#') {
+            self.send(irc_session::Outgoing::ClosePrivate(channel.clone()));
+        }
         let sent = channel.starts_with('#')
             && self.send_line(if reason.is_empty() {
                 irc::format_line("PART", &[&channel])
@@ -424,10 +452,10 @@ impl ChatPort for IrcClient {
         ) {
             return;
         }
-        // Echo it back to ourselves, for the same reason `send_privmsg` does:
-        // without `echo-message` the server relays this to the *other* channel
-        // members and never to us, so our own reaction would be invisible in
-        // the client that sent it.
+        if self.echo_enabled.load(Ordering::SeqCst) {
+            return;
+        }
+        // Without echo-message there is no server echo to show locally.
         self.push(ChatUpdate::Reaction {
             channel,
             msgid,
@@ -440,17 +468,10 @@ impl ChatPort for IrcClient {
         if msgid.is_empty() || emoji.is_empty() {
             return;
         }
-        if !self.send_client_tags(
-            &[("+draft/reply", &msgid), ("+draft/unreact", &emoji)],
-            &channel,
-        ) {
-            return;
-        }
-        self.push(ChatUpdate::ReactionRemoved {
+        self.send(irc_session::Outgoing::Unreact {
             channel,
             msgid,
             emoji,
-            sender: self.username.lock().unwrap().clone(),
         });
     }
 
@@ -517,6 +538,7 @@ impl ChatEmitter {
         timestamp: Option<&str>,
         msgid: &str,
         reply_to: &str,
+        history: bool,
     ) -> bool {
         let message = ChatMessage {
             id: self.next_id.fetch_add(1, Ordering::SeqCst).to_string(),
@@ -529,9 +551,16 @@ impl ChatEmitter {
             msgid: msgid.to_string(),
             reply_to: reply_to.to_string(),
         };
-        self.send(ChatUpdate::Message {
-            channel: channel.to_string(),
-            message,
+        self.send(if history {
+            ChatUpdate::HistoryMessage {
+                channel: channel.to_string(),
+                message,
+            }
+        } else {
+            ChatUpdate::Message {
+                channel: channel.to_string(),
+                message,
+            }
         })
         .await
     }
@@ -551,6 +580,7 @@ struct Supervisor {
     /// to the send methods.
     current_nick: Arc<Mutex<String>>,
     tags_enabled: Arc<AtomicBool>,
+    echo_enabled: Arc<AtomicBool>,
     emitter: ChatEmitter,
 }
 
@@ -562,16 +592,22 @@ impl Supervisor {
     /// the chat service only notices a final one when its update stream
     /// closes: which needs both the emitter here *and* the clone `IrcClient`
     /// kept for the send methods to be gone.
-    async fn run(self, outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
+    async fn run(self, outgoing: mpsc::Receiver<irc_session::Outgoing>, cancel: CancellationToken) {
         let slots = self.slots.clone();
         let stream = self.emitter.tx.clone();
         self.supervise(outgoing, cancel).await;
         slots.release(&stream);
     }
 
-    async fn supervise(self, mut outgoing: mpsc::Receiver<String>, cancel: CancellationToken) {
+    async fn supervise(
+        self,
+        mut outgoing: mpsc::Receiver<irc_session::Outgoing>,
+        cancel: CancellationToken,
+    ) {
         let mut failures: u32 = 0;
         loop {
+            self.tags_enabled.store(false, Ordering::SeqCst);
+            self.echo_enabled.store(false, Ordering::SeqCst);
             if !self.emitter.status(ChatStatus::Connecting, "").await {
                 return; // the service dropped the stream
             }
@@ -625,7 +661,7 @@ impl Supervisor {
     async fn attempt(
         &self,
         access_token: &str,
-        outgoing: &mut mpsc::Receiver<String>,
+        outgoing: &mut mpsc::Receiver<irc_session::Outgoing>,
         cancel: &CancellationToken,
     ) -> AttemptEnd {
         let sasl_token =
@@ -666,6 +702,7 @@ impl Supervisor {
                 wanted_channels: self.wanted_channels.clone(),
                 current_nick: self.current_nick.clone(),
                 tags_enabled: self.tags_enabled.clone(),
+                echo_enabled: self.echo_enabled.clone(),
                 emitter: self.emitter.clone(),
             },
             outgoing,
@@ -690,6 +727,7 @@ struct SessionParams {
     wanted_channels: Arc<Mutex<BTreeSet<String>>>,
     current_nick: Arc<Mutex<String>>,
     tags_enabled: Arc<AtomicBool>,
+    echo_enabled: Arc<AtomicBool>,
     emitter: ChatEmitter,
 }
 
@@ -697,7 +735,7 @@ struct SessionParams {
 async fn run_session<S>(
     ws: S,
     params: SessionParams,
-    outgoing: &mut mpsc::Receiver<String>,
+    outgoing: &mut mpsc::Receiver<irc_session::Outgoing>,
     cancel: &CancellationToken,
 ) -> SessionEnd
 where
@@ -728,12 +766,14 @@ where
                 }
             }
             frame = outgoing.recv() => {
-                let Some(line) = frame else {
+                let Some(frame) = frame else {
                     let _ = write.send(Message::Close(None)).await;
                     return SessionEnd::Cancelled;
                 };
-                if !send_line(&mut write, line).await {
-                    return SessionEnd::Dropped;
+                for effect in irc_session::outgoing(frame, &mut state) {
+                    if let Some(end) = perform(effect, &params, &mut write).await {
+                        return end;
+                    }
                 }
             }
             incoming = read.next() => {
@@ -780,6 +820,7 @@ where
             timestamp,
             msgid,
             reply_to,
+            history,
         } => (!params
             .emitter
             .message(
@@ -790,11 +831,16 @@ where
                 timestamp.as_deref(),
                 &msgid,
                 &reply_to,
+                history,
             )
             .await)
             .then_some(SessionEnd::Cancelled),
         Effect::TagsEnabled(enabled) => {
             params.tags_enabled.store(enabled, Ordering::SeqCst);
+            None
+        }
+        Effect::EchoEnabled(enabled) => {
+            params.echo_enabled.store(enabled, Ordering::SeqCst);
             None
         }
         Effect::NickChanged(nick) => {

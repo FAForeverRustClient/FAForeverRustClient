@@ -1,5 +1,7 @@
 import { type MapFilterState, type VaultSort, type VaultPreset, presetSort, storedVaultSort, mapVaultQuery, mapFilterFromQuery } from "./mapVaultFilters";
 import { useVaultFilters, useVaultSearch } from "../../shared/hooks/useVaultFilters";
+import { DEFAULT_MAP_FILTERS, MAP_FILTER_CHOICES } from "./mapVaultFilters";
+import { VaultSavedSearches } from "../../shared/components/VaultSavedSearches";
 // Maps tab: vault discovery and installed-map management. The backend owns
 // the map catalogue and installation state; this component only derives the
 // current search, filters, sorting and selection for presentation.
@@ -148,7 +150,7 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<MapFilterState | null>(MAP_VAULT_FILTERS, null, isFilterRecord)
         ?? mapFilterFromQuery(browseQuery, preset));
-  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<MapFilterState, VaultPreset>({
+  const { draft, patchDraft: setFilter, setFilter: setField, applied, setApplied, page, setPage, applySearch, applySort, reset, restore } = useVaultFilters<MapFilterState, VaultPreset>({
     initial: restored ?? {
       search: "",
       author: "",
@@ -396,6 +398,12 @@ function VaultView({ busy }: { busy: boolean }) {
             </Button>
             ))}
             <span className="spacer" />
+            <VaultSavedSearches list="maps.vault" presets={browsing.searchPresets} category={preset}
+              filters={draft} defaults={DEFAULT_MAP_FILTERS} categories={VAULT_PRESETS} choices={MAP_FILTER_CHOICES}
+              signedIn={playerId !== null} onApply={({ category, filters }) => {
+                restore(filters, category);
+                ipc.send({ kind: "Settings", command: { type: "patchBrowsing", payload: { patch: { mapVaultPreset: category, mapVaultSort: filters.sort } } } });
+              }} />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("maps.view.clear")}</Button>
           </>

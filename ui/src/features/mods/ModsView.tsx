@@ -1,5 +1,7 @@
 import { type ModFilterState, type ModSort, type ModPreset, type ModTypeFilter, type RankedFilter, type InstallFilter, type DateField, type ModSearchScope, MOD_PRESETS, presetSort, storedModSort, modVaultQuery, modFilterFromQuery } from "./modVaultFilters";
 import { useVaultFilters, useVaultSearch } from "../../shared/hooks/useVaultFilters";
+import { DEFAULT_MOD_FILTERS, MOD_FILTER_CHOICES } from "./modVaultFilters";
+import { VaultSavedSearches } from "../../shared/components/VaultSavedSearches";
 // Mods tab: vault discovery plus installed/active-mod management. Rust owns
 // the catalogue and filesystem/game.prefs state; this view derives only the
 // current search, filters, sorting and selection.
@@ -100,7 +102,7 @@ function VaultView({ busy }: { busy: boolean }) {
       ? null
       : rememberedFilter<ModFilterState | null>(MOD_VAULT_FILTERS, null, isFilterRecord)
         ?? modFilterFromQuery(browseQuery, preset));
-  const { draft, setFilter, applied, setApplied, page, setPage, applySearch, applySort, reset } = useVaultFilters<ModFilterState, ModPreset>({
+  const { draft, setFilter, applied, setApplied, page, setPage, applySearch, applySort, reset, restore } = useVaultFilters<ModFilterState, ModPreset>({
     initial: restored ?? {
       search: "",
       searchScope: "name",
@@ -324,6 +326,12 @@ function VaultView({ busy }: { busy: boolean }) {
               </Button>
             ))}
             <span className="spacer" />
+            <VaultSavedSearches list="mods.vault" presets={browsing.searchPresets} category={preset}
+              filters={draft} defaults={DEFAULT_MOD_FILTERS} categories={MOD_PRESETS} choices={MOD_FILTER_CHOICES}
+              signedIn={playerId !== null} onApply={({ category, filters }) => {
+                restore(filters, category);
+                ipc.send({ kind: "Settings", command: { type: "patchBrowsing", payload: { patch: { modVaultPreset: category, modVaultSort: filters.sort } } } });
+              }} />
             <SearchPanelToggle expanded={filtersOpen} count={hiddenFilterCount} onClick={() => setFiltersOpen((open) => !open)} />
             <Button onClick={clearSearch}>{t("mods.view.clear")}</Button>
           </>

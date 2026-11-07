@@ -31,10 +31,14 @@ pub enum ChatUpdate {
         channel: String,
         topic: String,
     },
-    /// A new line in the channel: including our own sent messages, since this
-    /// client doesn't negotiate IRC's `echo-message` capability; the port is
-    /// responsible for the local echo (see `infra::chat_fake`/`infra::irc`).
+    /// A new line, including our own server echo or the adapter's local echo
+    /// when echo-message is unavailable.
     Message {
+        channel: String,
+        message: ChatMessage,
+    },
+    /// Server backfill never represents a new notification or unread message.
+    HistoryMessage {
         channel: String,
         message: ChatMessage,
     },
@@ -80,13 +84,16 @@ pub enum ChatUpdate {
         emoji: String,
         sender: String,
     },
-    /// Someone took their reaction back (`+draft/unreact`, this client's own
-    /// tag: the IRCv3 draft defines no retraction).
+    /// Someone took their reaction back, normally through server REDACT.
     ReactionRemoved {
         channel: String,
         msgid: String,
         emoji: String,
         sender: String,
+    },
+    MessageRedacted {
+        channel: String,
+        msgid: String,
     },
 }
 

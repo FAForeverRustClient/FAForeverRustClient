@@ -57,3 +57,14 @@ describe("shared vault filter ownership", () => {
     expect(search).toHaveBeenLastCalledWith({ page: 2 });
   });
 });
+
+it("restores a saved search and keeps its sort when the category preference arrives", () => {
+  const { result, rerender } = renderHook(({ preset }: { preset: "all" | "recommended" }) => useVaultFilters<Filter, "all" | "recommended">({
+    initial: { search: "", sort: "rating" }, initialPage: 4, memoryKey: "test.saved.vault", preset, presetSort,
+  }), { initialProps: { preset: "recommended" } });
+  act(() => result.current.restore({ search: "Saved", sort: "rating" }, "all"));
+  rerender({ preset: "all" });
+  expect(result.current.draft).toEqual({ search: "Saved", sort: "rating" });
+  expect(result.current.applied).toEqual(result.current.draft);
+  expect(result.current.page).toBe(1);
+});

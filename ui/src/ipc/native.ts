@@ -63,6 +63,11 @@ export type LogKind = "game" | "client" | "ice";
 export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
 
 export const native = {
+  /** Read a fixed enhancement asset through the same bounded icon cache. */
+  enhancementIconUrl(faction: string, name: string): string | null {
+    if (!/^(uef|aeon|cybran|seraphim)$/.test(faction) || !/^[a-z0-9_]+$/.test(name)) return null;
+    return convertFileSrc(`enhancement-${faction}_${name}`, UNIT_ICON_SCHEME);
+  },
   showNotificationPopup(cards: NotificationPopupCard[], dismissLabel: string, preview = false, holdPreview = false): Promise<void> {
     return invoke("show_notification_popup", { cards, dismissLabel, preview, holdPreview });
   },

@@ -45,7 +45,12 @@ export function useVaultFilters<F extends { sort: string }, P extends string>({
     setPage(1);
   };
 
-  return { draft, setFilter, patchDraft, applied, setApplied, page, setPage, applySearch, applySort, reset };
+  const restore = (filters: F, category: P) => {
+    lastPreset.current = category;
+    reset(filters);
+  };
+
+  return { draft, setFilter, patchDraft, applied, setApplied, page, setPage, applySearch, applySort, reset, restore };
 }
 
 /** Local catalogue presets never send a server search. Callers supply stable search functions. */
