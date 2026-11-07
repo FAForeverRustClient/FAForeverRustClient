@@ -1,0 +1,1 @@
+- On computers with six or more logical processors, Forged Alliance now stays off the first two, where the system does most of its own work, as with the Java client. Settings › Game can turn this off.
