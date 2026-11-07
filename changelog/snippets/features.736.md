@@ -1,0 +1,1 @@
+- A new setting under Settings › Game hosts on the newest version of the chosen map and updates enabled mods first, as the Java client does. It is off by default, because an update replaces a mod's folder and any changes made to its files.
