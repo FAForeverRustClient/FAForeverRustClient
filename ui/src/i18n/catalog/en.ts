@@ -303,6 +303,9 @@ export const en = {
   "shell.install.checkAgainTitle": "Re-check the configured paths",
   "shell.install.dismiss": "Dismiss",
   "shell.install.dismissTitle": "Dismiss until the next launch",
+  "shell.install.originalMissing": "Supreme Commander: Forged Alliance not found",
+  "shell.install.originalMissingHint": "FAF plays from its own copy but takes the movies, sounds, fonts and libraries from the game you own on Steam, GOG or disc. Games will not start until the client finds it.",
+  "shell.install.chooseOriginal": "Choose game folder",
 
   // Login screen.
   "auth.welcome": "Welcome to FAForever",
@@ -1897,7 +1900,7 @@ export const en = {
   "settings.category.paths": "Paths",
   "settings.section.paths.title": "Paths",
   "settings.section.paths.description": "Where the client looks for the game, your maps and mods, and everything else it reads or writes.",
-  "settings.section.paths.keywords": "paths folders directories vault maps mods replays game.prefs java install",
+  "settings.section.paths.keywords": "paths folders directories vault maps mods replays game.prefs java install original steam gog",
   "settings.paths.vault": "Vault folder",
   "settings.paths.maps": "Maps folder",
   "settings.paths.mods": "Mods folder",
@@ -1906,6 +1909,9 @@ export const en = {
   "settings.paths.gamePrefs": "game.prefs",
   "settings.paths.java": "Java runtime",
   "settings.paths.winePrefix": "Wine prefix",
+  "settings.paths.originalGame": "Original game",
+  "settings.paths.originalGamePickTitle": "Select the Supreme Commander: Forged Alliance folder",
+  "settings.paths.notFound": "Not found",
   "settings.paths.browse": "Browse…",
   "settings.paths.reset": "Reset",
   "settings.paths.resetHint": "Go back to the automatic location",

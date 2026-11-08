@@ -23,7 +23,8 @@ export const INITIAL_STATE: AppState = {
       "gamePrefsPath": "",
       "mapGeneratorDir": "",
       "javaPath": "",
-      "winePrefix": ""
+      "winePrefix": "",
+      "originalGameDir": ""
     },
     "companions": []
   },

@@ -107,6 +107,10 @@ impl PathsPort for ConfiguredPaths {
             wine_prefix: crate::infra::mods::resolved_wine_prefix()
                 .map(display)
                 .unwrap_or_default(),
+            // Empty when there is none: the banner's cue, and the launch's.
+            original_game_dir: crate::infra::game_updater::find_retail_install()
+                .map(display)
+                .unwrap_or_default(),
         }
     }
 }

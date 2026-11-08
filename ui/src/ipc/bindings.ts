@@ -10187,6 +10187,17 @@ export type ResolvedPaths = {
 	 *  runs without one.
 	 */
 	winePrefix: string,
+	/**
+	 *  The original Supreme Commander: Forged Alliance the client found, the
+	 *  folder holding `gamedata/lua.scd`, or empty when it found none.
+	 *
+	 *  Unlike the locations above this one has no fallback, and empty is the
+	 *  state to warn about: FAF takes the game's movies, sounds, fonts and
+	 *  libraries from it, and a game started without it is broken. The
+	 *  missing-install banner says so before the first game, and on Windows
+	 *  a launch that finds no original game either is refused.
+	 */
+	originalGameDir: string,
 };
 
 /**  One game's map, as its replay file names it. */

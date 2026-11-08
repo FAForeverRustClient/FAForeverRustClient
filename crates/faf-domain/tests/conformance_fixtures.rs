@@ -4746,6 +4746,7 @@ fn cases() -> Vec<Case> {
                     // Empty is the Windows answer, and these fixtures describe
                     // a Windows install.
                     wine_prefix: String::new(),
+                    original_game_dir: "D:/Games/Supreme Commander Forged Alliance".into(),
                 },
             }
             .into()],

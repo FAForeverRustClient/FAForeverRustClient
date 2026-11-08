@@ -10,6 +10,11 @@
 // The state is derived, not configured: the backend stats the paths on startup
 // and after every change (see `faf-domain`'s install slice), so the banner also
 // catches an install that was moved or uninstalled since it was configured.
+//
+// Two different things can be missing. FAF's own copy of the game, which the
+// client downloads itself, and the original Forged Alliance the player owns,
+// which FAF reads movies, sounds, fonts and libraries from and which nothing
+// can download. The second used to surface only as a broken first game.
 
 import { useState } from "react";
 import { ipc } from "../../ipc/client";
@@ -19,6 +24,7 @@ import { Icon } from "../../design-system/Icon";
 import { useAppStore } from "../../store/store";
 import { t } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { pickOriginalGameFolder, setOriginalGameDir } from "../../shared/originalGame";
 
 const openSettings = () =>
   ipc.send({ kind: "Nav", command: { type: "select", payload: { tab: "settings" } } });
@@ -54,8 +60,15 @@ export function InstallBanner() {
   // `checked` guards the startup window: before the first stat completes we
   // know nothing, and flashing a warning at every launch would train the user
   // to ignore it.
-  const missing = install.checked && !install.gameReady;
-  if (!missing || dismissed) return null;
+  if (!install.checked || dismissed) return null;
+
+  // FAF's own install that is neither there nor about to be downloaded comes
+  // first: without it nothing starts, whatever else is found.
+  const installMissing = !install.gameReady && !install.gamePending;
+  if (!installMissing && !install.resolved.originalGameDir) {
+    return <OriginalGameMissing onDismiss={() => setDismissed(true)} />;
+  }
+  if (install.gameReady) return null;
 
   // A machine that has never run FAF is not missing an install; it has not
   // downloaded one yet, and pressing Play is what downloads it. Saying "not
@@ -107,6 +120,52 @@ export function InstallBanner() {
           aria-label={t("shell.install.dismiss")}
           title={t("shell.install.dismissTitle")}
           onClick={() => setDismissed(true)}
+        >
+          <Icon name="close" size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * FAF's install is there or on its way, but the game the player owns is not.
+ *
+ * Its own banner rather than a variant of the one above: the fix is a
+ * different folder (the game from Steam, GOG or a disc, never FAF's), and the
+ * button opens the same folder picker as Settings, Paths, Original game.
+ * Launches on Windows are refused until it is found, so this is the last
+ * place to learn it before a game would have started.
+ */
+function OriginalGameMissing({ onDismiss }: { onDismiss: () => void }) {
+  const { t } = useTranslation();
+  const choose = () =>
+    ipc.run(
+      pickOriginalGameFolder().then((path) => (path ? setOriginalGameDir(path) : undefined)),
+    );
+
+  return (
+    <div className="install-banner" role="status">
+      <span className="install-banner-icon" aria-hidden="true">
+        <Icon name="alert" size={16} />
+      </span>
+      <div className="install-banner-copy">
+        <strong>{t("shell.install.originalMissing")}</strong>
+        <span className="muted">{t("shell.install.originalMissingHint")}</span>
+      </div>
+      <div className="install-banner-actions">
+        <Button variant="primary" onClick={choose}>
+          {t("shell.install.chooseOriginal")}
+        </Button>
+        <Button onClick={() => void checkAgain()} title={t("shell.install.checkAgainTitle")}>
+          {t("shell.install.checkAgain")}
+        </Button>
+        <button
+          type="button"
+          className="install-banner-close"
+          aria-label={t("shell.install.dismiss")}
+          title={t("shell.install.dismissTitle")}
+          onClick={onDismiss}
         >
           <Icon name="close" size={14} />
         </button>

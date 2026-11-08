@@ -37,7 +37,8 @@
 //! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
 //!   `game_updater` and `updater` (patching; `updater` holds the port impl,
 //!   `game_updater` its cache and manifest logic), `game_logs`, `scmap`,
-//!   `faf_content`, `notification_sounds`.
+//!   `faf_content`, `notification_sounds`. `registry` reads the Windows
+//!   registry values the original game's discovery needs.
 //! * **Fakes with no real counterpart in the same file**: `lobby_fake`,
 //!   `chat_fake`, `settings_fake`, `tourney_fake`. The other fakes sit at the
 //!   bottom of the adapter they stand in for. [`fake_ports`] assembles the
@@ -113,6 +114,7 @@ pub mod player_card;
 pub mod png;
 #[cfg(windows)]
 pub(crate) mod process_list;
+pub(crate) mod registry;
 pub mod relay;
 mod release_metadata;
 pub mod replay;
