@@ -227,11 +227,31 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         () = session.cancelled() => None,
         update = updates.recv() => update,
     } {
+        // A backfill never notifies or counts as unread. Muted senders stay
+        // out of it, and so do the lines already on screen (#471): the
+        // reducer would drop them too, but the event need not carry them.
+        if let ChatUpdate::History { channel, messages } = update {
+            let messages: Vec<_> = out.with_state(|state| {
+                let shown = state.chat.channel(&channel);
+                let muted = &state.settings.chat.muted_players;
+                messages
+                    .into_iter()
+                    .filter(|message| {
+                        !muted
+                            .iter()
+                            .any(|login| login.eq_ignore_ascii_case(&message.sender))
+                            && !shown.is_some_and(|c| c.holds(message))
+                    })
+                    .collect()
+            });
+            if !messages.is_empty() {
+                out.emit(ChatEvent::HistoryReceived { channel, messages });
+            }
+            continue;
+        }
         let connected = matches!(&update, ChatUpdate::Status(ChatStatus::Connected, _));
         let mut quiet_history = false;
-        if let ChatUpdate::Message { channel, message }
-        | ChatUpdate::HistoryMessage { channel, message } = &update
-        {
+        if let ChatUpdate::Message { channel, message } = &update {
             let (
                 is_quiet_history,
                 held,
@@ -279,8 +299,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                     ),
                 )
             });
-            quiet_history =
-                matches!(&update, ChatUpdate::HistoryMessage { .. }) || is_quiet_history;
+            quiet_history = is_quiet_history;
             // A line the channel already shows is the history backfill
             // overlapping the scrollback after a reconnect or a rejoin (#471).
             // The reducer would drop it; skipping it here also keeps its
@@ -461,8 +480,8 @@ fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String, rep
 
 fn to_event(update: ChatUpdate, quiet_history: bool) -> ChatEvent {
     match update {
-        ChatUpdate::HistoryMessage { channel, message } => {
-            ChatEvent::MessageReceivedQuietly { channel, message }
+        ChatUpdate::History { channel, messages } => {
+            ChatEvent::HistoryReceived { channel, messages }
         }
         ChatUpdate::MessageRedacted { channel, msgid } => {
             ChatEvent::MessageRedacted { channel, msgid }

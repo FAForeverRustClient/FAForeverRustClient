@@ -65,7 +65,9 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_util::sync::CancellationToken;
 
 use crate::infra::env_or;
-use crate::infra::irc_session::{self, Effect, SessionContext, SessionEnd, SessionState};
+use crate::infra::irc_session::{
+    self, Effect, HistoryLine, SessionContext, SessionEnd, SessionState,
+};
 use crate::infra::session::TokenStore;
 use crate::ports::{ChatPort, ChatUpdate};
 
@@ -528,41 +530,20 @@ impl ChatEmitter {
             .await
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn message(
-        &self,
-        channel: &str,
-        sender: &str,
-        content: &str,
-        kind: ChatMessageKind,
-        timestamp: Option<&str>,
-        msgid: &str,
-        reply_to: &str,
-        history: bool,
-    ) -> bool {
-        let message = ChatMessage {
+    /// A [`ChatMessage`] with the next local id, stamped now when the server
+    /// sent no `server-time`.
+    fn chat_message(&self, line: HistoryLine) -> ChatMessage {
+        ChatMessage {
             id: self.next_id.fetch_add(1, Ordering::SeqCst).to_string(),
-            sender: sender.to_string(),
-            content: content.to_string(),
-            timestamp: timestamp
-                .map(str::to_string)
+            sender: line.sender,
+            content: line.content,
+            timestamp: line
+                .timestamp
                 .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
-            kind,
-            msgid: msgid.to_string(),
-            reply_to: reply_to.to_string(),
-        };
-        self.send(if history {
-            ChatUpdate::HistoryMessage {
-                channel: channel.to_string(),
-                message,
-            }
-        } else {
-            ChatUpdate::Message {
-                channel: channel.to_string(),
-                message,
-            }
-        })
-        .await
+            kind: line.kind,
+            msgid: line.msgid,
+            reply_to: line.reply_to,
+        }
     }
 }
 
@@ -820,21 +801,32 @@ where
             timestamp,
             msgid,
             reply_to,
-            history,
-        } => (!params
-            .emitter
-            .message(
-                &channel,
-                &sender,
-                &content,
+        } => {
+            let message = params.emitter.chat_message(HistoryLine {
+                sender,
+                content,
                 kind,
-                timestamp.as_deref(),
-                &msgid,
-                &reply_to,
-                history,
-            )
-            .await)
-            .then_some(SessionEnd::Cancelled),
+                timestamp,
+                msgid,
+                reply_to,
+            });
+            (!params
+                .emitter
+                .send(ChatUpdate::Message { channel, message })
+                .await)
+                .then_some(SessionEnd::Cancelled)
+        }
+        Effect::History { channel, lines } => {
+            let messages = lines
+                .into_iter()
+                .map(|line| params.emitter.chat_message(line))
+                .collect();
+            (!params
+                .emitter
+                .send(ChatUpdate::History { channel, messages })
+                .await)
+                .then_some(SessionEnd::Cancelled)
+        }
         Effect::TagsEnabled(enabled) => {
             params.tags_enabled.store(enabled, Ordering::SeqCst);
             None

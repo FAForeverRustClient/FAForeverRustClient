@@ -37,10 +37,11 @@ pub enum ChatUpdate {
         channel: String,
         message: ChatMessage,
     },
-    /// Server backfill never represents a new notification or unread message.
-    HistoryMessage {
+    /// A conversation's server backfill, whole and oldest first. Never a new
+    /// notification or unread message.
+    History {
         channel: String,
-        message: ChatMessage,
+        messages: Vec<ChatMessage>,
     },
     /// A fresh full snapshot of who's in the channel.
     Users {

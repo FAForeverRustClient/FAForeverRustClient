@@ -1151,6 +1151,15 @@ export type ChatEvent = { type: "connecting" } |
 	channel: string,
 	message: ChatMessage,
 } } |
+/**
+ *  A conversation's history from the server, whole and oldest first.
+ *  Added like quiet messages, in one step: applied a line at a time, the
+ *  open channel scrolled through hundreds of old lines as they arrived.
+ */
+{ type: "historyReceived"; payload: {
+	channel: string,
+	messages: ChatMessage[],
+} } |
 /**  A full roster snapshot, replacing whatever we had (`RPL_ENDOFNAMES`). */
 { type: "usersUpdated"; payload: {
 	channel: string,

@@ -11245,6 +11245,290 @@
       ]
     },
     {
+      "name": "a channel's history arrives in one step, without repeats or unread",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "username": "Aurora"
+              },
+              "type": "connected"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus"
+              },
+              "type": "channelJoined"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus",
+                "message": {
+                  "content": "already on screen",
+                  "id": "m-Bob-already on screen",
+                  "kind": "message",
+                  "msgid": "srv-Bob-already on screen",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "already on screen",
+                    "id": "m-Bob-already on screen",
+                    "kind": "message",
+                    "msgid": "srv-Bob-already on screen",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus",
+                "messages": [
+                  {
+                    "content": "gg",
+                    "id": "h1",
+                    "kind": "message",
+                    "msgid": "srv-Cid-gg",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:01Z"
+                  },
+                  {
+                    "content": "already on screen",
+                    "id": "h2",
+                    "kind": "message",
+                    "msgid": "srv-Bob-already on screen",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "Aurora: hello",
+                    "id": "h3",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-Aurora: hello",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:03Z"
+                  }
+                ]
+              },
+              "type": "historyReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "already on screen",
+                    "id": "m-Bob-already on screen",
+                    "kind": "message",
+                    "msgid": "srv-Bob-already on screen",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "gg",
+                    "id": "h1",
+                    "kind": "message",
+                    "msgid": "srv-Cid-gg",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:01Z"
+                  },
+                  {
+                    "content": "Aurora: hello",
+                    "id": "h3",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-Aurora: hello",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:03Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "Bob",
+                "messages": [
+                  {
+                    "content": "earlier",
+                    "id": "m-Bob-earlier",
+                    "kind": "message",
+                    "msgid": "srv-Bob-earlier",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ]
+              },
+              "type": "historyReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "#aeolus",
+            "channels": [
+              {
+                "messages": [
+                  {
+                    "content": "already on screen",
+                    "id": "m-Bob-already on screen",
+                    "kind": "message",
+                    "msgid": "srv-Bob-already on screen",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "gg",
+                    "id": "h1",
+                    "kind": "message",
+                    "msgid": "srv-Cid-gg",
+                    "replyTo": "",
+                    "sender": "Cid",
+                    "timestamp": "2026-01-01T00:00:01Z"
+                  },
+                  {
+                    "content": "Aurora: hello",
+                    "id": "h3",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-Aurora: hello",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:03Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              },
+              {
+                "messages": [
+                  {
+                    "content": "earlier",
+                    "id": "m-Bob-earlier",
+                    "kind": "message",
+                    "msgid": "srv-Bob-earlier",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "Bob",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "connected",
+            "username": "Aurora"
+          }
+        }
+      ]
+    },
+    {
       "name": "someone composes, reacts, and their message clears the indicator",
       "steps": [
         {

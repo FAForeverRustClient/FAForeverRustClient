@@ -366,6 +366,19 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
           : { ...current, messages: capMessages([...current.messages, message]) },
       );
     }
+    case "historyReceived": {
+      // A conversation's backfill in one step, twin of `HistoryReceived` in
+      // faf-domain: a line on screen is not added twice, and the bounds apply
+      // once at the end.
+      const { channel, messages: backfill } = event.payload;
+      return mapChannel(state, channel, (current) => {
+        const messages = [...current.messages];
+        for (const message of backfill) {
+          if (!holds(messages, message)) messages.push(message);
+        }
+        return { ...current, messages: capMessages(messages) };
+      });
+    }
     case "usersUpdated":
       return mapChannel(state, event.payload.channel, (channel) => ({
         ...channel,

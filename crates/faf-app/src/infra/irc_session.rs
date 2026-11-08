@@ -64,8 +64,19 @@ struct ReactionEvent {
     sender: String,
 }
 
-/// How much backlog to pull when a channel opens.
-pub(crate) const HISTORY_LINES: u32 = 500;
+/// How much backlog to pull when a channel opens: enough to see what the
+/// conversation is about, not a whole evening of #aeolus.
+const CHANNEL_HISTORY_LINES: u32 = 100;
+
+/// How much backlog to pull when a private conversation opens. Kept at the
+/// scrollback's own bound: these are the player's own conversations, and far
+/// quieter than a channel.
+const PRIVATE_HISTORY_LINES: u32 = 500;
+
+/// Bound on the lines one history batch holds back until it ends. Twice the
+/// largest request, so an honest server never reaches it; a batch that does
+/// keeps its first lines and drops the rest.
+const MAX_HELD_HISTORY: usize = 2 * PRIVATE_HISTORY_LINES as usize;
 
 /// Why a single connection attempt ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,7 +119,16 @@ pub(crate) enum Effect {
         /// The `msgid` this line answers (`+draft/reply`), empty when it
         /// answers nothing.
         reply_to: String,
-        history: bool,
+    },
+    /// A conversation's history, whole: every message of one history batch,
+    /// oldest first, handed over once the batch has ended.
+    ///
+    /// One update rather than one per line, so the chat view takes the
+    /// backfill in at once instead of scrolling through it line by line as
+    /// it arrives.
+    History {
+        channel: String,
+        lines: Vec<HistoryLine>,
     },
     /// Whether the server granted `message-tags`.
     ///
@@ -143,9 +163,20 @@ impl Effect {
             // so nothing can react to it. That is the correct outcome.
             msgid: String::new(),
             reply_to: String::new(),
-            history: false,
         }
     }
+}
+
+/// One message of an [`Effect::History`]: an [`Effect::Message`] without its
+/// channel, which the batch names once.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct HistoryLine {
+    pub sender: String,
+    pub content: String,
+    pub kind: ChatMessageKind,
+    pub timestamp: Option<String>,
+    pub msgid: String,
+    pub reply_to: String,
 }
 
 /// The connection's inputs that do not change while it runs.
@@ -178,7 +209,13 @@ pub(crate) struct SessionState {
     pub registered: bool,
     reaction_events: VecDeque<ReactionEvent>,
     redacted: VecDeque<String>,
-    history_batches: BTreeSet<String>,
+    /// Open history batches, each to the outermost history batch it sits in
+    /// (itself for that one). Event playback can nest a batch, a multiline
+    /// message say, inside the history it replays.
+    history_batches: BTreeMap<String, String>,
+    /// What each open outermost history batch has produced so far, handed
+    /// over when it ends. See [`handle_line`].
+    history_held: BTreeMap<String, Vec<Effect>>,
 }
 
 impl SessionState {
@@ -194,7 +231,8 @@ impl SessionState {
             registered: false,
             reaction_events: VecDeque::new(),
             redacted: VecDeque::new(),
-            history_batches: BTreeSet::new(),
+            history_batches: BTreeMap::new(),
+            history_held: BTreeMap::new(),
         }
     }
 
@@ -229,7 +267,7 @@ const REPLAY_ONLY_IN_LIVE: [&str; 11] = [
 /// Whether `line` arrived inside a history batch, directly or nested.
 fn in_history_batch(line: &irc::IrcLine, state: &SessionState) -> bool {
     line.tag("batch")
-        .is_some_and(|batch| state.history_batches.contains(batch))
+        .is_some_and(|batch| state.history_batches.contains_key(batch))
 }
 
 fn request_history(channel: &str, state: &mut SessionState) -> Vec<Effect> {
@@ -245,9 +283,14 @@ fn request_history(channel: &str, state: &mut SessionState) -> Vec<Effect> {
     {
         return Vec::new();
     }
+    let lines = if channel.starts_with('#') {
+        CHANNEL_HISTORY_LINES
+    } else {
+        PRIVATE_HISTORY_LINES
+    };
     vec![Effect::Send(irc::format_line(
         "CHATHISTORY",
-        &["LATEST", channel, "*", &HISTORY_LINES.to_string()],
+        &["LATEST", channel, "*", &lines.to_string()],
     ))]
 }
 
@@ -317,11 +360,98 @@ fn conversation(target: &str, sender: &str, state: &SessionState) -> String {
 /// the state is updated *fully* before any effect runs, where the old code
 /// interleaved them; the difference is only observable when an effect fails,
 /// which means the session is ending and this state is about to be dropped.
+///
+/// What a history batch produces is held back until the batch ends, then
+/// handed over at once: its messages as one [`Effect::History`] per
+/// conversation, followed by the rest (reactions and redactions), which all
+/// refer to messages before them. Applied line by line as they arrived, a
+/// backfill of hundreds of lines scrolled the open channel through all of
+/// them.
 pub(crate) fn handle_line(
     line: &irc::IrcLine,
     state: &mut SessionState,
     ctx: &SessionContext,
 ) -> Vec<Effect> {
+    // Both read before the line is applied, which opens or closes batches.
+    let held_by = line
+        .tag("batch")
+        .and_then(|batch| state.history_batches.get(batch))
+        .cloned();
+    let ending = (line.command == "BATCH")
+        .then(|| {
+            line.params
+                .first()
+                .and_then(|batch| batch.strip_prefix('-'))
+        })
+        .flatten()
+        .filter(|id| {
+            state
+                .history_batches
+                .get(*id)
+                .is_some_and(|root| root == id)
+        })
+        .map(str::to_string);
+
+    let mut effects = decide_line(line, state, ctx);
+    if let Some(root) = held_by {
+        let (live, held): (Vec<_>, Vec<_>) = effects
+            .into_iter()
+            .partition(|effect| !matches!(effect, Effect::Message { .. } | Effect::Emit(_)));
+        let pending = state.history_held.entry(root).or_default();
+        let room = MAX_HELD_HISTORY.saturating_sub(pending.len());
+        pending.extend(held.into_iter().take(room));
+        effects = live;
+    }
+    if let Some(root) = ending {
+        let held = state.history_held.remove(&root).unwrap_or_default();
+        let mut released = release_history(held);
+        released.append(&mut effects);
+        effects = released;
+    }
+    effects
+}
+
+/// A finished history batch's effects, in the order [`handle_line`] hands
+/// them over: one [`Effect::History`] per conversation, in the order each
+/// first appeared, then everything else as it came.
+fn release_history(held: Vec<Effect>) -> Vec<Effect> {
+    let mut histories: Vec<(String, Vec<HistoryLine>)> = Vec::new();
+    let mut rest = Vec::new();
+    for effect in held {
+        let Effect::Message {
+            channel,
+            sender,
+            content,
+            kind,
+            timestamp,
+            msgid,
+            reply_to,
+        } = effect
+        else {
+            rest.push(effect);
+            continue;
+        };
+        let line = HistoryLine {
+            sender,
+            content,
+            kind,
+            timestamp,
+            msgid,
+            reply_to,
+        };
+        match histories.iter_mut().find(|(name, _)| *name == channel) {
+            Some((_, lines)) => lines.push(line),
+            None => histories.push((channel, vec![line])),
+        }
+    }
+    histories
+        .into_iter()
+        .map(|(channel, lines)| Effect::History { channel, lines })
+        .chain(rest)
+        .collect()
+}
+
+fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionContext) -> Vec<Effect> {
     let mut effects = Vec::new();
 
     // Event playback replays joins, parts, renames and mode or topic changes
@@ -338,15 +468,19 @@ pub(crate) fn handle_line(
             if let Some(batch) = line.params.first() {
                 if let Some(id) = batch.strip_prefix('-') {
                     state.history_batches.remove(id);
-                } else if (line
-                    .params
-                    .get(1)
-                    .is_some_and(|kind| kind.contains("chathistory"))
-                    || in_history_batch(line, state))
-                    && state.history_batches.len() < 64
-                {
-                    if let Some(id) = batch.strip_prefix('+') {
-                        state.history_batches.insert(id.to_string());
+                } else if let Some(id) = batch.strip_prefix('+') {
+                    // A batch inside a history batch belongs to that history.
+                    let outer = line
+                        .tag("batch")
+                        .and_then(|outer| state.history_batches.get(outer))
+                        .cloned();
+                    let history = line
+                        .params
+                        .get(1)
+                        .is_some_and(|kind| kind.contains("chathistory"));
+                    let root = outer.or_else(|| history.then(|| id.to_string()));
+                    if let Some(root) = root.filter(|_| state.history_batches.len() < 64) {
+                        state.history_batches.insert(id.to_string(), root);
                     }
                 }
             }
@@ -699,9 +833,6 @@ pub(crate) fn handle_line(
                 timestamp: line.server_time().map(str::to_string),
                 msgid: line.tag("msgid").unwrap_or_default().to_string(),
                 reply_to: line.tag("+draft/reply").unwrap_or_default().to_string(),
-                history: line
-                    .tag("batch")
-                    .is_some_and(|batch| state.history_batches.contains(batch)),
             });
         }
         // A message that is nothing but tags. Two client tags matter here:
@@ -722,9 +853,7 @@ pub(crate) fn handle_line(
             // With echo-message our own typing notices come back, and event
             // playback can replay old ones inside a history batch. Neither is
             // somebody composing now.
-            let replayed = line
-                .tag("batch")
-                .is_some_and(|batch| state.history_batches.contains(batch));
+            let replayed = in_history_batch(line, state);
             let typing = line
                 .tag("+typing")
                 .filter(|_| !replayed && !state.is_me(sender));
@@ -1119,7 +1248,7 @@ mod tests {
         assert!(emitted(&first).contains(&&ChatUpdate::ChannelJoined("#uef".into())));
         assert_eq!(
             sent(&first),
-            vec!["CHATHISTORY LATEST #uef * 500"],
+            vec!["CHATHISTORY LATEST #uef * 100"],
             "the tab must not open empty"
         );
 
@@ -1282,7 +1411,6 @@ mod tests {
                 timestamp: None,
                 msgid: String::new(),
                 reply_to: String::new(),
-                history: false,
             }]
         );
     }
@@ -1396,7 +1524,6 @@ mod tests {
                 timestamp: None,
                 msgid: "srv-1".into(),
                 reply_to: String::new(),
-                history: false,
             }]
         );
     }
@@ -1676,7 +1803,7 @@ mod reference_chat_tests {
         // Channels keep asking, as they always have.
         assert_eq!(
             request_history("#aeolus", &mut state),
-            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 500".into())]
+            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 100".into())]
         );
     }
 
@@ -1690,16 +1817,17 @@ mod reference_chat_tests {
         assert!(line(&mut state, "@batch=h1 :Bob!u@h JOIN #aeolus").is_empty());
         assert_eq!(state.nick, "Ada");
         assert!(state.rosters.contains_key("#aeolus"));
-        // A message replayed in the same batch still arrives, marked as history.
+        // A message replayed in the same batch still arrives, as history,
+        // once the batch ends.
+        assert!(line(
+            &mut state,
+            "@batch=h1;msgid=m1 :Bob!u@h PRIVMSG #aeolus :hello"
+        )
+        .is_empty());
         assert!(matches!(
-            line(
-                &mut state,
-                "@batch=h1;msgid=m1 :Bob!u@h PRIVMSG #aeolus :hello"
-            )
-            .as_slice(),
-            [Effect::Message { history: true, .. }]
+            line(&mut state, "BATCH -h1").as_slice(),
+            [Effect::History { channel, lines }] if channel == "#aeolus" && lines.len() == 1
         ));
-        line(&mut state, "BATCH -h1");
         // Live again once the batch ends.
         assert!(!line(&mut state, ":Ada!u@h PART #aeolus").is_empty());
     }
@@ -1709,10 +1837,83 @@ mod reference_chat_tests {
         let mut state = state();
         line(&mut state, "BATCH +h1 chathistory Bob");
         line(&mut state, "@batch=h1 BATCH +m1 draft/multiline Bob");
+        assert!(line(&mut state, "@batch=m1;msgid=m2 :Bob!u@h PRIVMSG Ada :old").is_empty());
+        // The inner batch ending releases nothing; the history ending does.
+        assert!(line(&mut state, "@batch=h1 BATCH -m1").is_empty());
         assert!(matches!(
-            line(&mut state, "@batch=m1;msgid=m2 :Bob!u@h PRIVMSG Ada :old").as_slice(),
-            [Effect::Message { history: true, .. }]
+            line(&mut state, "BATCH -h1").as_slice(),
+            [Effect::History { channel, lines }] if channel == "Bob" && lines[0].content == "old"
         ));
+    }
+
+    #[test]
+    fn a_history_batch_arrives_whole_once_it_ends() {
+        let mut state = state();
+        line(&mut state, "BATCH +h1 chathistory #aeolus");
+        for (id, text) in [("m1", "first"), ("m2", "second"), ("m3", "third")] {
+            let raw = format!(
+                "@batch=h1;msgid={id};time=2026-01-01T00:00:0{}Z :Bob!u@h PRIVMSG #aeolus :{text}",
+                &id[1..]
+            );
+            assert!(
+                line(&mut state, &raw).is_empty(),
+                "held until the batch ends"
+            );
+        }
+        // A reaction replayed with them comes after the messages it is on.
+        assert!(line(
+            &mut state,
+            "@batch=h1;msgid=r1;+draft/react=👍;+draft/reply=m2 :Cid!u@h TAGMSG #aeolus"
+        )
+        .is_empty());
+        // Live traffic meanwhile is not held back.
+        assert!(!line(&mut state, ":Dan!u@h PRIVMSG #aeolus :live").is_empty());
+
+        let released = line(&mut state, "BATCH -h1");
+        let [Effect::History { channel, lines }, Effect::Emit(ChatUpdate::Reaction { msgid, .. })] =
+            released.as_slice()
+        else {
+            panic!("expected the history, then the reaction: {released:?}");
+        };
+        assert_eq!(channel, "#aeolus");
+        assert_eq!(msgid, "m2");
+        assert_eq!(
+            lines.iter().map(|l| l.content.as_str()).collect::<Vec<_>>(),
+            ["first", "second", "third"]
+        );
+        assert_eq!(lines[0].timestamp.as_deref(), Some("2026-01-01T00:00:01Z"));
+        assert!(state.history_held.is_empty(), "nothing left over");
+    }
+
+    #[test]
+    fn a_history_batch_holds_no_more_than_its_bound() {
+        let mut state = state();
+        line(&mut state, "BATCH +h1 chathistory #aeolus");
+        for i in 0..MAX_HELD_HISTORY + 5 {
+            line(
+                &mut state,
+                &format!("@batch=h1;msgid=m{i} :Bob!u@h PRIVMSG #aeolus :{i}"),
+            );
+        }
+        let released = line(&mut state, "BATCH -h1");
+        let [Effect::History { lines, .. }] = released.as_slice() else {
+            panic!("expected one history: {released:?}");
+        };
+        assert_eq!(lines.len(), MAX_HELD_HISTORY);
+        assert_eq!(lines[0].content, "0", "the first lines are the ones kept");
+    }
+
+    #[test]
+    fn private_conversations_ask_for_more_history_than_channels() {
+        let mut state = state();
+        assert_eq!(
+            request_history("Bob", &mut state),
+            vec![Effect::Send("CHATHISTORY LATEST Bob * 500".into())]
+        );
+        assert_eq!(
+            request_history("#aeolus", &mut state),
+            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 100".into())]
+        );
     }
     #[test]
     fn reference_chat_retracts_java_reactions_by_their_server_event_id() {
@@ -1822,7 +2023,7 @@ mod reference_chat_tests {
             line(&mut state, ":Ada!u@h JOIN #MixedCase");
             line(&mut state, departure);
             assert!(line(&mut state, ":Ada!u@h JOIN #MixedCase")
-                .contains(&Effect::Send("CHATHISTORY LATEST #MixedCase * 500".into())));
+                .contains(&Effect::Send("CHATHISTORY LATEST #MixedCase * 100".into())));
         }
     }
     #[test]
@@ -1836,12 +2037,16 @@ mod reference_chat_tests {
     fn reference_chat_backfill_is_quiet_and_own_private_echo_uses_the_recipient() {
         let mut state = state();
         line(&mut state, ":srv BATCH +old chathistory Bob");
+        assert!(line(
+            &mut state,
+            "@batch=old;msgid=m1 :Bob!u@h PRIVMSG Ada :earlier"
+        )
+        .is_empty());
         assert!(
-            matches!(&line(&mut state, "@batch=old;msgid=m1 :Bob!u@h PRIVMSG Ada :earlier")[0], Effect::Message { channel, history: true, .. } if channel == "Bob")
+            matches!(&line(&mut state, ":srv BATCH -old")[0], Effect::History { channel, .. } if channel == "Bob")
         );
-        line(&mut state, ":srv BATCH -old");
         assert!(
-            matches!(&line(&mut state, "@msgid=m2 :Ada!u@h PRIVMSG Bob :new")[0], Effect::Message { channel, history: false, .. } if channel == "Bob")
+            matches!(&line(&mut state, "@msgid=m2 :Ada!u@h PRIVMSG Bob :new")[0], Effect::Message { channel, .. } if channel == "Bob")
         );
     }
 }

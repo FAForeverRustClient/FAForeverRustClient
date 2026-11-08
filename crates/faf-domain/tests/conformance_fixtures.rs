@@ -5081,6 +5081,50 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "a channel's history arrives in one step, without repeats or unread",
+            vec![
+                ChatEvent::Connected {
+                    username: "Aurora".into(),
+                }
+                .into(),
+                ChatEvent::ChannelJoined {
+                    channel: "#aeolus".into(),
+                }
+                .into(),
+                ChatEvent::MessageReceived {
+                    channel: "#aeolus".into(),
+                    message: chat_message("Bob", "already on screen"),
+                }
+                .into(),
+                ChatEvent::HistoryReceived {
+                    channel: "#aeolus".into(),
+                    messages: vec![
+                        ChatMessage {
+                            id: "h1".into(),
+                            timestamp: "2026-01-01T00:00:01Z".into(),
+                            ..chat_message("Cid", "gg")
+                        },
+                        ChatMessage {
+                            id: "h2".into(),
+                            ..chat_message("Bob", "already on screen")
+                        },
+                        ChatMessage {
+                            id: "h3".into(),
+                            timestamp: "2026-01-01T00:00:03Z".into(),
+                            ..chat_message("Aurora", "Aurora: hello")
+                        },
+                    ],
+                }
+                .into(),
+                // History for a conversation not open yet opens it.
+                ChatEvent::HistoryReceived {
+                    channel: "Bob".into(),
+                    messages: vec![chat_message("Bob", "earlier")],
+                }
+                .into(),
+            ],
+        ),
+        case(
             "someone composes, reacts, and their message clears the indicator",
             vec![
                 ChatEvent::Connected {

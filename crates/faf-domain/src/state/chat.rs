@@ -788,6 +788,13 @@ pub enum ChatEvent {
         channel: String,
         message: ChatMessage,
     },
+    /// A conversation's history from the server, whole and oldest first.
+    /// Added like quiet messages, in one step: applied a line at a time, the
+    /// open channel scrolled through hundreds of old lines as they arrived.
+    HistoryReceived {
+        channel: String,
+        messages: Vec<ChatMessage>,
+    },
     /// A full roster snapshot, replacing whatever we had (`RPL_ENDOFNAMES`).
     UsersUpdated {
         channel: String,
@@ -1014,6 +1021,17 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                     c.unread_mentions = c.unread_mentions.saturating_add(1);
                 }
             }
+        }
+        ChatEvent::HistoryReceived { channel, messages } => {
+            let c = state.ensure_channel(channel);
+            for message in messages {
+                // The backfill overlaps the scrollback after a reconnect or a
+                // rejoin (#471), and a line on screen is not added twice.
+                if !c.holds(message) {
+                    c.messages.push(message.clone());
+                }
+            }
+            cap_messages(&mut c.messages);
         }
         ChatEvent::UsersUpdated { channel, users } => {
             let c = state.ensure_channel(channel);
@@ -1295,6 +1313,55 @@ mod tests {
         assert_eq!(channel.messages, vec![message("history")]);
         assert_eq!(channel.unread, 0);
         assert_eq!(channel.unread_mentions, 0);
+    }
+
+    #[test]
+    fn a_history_is_added_in_one_step_without_repeats_or_unread() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "#newbie".into(),
+                message: message("live"),
+            },
+        );
+        let before = s.channel("#newbie").unwrap().unread;
+        reduce(
+            &mut s,
+            &ChatEvent::HistoryReceived {
+                channel: "#newbie".into(),
+                messages: vec![replayed(&message("live")), message("earlier")],
+            },
+        );
+        let channel = s.channel("#newbie").unwrap();
+        assert_eq!(
+            channel
+                .messages
+                .iter()
+                .map(|m| m.id.as_str())
+                .collect::<Vec<_>>(),
+            ["live", "earlier"],
+            "the line on screen is not repeated"
+        );
+        assert_eq!(channel.unread, before, "history is never unread");
+
+        let backfill: Vec<_> = (0..MAX_MESSAGES + 3)
+            .map(|i| message(&format!("old-{i}")))
+            .collect();
+        reduce(
+            &mut s,
+            &ChatEvent::HistoryReceived {
+                channel: "#newbie".into(),
+                messages: backfill,
+            },
+        );
+        let channel = s.channel("#newbie").unwrap();
+        assert_eq!(
+            channel.messages.len(),
+            MAX_MESSAGES,
+            "the bound still holds"
+        );
+        assert_eq!(channel.messages[0].id, "old-3", "the oldest go first");
     }
 
     /// The same line as the server replays it: a fresh local `id`, because
