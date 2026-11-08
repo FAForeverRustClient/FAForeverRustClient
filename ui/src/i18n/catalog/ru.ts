@@ -114,7 +114,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "shell.install.dismiss": "Закрыть",
   "shell.install.dismissTitle": "Скрыть до следующего запуска",
   "shell.install.originalMissing": "Supreme Commander: Forged Alliance не найдена",
-  "shell.install.originalMissingHint": "FAF нужна Forged Alliance из Steam, GOG или с диска для видео, звуков и шрифтов. Оригинальная Supreme Commander не подойдёт. Без неё игры не запустятся.",
+  "shell.install.originalMissingHint": "Для FAF требуется Forged Alliance из Steam, GOG или с диска ради видео, звуков и шрифтов; оригинальной Supreme Commander недостаточно. Игры не могут быть запущены, пока она не будет найдена.",
   "shell.install.chooseOriginal": "Выбрать папку игры",
   "shell.sidebar.desktopClient": "Настольный клиент",
   "shell.sidebar.online": "В сети",

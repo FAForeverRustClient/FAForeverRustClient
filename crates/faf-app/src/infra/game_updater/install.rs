@@ -353,9 +353,10 @@ fn require_original_game_given(found: Option<PathBuf>, install_dir: &Path) -> Re
 
 /// What [`require_original_game`] says. The settings row it names is the
 /// one the missing-install banner opens the same picker for.
-const ORIGINAL_GAME_MISSING: &str = "Supreme Commander: Forged Alliance was not found. FAF needs \
+const ORIGINAL_GAME_MISSING: &str =
+    "Supreme Commander: Forged Alliance was not found. FAF requires \
      Forged Alliance from Steam, GOG or disc for movies, sounds, fonts and libraries; the original \
-     Supreme Commander will not do. Choose its folder in Settings → Paths → Forged Alliance.";
+     Supreme Commander is not sufficient. Choose its folder in Settings → Paths → Forged Alliance.";
 
 /// Steam's own folder outside Windows: the first of [`steam_roots`] that
 /// holds a library list, which is how faf-linux's `setup.sh` picks it. The
@@ -1249,7 +1250,7 @@ mod tests {
             "{error}"
         );
         assert!(
-            error.contains("not do"),
+            error.contains("not sufficient"),
             "names the base game it is not: {error}"
         );
         assert!(error.contains("Settings"), "{error}");

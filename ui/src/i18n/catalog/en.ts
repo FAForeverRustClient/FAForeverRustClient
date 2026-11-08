@@ -304,7 +304,7 @@ export const en = {
   "shell.install.dismiss": "Dismiss",
   "shell.install.dismissTitle": "Dismiss until the next launch",
   "shell.install.originalMissing": "Supreme Commander: Forged Alliance not found",
-  "shell.install.originalMissingHint": "FAF needs Forged Alliance from Steam, GOG or disc for movies, sounds and fonts. The original Supreme Commander will not do. Games won't start without it.",
+  "shell.install.originalMissingHint": "FAF requires Forged Alliance from Steam, GOG or disc for movies, sounds and fonts; the original Supreme Commander is not sufficient. Games cannot start until it is found.",
   "shell.install.chooseOriginal": "Choose game folder",
 
   // Login screen.

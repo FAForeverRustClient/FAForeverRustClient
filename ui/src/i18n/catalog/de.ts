@@ -272,7 +272,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "shell.install.dismiss": "Schließen",
   "shell.install.dismissTitle": "Bis zum nächsten Start ausblenden",
   "shell.install.originalMissing": "Supreme Commander: Forged Alliance nicht gefunden",
-  "shell.install.originalMissingHint": "FAF braucht Forged Alliance von Steam, GOG oder Disc für Videos, Sounds und Schriften. Das ursprüngliche Supreme Commander reicht nicht. Ohne Forged Alliance starten keine Spiele.",
+  "shell.install.originalMissingHint": "FAF benötigt Forged Alliance von Steam, GOG oder Disc für Videos, Sounds und Schriften; das ursprüngliche Supreme Commander genügt nicht. Spiele können erst starten, wenn es gefunden wurde.",
   "shell.install.chooseOriginal": "Spielordner wählen",
 
   "auth.welcome": "Willkommen bei FAForever",
