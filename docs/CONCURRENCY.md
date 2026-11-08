@@ -45,6 +45,7 @@ flag, and decides itself where stopping is still safe. Calling work off raises n
 
 | Lesson launch (`Training::LaunchLesson`) | `Training::CancelLessonLaunch` | its own ticket cancels updater preparation, drops the lesson-install future, and is checked before launch; it does not cancel a tutorial's ticket | completed updater files and a lesson whose install already committed can remain | `runtime::a_lesson_launch_overtaken_by_its_cancel_is_dropped`; launch ordering in `training_lessons.rs`; running lesson cancellation is not integration-tested |
 | Tutorial launch (`Tutorials::Launch`) | `Tutorials::CancelLaunch` | its ticket reaches updater preparation and is checked before launch | completed updater files can remain; the game is not launched after cancellation | `tutorials::cancelling_tutorial_preparation_never_launches_the_game`, `runtime::a_tutorial_launch_overtaken_by_its_cancel_is_dropped` |
+| Offline game setup (`Auth::LaunchOfflineGame`, signed in, FAF's files missing) | `Auth::CancelOfflineGame` from the status bar; `Auth::Logout` and `Auth::LogoutTest` | its own token (`AuthContext::offline_game`) goes to the featured-mod update through the launcher's `PREPARATION` lock, as a search's does, and is checked before launch | completed updater files stay; the game is not launched after cancellation, and no failure is reported | `offline_game::cancelling_the_set_up_never_starts_the_game`, `runtime::an_offline_game_launch_overtaken_by_its_cancel_is_dropped` |
 | Galactic War install or install-before-play (`GalacticWar::{Install, Play}`) | `GalacticWar::CancelInstall` | the port receives the token; the service drains the final outcome and suppresses Play's launch after cancellation, including an install that just committed | a completed installation stays recorded; temporary work follows the port's cleanup | `galactic_war_cancellation::cancelling_galactic_war_never_auto_launches_even_if_install_just_committed`, `runtime::a_galactic_war_install_or_play_overtaken_by_its_cancel_is_dropped` |
 | Linux runtime setup (`LinuxRuntime::Prepare`) | `LinuxRuntime::Cancel` | the port receives the token; the service drains its final outcome before releasing the key, and keeps a stopped setup available for retry without a failure notification | completed components remain recorded for resume; games use the runtime only after the complete-install check succeeds | `runtime::a_linux_runtime_setup_overtaken_by_its_cancel_is_dropped` covers queued starts; running cancellation is not integration-tested |
 
@@ -68,11 +69,11 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | Lane | Policy patterns |
 |---|---|
 | `Ordinary` | 242 |
-| `Priority` | 33 |
+| `Priority` | 34 |
 
 ### Priority commands
 
-- `Auth::CancelLogin`, `Auth::Logout`
+- `Auth::CancelLogin`, `Auth::CancelOfflineGame`, `Auth::Logout`
 - `Chat::Disconnect`
 - `ClientUpdate::CancelDownload`
 - `GalacticWar::CancelInstall`
@@ -93,7 +94,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | Admission | Policy patterns |
 |---|---|
 | `Concurrent` | 188 |
-| `SingleFlight` | 22 |
+| `SingleFlight` | 23 |
 | `Serial` | 20 |
 | `Latest` | 5 |
 | `ServiceGuarded` | 40 |
@@ -125,6 +126,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `GuidesSignIn` | `SingleFlight` | `Guides::SignIn` |
 | `GuidesVerdict` | `Serial` | `Guides::Accept`, `Guides::Reject` |
 | `TutorialLaunch` | `SingleFlight` | `Training::LaunchLesson`, `Tutorials::Launch` |
+| `OfflineGameLaunch` | `SingleFlight` | `Auth::LaunchOfflineGame` |
 | `TrainingLoad` | `SingleFlight` | `Training::Load` |
 | `ClanWrite` | `Serial` | `Clan::AcceptInvitation`, `Clan::Create`, `Clan::Disband`, `Clan::Edit`, `Clan::HandOver`, `Clan::Leave`, `Clan::Remove` |
 | `TourneyWrite` | `Serial` | `Tourney::Write` |
@@ -166,6 +168,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `ModVault` | `Mods::LoadVault`, `Mods::ReloadVault` | `Mods::CancelVaultLoad` |
 | `LessonLaunch` | `Training::LaunchLesson` | `Training::CancelLessonLaunch` |
 | `TutorialLaunch` | `Tutorials::Launch` | `Tutorials::CancelLaunch` |
+| `OfflineGame` | `Auth::LaunchOfflineGame` | `Auth::CancelOfflineGame` |
 | `GalacticWarInstall` | `GalacticWar::Install`, `GalacticWar::Play` | `GalacticWar::CancelInstall` |
 | `LinuxRuntime` | `LinuxRuntime::Prepare` | `LinuxRuntime::Cancel` |
 
@@ -194,6 +197,8 @@ These notes explain cancellation and test coverage beyond the generated policy m
 `GuidesSignIn` (single-flight): dropped. Cancellation: `Guides::CancelSignIn` stops the polling through the port. Tests: `command_contracts::a_second_single_flight_command_*`.
 
 `TutorialLaunch` (single-flight): dropped. Cancellation: `CancelLaunch` cancels updater preparation and prevents launch. Tests: `command_contracts::a_second_single_flight_command_*`, `tutorials.rs`.
+
+`OfflineGameLaunch` (single-flight): dropped (a second press would start the same update again). Cancellation: `Auth::CancelOfflineGame` and signing out stop the setup and prevent launch. Tests: `offline_game.rs`.
 
 `ConnectivityCheck` (single-flight): dropped (its lines would interleave with the running check's). Cancellation: none; every probe is bounded by a few seconds. Tests: `command_contracts::a_second_single_flight_command_*`, `connectivity_check.rs`.
 

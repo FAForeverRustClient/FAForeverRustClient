@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { FrontendUpdate } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, sentCommands } from "../../testing/mounted";
+import { useAppStore } from "../../store/store";
 import { ClientStatusBar } from "./ClientStatusBar";
 
 vi.mock("../../ipc/client");
@@ -78,6 +79,24 @@ describe("ClientStatusBar background activities", () => {
     expect(bar(label).getAttribute("aria-valuenow")).toBe("30");
     await user.click(screen.getByRole("button", { name: `Cancel: ${label}` }));
     expect(sentCommands()).toEqual([{ kind: "Replays", command: { type: "cancelWatch" } }]);
+  });
+
+  it("narrates setting the game up for an offline start, and calls it off", async () => {
+    const user = userEvent.setup();
+    render(<ClientStatusBar />);
+    const auth = useAppStore.getState().state.auth;
+    apply({
+      kind: "Auth",
+      event: { ...auth, offlineGame: { detail: "Downloading ForgedAlliance.exe", progress: 40 } },
+    });
+
+    const label = "Setting up the game for offline play: Downloading ForgedAlliance.exe";
+    expect(bar(label).getAttribute("aria-valuenow")).toBe("40");
+    await user.click(screen.getByRole("button", { name: `Cancel: ${label}` }));
+    expect(sentCommands()).toEqual([{ kind: "Auth", command: { type: "cancelOfflineGame" } }]);
+
+    apply({ kind: "Auth", event: { ...auth, offlineGame: null } });
+    expect(screen.queryByRole("progressbar")).toBeNull();
   });
 
   it("measures a download into the library and cancels that download alone", async () => {

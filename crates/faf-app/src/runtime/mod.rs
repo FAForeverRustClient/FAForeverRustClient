@@ -1753,6 +1753,16 @@ mod tests {
         .await;
     }
 
+    #[tokio::test]
+    async fn an_offline_game_launch_overtaken_by_its_cancel_is_dropped() {
+        use faf_domain::state::AuthCommand;
+        assert_a_start_overtaken_by_its_cancel_is_dropped(
+            AuthCommand::LaunchOfflineGame.into(),
+            AuthCommand::CancelOfflineGame.into(),
+        )
+        .await;
+    }
+
     /// Play installs first when it has to, so the install's cancel drops a
     /// queued Play as well as a queued Install.
     #[tokio::test]

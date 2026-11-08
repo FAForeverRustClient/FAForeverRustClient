@@ -1,0 +1,1 @@
+- Play offline explains on the login screen when FAF hasn't set the game up on this computer yet. Signed in, it now downloads the game first, with a notification and Cancel in the status bar, instead of refusing.

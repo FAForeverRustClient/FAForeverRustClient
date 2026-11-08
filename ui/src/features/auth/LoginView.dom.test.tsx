@@ -10,7 +10,7 @@ import { useAppStore } from "../../store/store";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { AuthState } from "../../ipc/bindings";
+import type { AuthState, InstallState } from "../../ipc/bindings";
 import { en } from "../../i18n/catalog/en";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, sentCommands } from "../../testing/mounted";
@@ -101,5 +101,34 @@ describe("a sign-in whose browser never appeared", () => {
     const field = screen.getByRole<HTMLInputElement>("textbox", { name: en["auth.linkLabel"] });
     expect(document.activeElement).toBe(field);
     expect(screen.getByRole("button", { name: en["auth.copyLink"] })).toBeTruthy();
+  });
+});
+
+describe("Play offline on a machine FAF has not set the game up on", () => {
+  const install = (patch: Partial<InstallState>) =>
+    applyEvent({ kind: "Install", event: { ...useAppStore.getState().state.install, ...patch } });
+
+  it("says how to set it up before the click, and still lets the click check again", async () => {
+    const user = userEvent.setup();
+    render(<LoginView />);
+    // Nothing is said before the disk has been looked at.
+    expect(screen.queryByText(en["auth.offlineSetupPending"])).toBeNull();
+
+    install({ checked: true, gameReady: false, gamePending: true });
+    expect(screen.getByText(en["auth.offlineSetupPending"])).toBeTruthy();
+    const play = screen.getByRole<HTMLButtonElement>("button", { name: en["auth.playOffline"] });
+    expect(play.disabled).toBe(false);
+    await user.click(play);
+    expect(authCommands()).toEqual([{ kind: "Auth", command: { type: "launchOfflineGame" } }]);
+  });
+
+  it("names the game path when an install was expected there, and goes once it is there", () => {
+    render(<LoginView />);
+    install({ checked: true, gameReady: false, gamePending: false });
+    expect(screen.getByText(en["auth.offlineSetupMissing"])).toBeTruthy();
+
+    install({ checked: true, gameReady: true, gamePending: false });
+    expect(screen.queryByText(en["auth.offlineSetupMissing"])).toBeNull();
+    expect(screen.queryByText(en["auth.offlineSetupPending"])).toBeNull();
   });
 });

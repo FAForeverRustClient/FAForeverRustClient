@@ -790,6 +790,20 @@ pub(crate) async fn prepare_featured_mod(
     out: &EventSink,
     called_off: &CancellationToken,
 ) -> Result<(), String> {
+    // Not narrated: nothing is being joined yet.
+    prepare_featured_mod_narrated(featured_mod, ctx, out, called_off, |_| {}).await
+}
+
+/// [`prepare_featured_mod`], handing each step that is still wanted to
+/// `narrate`: for work that has a progress line of its own, such as an
+/// offline game whose install has never been patched.
+pub(crate) async fn prepare_featured_mod_narrated(
+    featured_mod: &str,
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    called_off: &CancellationToken,
+    narrate: impl Fn(crate::ports::PreparationStep),
+) -> Result<(), String> {
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
     let Some(guard) = lock_preparation(called_off).await else {
         return Err(CALLED_OFF.to_string());
@@ -806,8 +820,7 @@ pub(crate) async fn prepare_featured_mod(
             called_off.clone(),
         )
         .await;
-    // Not narrated: nothing is being joined yet.
-    let outcome = drain_preparation(guard, updates, called_off, |_| {}).await;
+    let outcome = drain_preparation(guard, updates, called_off, narrate).await;
     if called_off.is_cancelled() {
         return Err(CALLED_OFF.to_string());
     }

@@ -143,6 +143,14 @@
   text-align: left;
 }
 
+/* Directly under the two offline buttons it is about, at the hint's size, so
+   it reads as part of that row rather than as a failure. */
+.status-notice.login-offline-setup {
+  margin: 10px 0 0;
+  font-size: 12px;
+  text-align: left;
+}
+
 .login-account-links {
   display: flex;
   flex-wrap: wrap;

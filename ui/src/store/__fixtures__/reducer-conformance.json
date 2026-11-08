@@ -6812,6 +6812,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -6821,6 +6822,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -6858,6 +6860,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": {
               "id": 7,
               "name": "Ada",
@@ -6871,6 +6874,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": {
                   "id": 7,
                   "name": "Ada",
@@ -6905,6 +6909,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -6914,6 +6919,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedOut"
@@ -6956,6 +6962,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": {
               "id": 7,
               "name": "Ada",
@@ -6969,6 +6976,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": {
                   "id": 7,
                   "name": "Ada",
@@ -7175,6 +7183,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -7184,6 +7193,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedOut"
@@ -7232,6 +7242,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": {
               "id": 42,
               "name": "Second",
@@ -7245,6 +7256,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": {
                   "id": 42,
                   "name": "Second",
@@ -7295,6 +7307,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -7304,6 +7317,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -7337,6 +7351,7 @@
           "expected": {
             "error": "the server did not answer",
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "failed"
@@ -7346,6 +7361,7 @@
               "auth": {
                 "error": "the server did not answer",
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "failed"
@@ -7376,6 +7392,7 @@
           "expected": {
             "error": null,
             "mode": "offline",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedIn"
@@ -7385,6 +7402,7 @@
               "auth": {
                 "error": null,
                 "mode": "offline",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedIn"
@@ -7415,6 +7433,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -7424,6 +7443,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedOut"
@@ -7459,6 +7479,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -7468,6 +7489,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -7505,6 +7527,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": {
               "id": 7,
               "name": "Ada",
@@ -7518,6 +7541,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": {
                   "id": 7,
                   "name": "Ada",
@@ -7555,6 +7579,7 @@
           "expected": {
             "error": "You are banned from FAF forever.",
             "mode": "offline",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedIn"
@@ -7564,6 +7589,7 @@
               "auth": {
                 "error": "You are banned from FAF forever.",
                 "mode": "offline",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedIn"
@@ -7594,6 +7620,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -7603,6 +7630,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedOut"
@@ -7641,6 +7669,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -7649,6 +7678,7 @@
             "event": {
               "error": null,
               "mode": "account",
+              "offlineGame": null,
               "player": null,
               "signInLink": null,
               "status": "loggedOut"
@@ -7666,6 +7696,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -7675,6 +7706,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -7708,6 +7740,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": "https://hydra.example/oauth2/auth?state=x",
             "status": "loggingIn"
@@ -7716,6 +7749,7 @@
             "event": {
               "error": null,
               "mode": "account",
+              "offlineGame": null,
               "player": null,
               "signInLink": "https://hydra.example/oauth2/auth?state=x",
               "status": "loggingIn"
@@ -7736,6 +7770,7 @@
           "expected": {
             "error": "Login timed out waiting for the browser.",
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "failed"
@@ -7745,6 +7780,7 @@
               "auth": {
                 "error": "Login timed out waiting for the browser.",
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "failed"
@@ -7768,6 +7804,192 @@
       ]
     },
     {
+      "name": "setting the offline game up shows its step and goes when it ends",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                }
+              },
+              "type": "loggedIn"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "offlineGame": null,
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "auth": {
+                "error": null,
+                "mode": "account",
+                "offlineGame": null,
+                "player": {
+                  "id": 7,
+                  "name": "Ada",
+                  "roles": []
+                },
+                "signInLink": null,
+                "status": "loggedIn"
+              },
+              "chat": {
+                "activeChannel": "",
+                "channels": [],
+                "retainedHistories": [],
+                "serverAutoJoin": [],
+                "showJoinsParts": false,
+                "status": "disconnected",
+                "username": ""
+              },
+              "notifications": {
+                "items": []
+              }
+            },
+            "kind": "AccountSession"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "detail": "Setting up the game",
+                "progress": null
+              },
+              "type": "offlineGamePreparing"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "offlineGame": {
+              "detail": "Setting up the game",
+              "progress": null
+            },
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "offlineGame": {
+                "detail": "Setting up the game",
+                "progress": null
+              },
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "detail": "Downloading ForgedAlliance.exe",
+                "progress": 40
+              },
+              "type": "offlineGamePreparing"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "offlineGame": {
+              "detail": "Downloading ForgedAlliance.exe",
+              "progress": 40
+            },
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "offlineGame": {
+                "detail": "Downloading ForgedAlliance.exe",
+                "progress": 40
+              },
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "offlineGamePreparationEnded"
+            },
+            "kind": "Auth"
+          },
+          "expected": {
+            "error": null,
+            "mode": "account",
+            "offlineGame": null,
+            "player": {
+              "id": 7,
+              "name": "Ada",
+              "roles": []
+            },
+            "signInLink": null,
+            "status": "loggedIn"
+          },
+          "update": {
+            "event": {
+              "error": null,
+              "mode": "account",
+              "offlineGame": null,
+              "player": {
+                "id": 7,
+                "name": "Ada",
+                "roles": []
+              },
+              "signInLink": null,
+              "status": "loggedIn"
+            },
+            "kind": "Auth"
+          }
+        }
+      ]
+    },
+    {
       "name": "auth failure keeps the error",
       "steps": [
         {
@@ -7780,6 +8002,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -7789,6 +8012,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -7822,6 +8046,7 @@
           "expected": {
             "error": "bad state",
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "failed"
@@ -7831,6 +8056,7 @@
               "auth": {
                 "error": "bad state",
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "failed"
@@ -104772,6 +104998,7 @@
           "expected": {
             "error": null,
             "mode": "test",
+            "offlineGame": null,
             "player": {
               "id": 7,
               "name": "Ada",
@@ -104785,6 +105012,7 @@
               "auth": {
                 "error": null,
                 "mode": "test",
+                "offlineGame": null,
                 "player": {
                   "id": 7,
                   "name": "Ada",
@@ -104819,6 +105047,7 @@
           "expected": {
             "error": null,
             "mode": "test",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggingIn"
@@ -104828,6 +105057,7 @@
               "auth": {
                 "error": null,
                 "mode": "test",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggingIn"
@@ -104861,6 +105091,7 @@
           "expected": {
             "error": "the test server refused the token",
             "mode": "test",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "failed"
@@ -104870,6 +105101,7 @@
               "auth": {
                 "error": "the test server refused the token",
                 "mode": "test",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "failed"
@@ -104907,6 +105139,7 @@
           "expected": {
             "error": null,
             "mode": "test",
+            "offlineGame": null,
             "player": {
               "id": 7,
               "name": "Ada",
@@ -104920,6 +105153,7 @@
               "auth": {
                 "error": null,
                 "mode": "test",
+                "offlineGame": null,
                 "player": {
                   "id": 7,
                   "name": "Ada",
@@ -104954,6 +105188,7 @@
           "expected": {
             "error": null,
             "mode": "account",
+            "offlineGame": null,
             "player": null,
             "signInLink": null,
             "status": "loggedOut"
@@ -104963,6 +105198,7 @@
               "auth": {
                 "error": null,
                 "mode": "account",
+                "offlineGame": null,
                 "player": null,
                 "signInLink": null,
                 "status": "loggedOut"
@@ -136875,6 +137111,7 @@
     "auth": {
       "error": null,
       "mode": "account",
+      "offlineGame": null,
       "player": null,
       "signInLink": null,
       "status": "loggedOut"

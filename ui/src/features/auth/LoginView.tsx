@@ -95,6 +95,12 @@ export function LoginView() {
   // credential-free login only produces a working session there; see
   // `SessionState::offline_auth`.
   const offlineAuth = useAppStore((s) => s.state.session.offlineAuth);
+  // FAF's copy of the game, which Play offline starts. It only exists once
+  // the client has set it up, and signed out it cannot, so a fresh machine
+  // is told how before the click rather than after it. `checked` keeps the
+  // note from flashing up before the first look at the disk.
+  const gameMissing = useAppStore((s) => s.state.install.checked && !s.state.install.gameReady);
+  const gamePending = useAppStore((s) => s.state.install.gamePending);
   const [remember, setRemember] = useState(generalPreferences.autoLogin ?? true);
   // What was pressed last, so Retry beside a failure does that again rather
   // than always signing in: "Forged Alliance is already running" answered the
@@ -175,6 +181,13 @@ export function LoginView() {
             <Icon name="replays" size={15} /> {t("auth.localReplays")}
           </Button>
         </div>
+        {/* The button stays: the install may have arrived since the last
+            look, and the click checks again and says why if not. */}
+        {gameMissing && (
+          <StatusNotice tone="info" className="login-offline-setup">
+            {t(gamePending ? "auth.offlineSetupPending" : "auth.offlineSetupMissing")}
+          </StatusNotice>
+        )}
         <p className="login-hint">{t("auth.playOfflineHint")}</p>
 
         <label className="login-remember">

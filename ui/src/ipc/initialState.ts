@@ -32,7 +32,8 @@ export const INITIAL_STATE: AppState = {
     "player": null,
     "error": null,
     "mode": "account",
-    "signInLink": null
+    "signInLink": null,
+    "offlineGame": null
   },
   "nav": {
     "activeTab": "news",

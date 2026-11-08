@@ -120,6 +120,26 @@ pub struct AuthState {
     /// public authorize address; the secret half of the exchange never
     /// leaves the client. Cleared by everything that ends the attempt.
     pub sign_in_link: Option<String>,
+    /// A signed-in player's "Play offline" that is setting the game up first,
+    /// while it does.
+    ///
+    /// FAF's copy of the game only exists once the client has patched it,
+    /// which used to happen only when somebody played or watched a game. A
+    /// player who signed in on a fresh machine and asked for an offline game
+    /// was refused, although the client could fetch the files right then.
+    /// Now it does, and this is what the status bar shows while it runs.
+    pub offline_game: Option<OfflineGamePreparation>,
+}
+
+/// One step of setting the game up for an offline start. See
+/// [`AuthState::offline_game`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct OfflineGamePreparation {
+    /// What the updater is doing now, in its own words.
+    pub detail: String,
+    /// A measured share, when the step has one.
+    pub progress: Option<u8>,
 }
 
 /// The only way [`AuthState`] changes.
@@ -154,6 +174,14 @@ pub enum AuthEvent {
         message: String,
     },
     LoggedOut,
+    /// The offline game is being set up before it starts. Replaces the step
+    /// before it. See [`AuthState::offline_game`].
+    OfflineGamePreparing {
+        detail: String,
+        progress: Option<u8>,
+    },
+    /// Setting the offline game up ended, however it ended.
+    OfflineGamePreparationEnded,
 }
 
 impl AuthEvent {
@@ -161,7 +189,9 @@ impl AuthEvent {
     /// the previous account's in-memory activity. Socket reconnects do not.
     pub fn resets_account_activity(&self) -> bool {
         match self {
-            Self::SignInLinkReady { .. } => false,
+            Self::SignInLinkReady { .. }
+            | Self::OfflineGamePreparing { .. }
+            | Self::OfflineGamePreparationEnded => false,
             Self::LoginStarted
             | Self::LoggedIn { .. }
             | Self::TestLoggedIn { .. }
@@ -192,7 +222,14 @@ pub enum AuthCommand {
     /// in: the Java client's "Play Offline" (#397). Skirmish against the AI
     /// needs no server. A failure is reported as a failed login, which is what
     /// the login screen it is started from shows.
+    ///
+    /// A signed-in player whose install has no FAF files yet gets them first:
+    /// the same featured-mod update an online game runs, narrated in
+    /// [`AuthState::offline_game`] and stopped by [`Self::CancelOfflineGame`].
+    /// Signed out, it is refused with how to get them.
     LaunchOfflineGame,
+    /// Stop setting the offline game up. The game is not started afterwards.
+    CancelOfflineGame,
     LoginTest,
     Logout,
     LogoutTest,
@@ -252,6 +289,19 @@ pub fn reduce(state: &mut AuthState, event: &AuthEvent) {
             state.error = None;
             state.mode = AuthMode::Account;
         }
+        // Neither has anything to do with a sign-in attempt, so the link of
+        // one in progress stays.
+        AuthEvent::OfflineGamePreparing { detail, progress } => {
+            state.offline_game = Some(OfflineGamePreparation {
+                detail: detail.clone(),
+                progress: *progress,
+            });
+            return;
+        }
+        AuthEvent::OfflineGamePreparationEnded => {
+            state.offline_game = None;
+            return;
+        }
     }
     // Every event but the link itself ends or restarts the attempt it was for.
     if !matches!(event, AuthEvent::LoginStarted) {
@@ -304,6 +354,31 @@ mod tests {
         reduce(&mut s, &link());
         reduce(&mut s, &AuthEvent::LoginStarted);
         assert_eq!(s.sign_in_link, None, "a new attempt waits for its own link");
+    }
+
+    #[test]
+    fn offline_game_preparation_shows_its_step_and_leaves_the_session_alone() {
+        let mut s = AuthState::default();
+        reduce(&mut s, &AuthEvent::LoggedIn { player: player() });
+        let before = s.clone();
+        reduce(
+            &mut s,
+            &AuthEvent::OfflineGamePreparing {
+                detail: "Downloading ForgedAlliance.exe".into(),
+                progress: Some(40),
+            },
+        );
+        assert_eq!(
+            s.offline_game,
+            Some(OfflineGamePreparation {
+                detail: "Downloading ForgedAlliance.exe".into(),
+                progress: Some(40),
+            })
+        );
+        assert_eq!(s.player, before.player);
+        reduce(&mut s, &AuthEvent::OfflineGamePreparationEnded);
+        assert_eq!(s, before);
+        assert!(!AuthEvent::OfflineGamePreparationEnded.resets_account_activity());
     }
 
     #[test]
