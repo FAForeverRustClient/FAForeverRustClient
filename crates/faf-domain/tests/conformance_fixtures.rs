@@ -5081,45 +5081,37 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
-            "a channel's history arrives in one step, without repeats or unread",
+            "history arrives in one step, earlier history in front, without repeats",
             vec![
-                ChatEvent::Connected {
-                    username: "Aurora".into(),
-                }
-                .into(),
-                ChatEvent::ChannelJoined {
-                    channel: "#aeolus".into(),
-                }
-                .into(),
                 ChatEvent::MessageReceived {
                     channel: "#aeolus".into(),
-                    message: chat_message("Bob", "already on screen"),
+                    message: chat_message("Bob", "third"),
                 }
                 .into(),
                 ChatEvent::HistoryReceived {
                     channel: "#aeolus".into(),
                     messages: vec![
                         ChatMessage {
-                            id: "h1".into(),
-                            timestamp: "2026-01-01T00:00:01Z".into(),
-                            ..chat_message("Cid", "gg")
+                            id: "replayed".into(),
+                            ..chat_message("Bob", "third")
                         },
-                        ChatMessage {
-                            id: "h2".into(),
-                            ..chat_message("Bob", "already on screen")
-                        },
-                        ChatMessage {
-                            id: "h3".into(),
-                            timestamp: "2026-01-01T00:00:03Z".into(),
-                            ..chat_message("Aurora", "Aurora: hello")
-                        },
+                        chat_message("Aurora", "fourth"),
                     ],
+                    earlier: false,
+                    more_before: true,
                 }
                 .into(),
-                // History for a conversation not open yet opens it.
+                // Scrolled up: in front, a repeat in the answer dropped, and a
+                // short answer means there is nothing earlier.
                 ChatEvent::HistoryReceived {
-                    channel: "Bob".into(),
-                    messages: vec![chat_message("Bob", "earlier")],
+                    channel: "#aeolus".into(),
+                    messages: vec![
+                        chat_message("Ann", "first"),
+                        chat_message("Ann", "first"),
+                        chat_message("Bob", "second"),
+                    ],
+                    earlier: true,
+                    more_before: false,
                 }
                 .into(),
             ],

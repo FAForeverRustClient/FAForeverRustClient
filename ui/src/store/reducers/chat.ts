@@ -1,7 +1,8 @@
 import type { ChatChannel, ChatEvent, ChatMessage, ChatState, ChatUser, Reaction } from "../../ipc/bindings";
 
 const DEFAULT_CHANNEL = "#aeolus";
-const MAX_MESSAGES = 500;
+/** Also how far back scrolling up can load earlier history. */
+const MAX_MESSAGES = 1000;
 /** Joins, parts and the like, counted apart from the conversation (#441). */
 const MAX_INFO_MESSAGES = 500;
 
@@ -85,18 +86,26 @@ function answers(messages: readonly ChatMessage[], replyTo: string, username: st
  * untagged line the server tags on replay, stamped by our clock rather than
  * the server's, so a tagged line matches an untagged one without the time.
  */
-function holds(messages: readonly ChatMessage[], incoming: ChatMessage): boolean {
+/** Whether `incoming` is the line `held` already is. Twin of `same_line`. */
+function sameLine(held: ChatMessage, incoming: ChatMessage): boolean {
   const incomingId = incoming.msgid ?? "";
-  return messages.some((held) => {
-    const heldId = held.msgid ?? "";
-    if (heldId !== "" && incomingId !== "") return heldId === incomingId;
-    return (
-      held.sender === incoming.sender &&
-      held.content === incoming.content &&
-      held.kind === incoming.kind &&
-      (held.timestamp === incoming.timestamp || (heldId === "" && incomingId !== ""))
-    );
-  });
+  const heldId = held.msgid ?? "";
+  if (heldId !== "" && incomingId !== "") return heldId === incomingId;
+  return (
+    held.sender === incoming.sender &&
+    held.content === incoming.content &&
+    held.kind === incoming.kind &&
+    (held.timestamp === incoming.timestamp || (heldId === "" && incomingId !== ""))
+  );
+}
+
+function holds(messages: readonly ChatMessage[], incoming: ChatMessage): boolean {
+  return messages.some((held) => sameLine(held, incoming));
+}
+
+/** Twin of `ChatChannel::history_full`. */
+function historyFull(messages: readonly ChatMessage[]): boolean {
+  return messages.filter((message) => message.kind !== "info").length >= MAX_MESSAGES;
 }
 
 /**
@@ -181,6 +190,7 @@ const emptyChannel = (name: string): ChatChannel => ({
   unreadMentions: 0,
   typing: [],
   reactions: [],
+  historyExhausted: false,
 });
 
 /** Mirrors `TYPING_TIMEOUT_SECONDS` in crates/faf-domain/src/state/chat.rs. */
@@ -368,15 +378,22 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
     }
     case "historyReceived": {
       // A conversation's backfill in one step, twin of `HistoryReceived` in
-      // faf-domain: a line on screen is not added twice, and the bounds apply
-      // once at the end.
-      const { channel, messages: backfill } = event.payload;
+      // faf-domain: a line on screen is not added twice, earlier history goes
+      // in front, and the bounds apply once at the end.
+      const { channel, messages: backfill, earlier, moreBefore } = event.payload;
       return mapChannel(state, channel, (current) => {
-        const messages = [...current.messages];
+        const fresh: ChatMessage[] = [];
         for (const message of backfill) {
-          if (!holds(messages, message)) messages.push(message);
+          if (!holds(current.messages, message) && !holds(fresh, message)) fresh.push(message);
         }
-        return { ...current, messages: capMessages(messages) };
+        const messages = capMessages(
+          earlier ? [...fresh, ...current.messages] : [...current.messages, ...fresh],
+        );
+        return {
+          ...current,
+          messages,
+          historyExhausted: !moreBefore || historyFull(messages),
+        };
       });
     }
     case "usersUpdated":

@@ -47,6 +47,11 @@ const MAX_REACTION_EVENTS: usize = 4096;
 pub(crate) enum Outgoing {
     Line(String),
     PrivateHistory(String),
+    /// The history before the line with server id `before`, for scrolling up.
+    EarlierHistory {
+        channel: String,
+        before: String,
+    },
     ClosePrivate(String),
     Unreact {
         channel: String,
@@ -65,8 +70,12 @@ struct ReactionEvent {
 }
 
 /// How much backlog to pull when a channel opens: enough to see what the
-/// conversation is about, not a whole evening of #aeolus.
-const CHANNEL_HISTORY_LINES: u32 = 100;
+/// conversation is about, not a whole evening of #aeolus. Scrolling up loads
+/// more ([`EARLIER_HISTORY_LINES`] at a time).
+const CHANNEL_HISTORY_LINES: u32 = 200;
+
+/// How much earlier history one scroll to the top asks for.
+const EARLIER_HISTORY_LINES: u32 = 100;
 
 /// How much backlog to pull when a private conversation opens. Kept at the
 /// scrollback's own bound: these are the player's own conversations, and far
@@ -129,6 +138,11 @@ pub(crate) enum Effect {
     History {
         channel: String,
         lines: Vec<HistoryLine>,
+        /// Asked for by scrolling up: from before everything shown.
+        earlier: bool,
+        /// Whether the server may have more before these: it answered with
+        /// as many lines as were asked for.
+        more_before: bool,
     },
     /// Whether the server granted `message-tags`.
     ///
@@ -216,6 +230,28 @@ pub(crate) struct SessionState {
     /// What each open outermost history batch has produced so far, handed
     /// over when it ends. See [`handle_line`].
     history_held: BTreeMap<String, Vec<Effect>>,
+    /// History asked for and not answered yet, by lowercased target.
+    history_requests: BTreeMap<String, HistoryRequest>,
+    /// What each open outermost history batch answers.
+    history_answers: BTreeMap<String, HistoryAnswer>,
+}
+
+/// One `CHATHISTORY` request still waiting for its batch.
+#[derive(Debug, Clone)]
+struct HistoryRequest {
+    /// The conversation as the client named it, so an empty answer lands in
+    /// the conversation that asked and not in one spelled the server's way.
+    channel: String,
+    earlier: bool,
+    limit: u32,
+}
+
+/// The request an open history batch answers, and how many lines it has
+/// brought so far.
+#[derive(Debug, Clone)]
+struct HistoryAnswer {
+    request: HistoryRequest,
+    lines: u32,
 }
 
 impl SessionState {
@@ -233,6 +269,8 @@ impl SessionState {
             redacted: VecDeque::new(),
             history_batches: BTreeMap::new(),
             history_held: BTreeMap::new(),
+            history_requests: BTreeMap::new(),
+            history_answers: BTreeMap::new(),
         }
     }
 
@@ -283,14 +321,63 @@ fn request_history(channel: &str, state: &mut SessionState) -> Vec<Effect> {
     {
         return Vec::new();
     }
-    let lines = if channel.starts_with('#') {
+    let limit = latest_history_lines(channel);
+    state.history_requests.insert(
+        channel.to_ascii_lowercase(),
+        HistoryRequest {
+            channel: channel.to_string(),
+            earlier: false,
+            limit,
+        },
+    );
+    vec![Effect::Send(irc::format_line(
+        "CHATHISTORY",
+        &["LATEST", channel, "*", &limit.to_string()],
+    ))]
+}
+
+/// How many lines opening `channel` asks for.
+fn latest_history_lines(channel: &str) -> u32 {
+    if channel.starts_with('#') {
         CHANNEL_HISTORY_LINES
     } else {
         PRIVATE_HISTORY_LINES
-    };
+    }
+}
+
+/// Ask for the history before the line with server id `before`.
+///
+/// Only with batch framing: the answer has to be told apart from live lines,
+/// and an empty batch is how the server says there is nothing earlier. Both
+/// names end up inside the request line, so anything that could split it is
+/// refused rather than sent.
+fn request_earlier_history(channel: &str, before: &str, state: &mut SessionState) -> Vec<Effect> {
+    let splits =
+        |text: &str| text.is_empty() || text.starts_with(':') || text.contains(char::is_whitespace);
+    if !state.registered
+        || !state.caps.contains("draft/chathistory")
+        || !state.caps.contains("batch")
+        || splits(channel)
+        || splits(before)
+    {
+        return Vec::new();
+    }
+    state.history_requests.insert(
+        channel.to_ascii_lowercase(),
+        HistoryRequest {
+            channel: channel.to_string(),
+            earlier: true,
+            limit: EARLIER_HISTORY_LINES,
+        },
+    );
     vec![Effect::Send(irc::format_line(
         "CHATHISTORY",
-        &["LATEST", channel, "*", &lines.to_string()],
+        &[
+            "BEFORE",
+            channel,
+            &format!("msgid={before}"),
+            &EARLIER_HISTORY_LINES.to_string(),
+        ],
     ))]
 }
 
@@ -298,6 +385,9 @@ pub(crate) fn outgoing(frame: Outgoing, state: &mut SessionState) -> Vec<Effect>
     match frame {
         Outgoing::Line(line) => vec![Effect::Send(line)],
         Outgoing::PrivateHistory(channel) => request_history(&channel, state),
+        Outgoing::EarlierHistory { channel, before } => {
+            request_earlier_history(&channel, &before, state)
+        }
         Outgoing::ClosePrivate(channel) => {
             state.history_asked.remove(&channel.to_ascii_lowercase());
             Vec::new()
@@ -394,6 +484,11 @@ pub(crate) fn handle_line(
 
     let mut effects = decide_line(line, state, ctx);
     if let Some(root) = held_by {
+        if line.command != "BATCH" {
+            if let Some(answer) = state.history_answers.get_mut(&root) {
+                answer.lines = answer.lines.saturating_add(1);
+            }
+        }
         let (live, held): (Vec<_>, Vec<_>) = effects
             .into_iter()
             .partition(|effect| !matches!(effect, Effect::Message { .. } | Effect::Emit(_)));
@@ -404,7 +499,8 @@ pub(crate) fn handle_line(
     }
     if let Some(root) = ending {
         let held = state.history_held.remove(&root).unwrap_or_default();
-        let mut released = release_history(held);
+        let answer = state.history_answers.remove(&root);
+        let mut released = release_history(held, answer);
         released.append(&mut effects);
         effects = released;
     }
@@ -414,7 +510,16 @@ pub(crate) fn handle_line(
 /// A finished history batch's effects, in the order [`handle_line`] hands
 /// them over: one [`Effect::History`] per conversation, in the order each
 /// first appeared, then everything else as it came.
-fn release_history(held: Vec<Effect>) -> Vec<Effect> {
+///
+/// An answer without a single message still says so, for the conversation
+/// that asked: that is how scrolling up learns there is nothing earlier.
+fn release_history(held: Vec<Effect>, answer: Option<HistoryAnswer>) -> Vec<Effect> {
+    let earlier = answer.as_ref().is_some_and(|answer| answer.request.earlier);
+    // Counted in lines the server sent, replayed joins and parts included,
+    // because its limit counts those too.
+    let more_before = answer
+        .as_ref()
+        .is_none_or(|answer| answer.lines >= answer.request.limit);
     let mut histories: Vec<(String, Vec<HistoryLine>)> = Vec::new();
     let mut rest = Vec::new();
     for effect in held {
@@ -444,9 +549,19 @@ fn release_history(held: Vec<Effect>) -> Vec<Effect> {
             None => histories.push((channel, vec![line])),
         }
     }
+    if histories.is_empty() {
+        if let Some(answer) = answer {
+            histories.push((answer.request.channel, Vec::new()));
+        }
+    }
     histories
         .into_iter()
-        .map(|(channel, lines)| Effect::History { channel, lines })
+        .map(|(channel, lines)| Effect::History {
+            channel,
+            lines,
+            earlier,
+            more_before,
+        })
         .chain(rest)
         .collect()
 }
@@ -480,6 +595,20 @@ fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionConte
                         .is_some_and(|kind| kind.contains("chathistory"));
                     let root = outer.or_else(|| history.then(|| id.to_string()));
                     if let Some(root) = root.filter(|_| state.history_batches.len() < 64) {
+                        if root == id {
+                            let target = line.params.get(2).cloned().unwrap_or_default();
+                            let request = state
+                                .history_requests
+                                .remove(&target.to_ascii_lowercase())
+                                .unwrap_or_else(|| HistoryRequest {
+                                    limit: latest_history_lines(&target),
+                                    channel: target,
+                                    earlier: false,
+                                });
+                            state
+                                .history_answers
+                                .insert(id.to_string(), HistoryAnswer { request, lines: 0 });
+                        }
                         state.history_batches.insert(id.to_string(), root);
                     }
                 }
@@ -1248,7 +1377,7 @@ mod tests {
         assert!(emitted(&first).contains(&&ChatUpdate::ChannelJoined("#uef".into())));
         assert_eq!(
             sent(&first),
-            vec!["CHATHISTORY LATEST #uef * 100"],
+            vec!["CHATHISTORY LATEST #uef * 200"],
             "the tab must not open empty"
         );
 
@@ -1803,7 +1932,7 @@ mod reference_chat_tests {
         // Channels keep asking, as they always have.
         assert_eq!(
             request_history("#aeolus", &mut state),
-            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 100".into())]
+            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 200".into())]
         );
     }
 
@@ -1826,7 +1955,7 @@ mod reference_chat_tests {
         .is_empty());
         assert!(matches!(
             line(&mut state, "BATCH -h1").as_slice(),
-            [Effect::History { channel, lines }] if channel == "#aeolus" && lines.len() == 1
+            [Effect::History { channel, lines, .. }] if channel == "#aeolus" && lines.len() == 1
         ));
         // Live again once the batch ends.
         assert!(!line(&mut state, ":Ada!u@h PART #aeolus").is_empty());
@@ -1842,7 +1971,7 @@ mod reference_chat_tests {
         assert!(line(&mut state, "@batch=h1 BATCH -m1").is_empty());
         assert!(matches!(
             line(&mut state, "BATCH -h1").as_slice(),
-            [Effect::History { channel, lines }] if channel == "Bob" && lines[0].content == "old"
+            [Effect::History { channel, lines, .. }] if channel == "Bob" && lines[0].content == "old"
         ));
     }
 
@@ -1870,7 +1999,7 @@ mod reference_chat_tests {
         assert!(!line(&mut state, ":Dan!u@h PRIVMSG #aeolus :live").is_empty());
 
         let released = line(&mut state, "BATCH -h1");
-        let [Effect::History { channel, lines }, Effect::Emit(ChatUpdate::Reaction { msgid, .. })] =
+        let [Effect::History { channel, lines, .. }, Effect::Emit(ChatUpdate::Reaction { msgid, .. })] =
             released.as_slice()
         else {
             panic!("expected the history, then the reaction: {released:?}");
@@ -1904,6 +2033,121 @@ mod reference_chat_tests {
     }
 
     #[test]
+    fn scrolling_up_asks_for_the_hundred_lines_before_the_oldest() {
+        let mut state = state();
+        assert_eq!(
+            outgoing(
+                Outgoing::EarlierHistory {
+                    channel: "#aeolus".into(),
+                    before: "m1".into(),
+                },
+                &mut state,
+            ),
+            vec![Effect::Send(
+                "CHATHISTORY BEFORE #aeolus msgid=m1 100".into()
+            )]
+        );
+        // Nothing that could split the request line, and nothing without
+        // batch framing to tell the answer apart.
+        for (channel, before) in [("#aeolus", "m 1"), ("#aeolus", ":m1"), ("", "m1")] {
+            let earlier = Outgoing::EarlierHistory {
+                channel: channel.into(),
+                before: before.into(),
+            };
+            assert!(
+                outgoing(earlier, &mut state).is_empty(),
+                "{channel:?} {before:?}"
+            );
+        }
+        state.caps.remove("batch");
+        let earlier = Outgoing::EarlierHistory {
+            channel: "#aeolus".into(),
+            before: "m1".into(),
+        };
+        assert!(outgoing(earlier, &mut state).is_empty());
+    }
+
+    #[test]
+    fn an_earlier_answer_is_marked_and_says_whether_there_is_more() {
+        let mut state = state();
+        let earlier = || Outgoing::EarlierHistory {
+            channel: "#aeolus".into(),
+            before: "m500".into(),
+        };
+        outgoing(earlier(), &mut state);
+        line(&mut state, "BATCH +e1 chathistory #aeolus");
+        for i in 0..EARLIER_HISTORY_LINES {
+            line(
+                &mut state,
+                &format!("@batch=e1;msgid=e{i} :Bob!u@h PRIVMSG #aeolus :{i}"),
+            );
+        }
+        assert!(matches!(
+            line(&mut state, "BATCH -e1").as_slice(),
+            [Effect::History { earlier: true, more_before: true, lines, .. }]
+                if lines.len() == EARLIER_HISTORY_LINES as usize
+        ));
+
+        // A short answer means the server has nothing before it.
+        outgoing(earlier(), &mut state);
+        line(&mut state, "BATCH +e2 chathistory #aeolus");
+        line(
+            &mut state,
+            "@batch=e2;msgid=x :Bob!u@h PRIVMSG #aeolus :first ever",
+        );
+        assert!(matches!(
+            line(&mut state, "BATCH -e2").as_slice(),
+            [Effect::History {
+                earlier: true,
+                more_before: false,
+                ..
+            }]
+        ));
+    }
+
+    #[test]
+    fn an_empty_answer_still_reaches_the_conversation_that_asked() {
+        let mut state = state();
+        outgoing(
+            Outgoing::EarlierHistory {
+                channel: "Bob".into(),
+                before: "m1".into(),
+            },
+            &mut state,
+        );
+        // The server spells the target its own way.
+        line(&mut state, "BATCH +e1 chathistory bob");
+        assert_eq!(
+            line(&mut state, "BATCH -e1"),
+            vec![Effect::History {
+                channel: "Bob".into(),
+                lines: Vec::new(),
+                earlier: true,
+                more_before: false,
+            }]
+        );
+    }
+
+    #[test]
+    fn opening_a_channel_is_not_earlier_history() {
+        let mut state = state();
+        request_history("#aeolus", &mut state);
+        line(&mut state, "BATCH +h1 chathistory #aeolus");
+        line(
+            &mut state,
+            "@batch=h1;msgid=m1 :Bob!u@h PRIVMSG #aeolus :hi",
+        );
+        assert!(matches!(
+            line(&mut state, "BATCH -h1").as_slice(),
+            [Effect::History {
+                earlier: false,
+                more_before: false,
+                ..
+            }]
+        ));
+    }
+
+    #[test]
     fn private_conversations_ask_for_more_history_than_channels() {
         let mut state = state();
         assert_eq!(
@@ -1912,7 +2156,7 @@ mod reference_chat_tests {
         );
         assert_eq!(
             request_history("#aeolus", &mut state),
-            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 100".into())]
+            vec![Effect::Send("CHATHISTORY LATEST #aeolus * 200".into())]
         );
     }
     #[test]
@@ -2023,7 +2267,7 @@ mod reference_chat_tests {
             line(&mut state, ":Ada!u@h JOIN #MixedCase");
             line(&mut state, departure);
             assert!(line(&mut state, ":Ada!u@h JOIN #MixedCase")
-                .contains(&Effect::Send("CHATHISTORY LATEST #MixedCase * 100".into())));
+                .contains(&Effect::Send("CHATHISTORY LATEST #MixedCase * 200".into())));
         }
     }
     #[test]

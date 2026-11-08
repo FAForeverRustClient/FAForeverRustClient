@@ -431,7 +431,8 @@ fn chat(command: &ChatCommand) -> CommandPolicy {
         | ChatCommand::SetShowJoinsParts { .. }
         | ChatCommand::SetTyping { .. }
         | ChatCommand::React { .. }
-        | ChatCommand::Unreact { .. } => ORDINARY,
+        | ChatCommand::Unreact { .. }
+        | ChatCommand::LoadEarlierHistory { .. } => ORDINARY,
         ChatCommand::Disconnect => release(Pair::Chat),
     }
 }

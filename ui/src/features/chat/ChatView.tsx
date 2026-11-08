@@ -247,6 +247,14 @@ export function ChatView() {
     (msgid: string, emoji: string) => void unreact(activeName, msgid, emoji),
     [activeName],
   );
+  const loadEarlierInActive = useCallback(
+    () =>
+      ipc.send({
+        kind: "Chat",
+        command: { type: "loadEarlierHistory", payload: { channel: activeName } },
+      }),
+    [activeName],
+  );
   const replyToMessage = useCallback(
     (message: ChatMessage) => setReplyTo({ msgid: message.msgid ?? "", sender: message.sender }),
     [],
@@ -406,6 +414,8 @@ export function ChatView() {
             conversationLabel={partyChannelLabel(active.name)}
             searchRequest={searchRequest}
             onGameLink={activateGameLink}
+            onLoadEarlier={loadEarlierInActive}
+            earlierExhausted={active.historyExhausted}
           />
         ) : (
           <div className="chat-scroll-wrap">

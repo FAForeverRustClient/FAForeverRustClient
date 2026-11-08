@@ -34,9 +34,10 @@
 //! Two behaviours are lifted from the Python client because they're what make
 //! the channel usable rather than merely connected:
 //!
-//! * **History backfill.** Right after joining we ask for
-//!   `CHATHISTORY LATEST <channel> * 500`, so opening the tab shows the
-//!   conversation already in progress instead of an empty pane. This is also
+//! * **History backfill.** Right after joining we ask for the latest lines
+//!   (`CHATHISTORY LATEST`, 200 for a channel), so opening the tab shows the
+//!   conversation already in progress instead of an empty pane, and
+//!   scrolling to the top asks for the lines before those. This is also
 //!   why `server-time` is negotiated: replayed lines carry their original
 //!   instant in a `@time` tag, and without it they'd all be stamped "now".
 //! * **Reconnection.** A dropped socket is retried with a backoff instead of
@@ -409,6 +410,13 @@ impl ChatPort for IrcClient {
             tracing::warn!(%channel, "chat join ignored because there is no active connection");
         }
         // The server's own JOIN echo confirms it; no optimistic event here.
+    }
+
+    fn load_earlier_history(&self, channel: String, before_msgid: String) {
+        self.send(irc_session::Outgoing::EarlierHistory {
+            channel,
+            before: before_msgid,
+        });
     }
 
     fn leave_channel(&self, channel: String, reason: String) {
@@ -816,14 +824,24 @@ where
                 .await)
                 .then_some(SessionEnd::Cancelled)
         }
-        Effect::History { channel, lines } => {
+        Effect::History {
+            channel,
+            lines,
+            earlier,
+            more_before,
+        } => {
             let messages = lines
                 .into_iter()
                 .map(|line| params.emitter.chat_message(line))
                 .collect();
             (!params
                 .emitter
-                .send(ChatUpdate::History { channel, messages })
+                .send(ChatUpdate::History {
+                    channel,
+                    messages,
+                    earlier,
+                    more_before,
+                })
                 .await)
                 .then_some(SessionEnd::Cancelled)
         }

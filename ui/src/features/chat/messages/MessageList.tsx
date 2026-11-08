@@ -77,6 +77,14 @@ interface Props {
    * beside another, which would otherwise open its bar at the same time.
    */
   searchable?: boolean;
+  /**
+   * Ask the server for the history before the oldest line, once the reader
+   * reaches the top of what is loaded. Omitted where there is no server
+   * history to ask for. Keep it stable (`useCallback`).
+   */
+  onLoadEarlier?: () => void;
+  /** Nothing earlier to load: the server has no more, or the conversation keeps no more. */
+  earlierExhausted?: boolean;
 }
 
 /** `msgid -> reactions`, so a row looks its own up without scanning a list. */
@@ -98,6 +106,9 @@ const noReact = () => {};
  */
 /** How long the log stays quiet after older history is revealed above it. */
 const REVEAL_QUIET_MS = 1_000;
+
+/** How long to wait for earlier history before offering to ask again. */
+const EARLIER_HISTORY_WAIT_MS = 10_000;
 
 /**
  * Whether the scrollback should announce what is added to it.
@@ -148,6 +159,8 @@ export const MessageList = memo(function MessageList({
   lineActions,
   isAnnouncement,
   searchable = true,
+  onLoadEarlier,
+  earlierExhausted = false,
 }: Props) {
   const { t } = useTranslation();
   const reactable = onReact !== undefined;
@@ -195,6 +208,18 @@ export const MessageList = memo(function MessageList({
     [social.friends, social.foes]);
 
   const isFiltered = searchOpen && search.trim().length > 0;
+
+  // Where the log stood after the last commit or scroll, for keeping the lines
+  // on screen in place when earlier history arrives in front of them.
+  const lastScrollRef = useRef({ height: 0, top: 0, shown: 0 });
+  const [awaitingEarlier, setAwaitingEarlier] = useState(false);
+  const loadingEarlier = awaitingEarlier && !earlierExhausted;
+  useEffect(() => {
+    if (!loadingEarlier) return;
+    const timeout = window.setTimeout(() => setAwaitingEarlier(false), EARLIER_HISTORY_WAIT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [loadingEarlier]);
+
   const displayedMessages = useMemo(() => isFiltered
     ? messages
     : messages.slice(Math.max(0, messages.length - visibleLimit)), [isFiltered, messages, visibleLimit]);
@@ -207,6 +232,13 @@ export const MessageList = memo(function MessageList({
     startsNewDay(message.timestamp, displayedMessages[i - 1]?.timestamp, today)),
     [displayedMessages, today]);
   const hasOlder = !isFiltered && displayedMessages.length < messages.length;
+  const canLoadEarlier =
+    onLoadEarlier !== undefined && !earlierExhausted && !isFiltered && messages.length > 0;
+  const requestEarlier = useCallback(() => {
+    if (!canLoadEarlier || loadingEarlier) return;
+    setAwaitingEarlier(true);
+    onLoadEarlier?.();
+  }, [canLoadEarlier, loadingEarlier, onLoadEarlier]);
 
   // Set in the same update that prepends the older rows, so the log is already
   // silent when they reach the DOM, and lifted again once a screen reader has
@@ -220,6 +252,9 @@ export const MessageList = memo(function MessageList({
     const timeout = window.setTimeout(() => setSettledReveals(reveals), REVEAL_QUIET_MS);
     return () => window.clearTimeout(timeout);
   }, [reveals, settledReveals]);
+
+  const oldestMessageId = messages[0]?.id;
+  const newestMessageId = messages[messages.length - 1]?.id;
 
   const loadOlder = useCallback(() => {
     if (scrollRef.current) {
@@ -242,6 +277,41 @@ export const MessageList = memo(function MessageList({
       prevScrollTopRef.current = null;
     }
   }, [displayedMessages.length]);
+
+  // Earlier history lands in front of the lines on screen: the oldest line
+  // changes and the newest does not. Before paint, the lines that were on
+  // screen go back where they were, and one page of the new ones is revealed
+  // above them, as "load older" does.
+  const previousEndsRef = useRef({ oldest: oldestMessageId, newest: newestMessageId });
+  useLayoutEffect(() => {
+    const previous = previousEndsRef.current;
+    previousEndsRef.current = { oldest: oldestMessageId, newest: newestMessageId };
+    const el = scrollRef.current;
+    if (
+      !el ||
+      isFiltered ||
+      previous.newest !== newestMessageId ||
+      previous.oldest === undefined ||
+      previous.oldest === oldestMessageId
+    ) {
+      return;
+    }
+    const prepended = messages.findIndex((message) => message.id === previous.oldest);
+    if (prepended <= 0) return;
+    const last = lastScrollRef.current;
+    el.scrollTop = last.top + (el.scrollHeight - last.height);
+    setAwaitingEarlier(false);
+    const limit = Math.min(
+      messages.length,
+      Math.max(displayedMessages.length, last.shown + Math.min(prepended, PREPEND_CHUNK_SIZE)),
+    );
+    if (limit > displayedMessages.length) {
+      prevScrollHeightRef.current = el.scrollHeight;
+      prevScrollTopRef.current = el.scrollTop;
+      setReveals((count) => count + 1);
+      setVisibleLimit(limit);
+    }
+  }, [oldestMessageId, newestMessageId, messages, isFiltered, displayedMessages.length]);
 
   const matchingIds = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
@@ -289,9 +359,9 @@ export const MessageList = memo(function MessageList({
   }, [activeMessageId]);
 
   // Layout effect so the jump happens before paint: no visible flick. Keyed
-  // on the newest message as well as the count: a full channel drops its
-  // oldest line for every new one, so from then on the count stays the same.
-  const newestMessageId = messages[messages.length - 1]?.id;
+  // on the newest message alone: a full channel drops its oldest line for
+  // every new one, so the count stops changing, and earlier history added in
+  // front changes the count without anything new having arrived.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -302,15 +372,17 @@ export const MessageList = memo(function MessageList({
     } else {
       setMissed(true);
     }
-  }, [messages.length, newestMessageId]);
+  }, [newestMessageId]);
 
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
     pinnedRef.current = el.scrollHeight - el.scrollTop - el.clientHeight <= STICK_THRESHOLD;
+    lastScrollRef.current = { ...lastScrollRef.current, height: el.scrollHeight, top: el.scrollTop };
     if (pinnedRef.current) setMissed(false);
-    if (el.scrollTop < 100 && hasOlder) {
-      loadOlder();
+    if (el.scrollTop < 100) {
+      if (hasOlder) loadOlder();
+      else requestEarlier();
     }
   };
 
@@ -328,6 +400,19 @@ export const MessageList = memo(function MessageList({
     scrollRef.current?.focus();
   };
   useOverlayLayer(searchOpen, closeSearch);
+
+  // Last of the layout effects, so it records where every other one left the
+  // log.
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      lastScrollRef.current = {
+        height: el.scrollHeight,
+        top: el.scrollTop,
+        shown: displayedMessages.length,
+      };
+    }
+  });
 
   const navigateSearch = (direction: -1 | 1) => {
     if (matchingIds.length === 0) return;
@@ -388,13 +473,25 @@ export const MessageList = memo(function MessageList({
             : t("chat.messages.log")
         }
       >
-        {hasOlder && (
+        {hasOlder ? (
           <div className="chat-older-messages">
             <button type="button" className="chat-older-btn" onClick={loadOlder}>
               {t("chat.loadOlder", { count: messages.length - displayedMessages.length })}
             </button>
           </div>
-        )}
+        ) : loadingEarlier ? (
+          <div className="chat-older-messages">
+            <span className="chat-older-status">{t("chat.loadingEarlier")}</span>
+          </div>
+        ) : canLoadEarlier ? (
+          // Scrolling to the top asks by itself; the button is for the
+          // keyboard, and for a conversation too short to scroll.
+          <div className="chat-older-messages">
+            <button type="button" className="chat-older-btn" onClick={requestEarlier}>
+              {t("chat.loadEarlier")}
+            </button>
+          </div>
+        ) : null}
         {displayedMessages.length === 0 ? (
           <p className="muted chat-empty">{emptyLabel}</p>
         ) : (

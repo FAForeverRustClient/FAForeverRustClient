@@ -744,6 +744,8 @@ impl ChatPort for HistoryChat {
                     said("Stormlord", "h2", "muted all along"),
                     said("Cid", "h3", "Aurora: you there?"),
                 ],
+                earlier: false,
+                more_before: true,
             },
         ] {
             tx.try_send(update).unwrap();

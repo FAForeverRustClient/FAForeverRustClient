@@ -74,3 +74,53 @@ it("searches older messages while leaving nonmatching message bodies alone", () 
   expect(view.getByRole("log").textContent).toContain("ordinary 100");
   row.mockRestore();
 });
+
+describe("earlier history from the server", () => {
+  const said = (id: string, content: string): ChatMessage => ({
+    id, sender: "Sender", content, kind: "message", timestamp: "2026-01-01T12:00:00Z", msgid: `srv-${id}`,
+  });
+  function Earlier({ messages, onLoadEarlier, exhausted = false }: {
+    messages: ChatMessage[];
+    onLoadEarlier: () => void;
+    exhausted?: boolean;
+  }) {
+    const state = initialState();
+    return (
+      <MessageList messages={messages} self="Me" emptyLabel="Empty" onNickClick={() => {}}
+        onNickContextMenu={() => {}} showTimestamps={false} use24HourTime users={[]}
+        social={state.social} preferences={state.settings.chat}
+        onLoadEarlier={onLoadEarlier} earlierExhausted={exhausted} />
+    );
+  }
+
+  it("is asked for once from the top, and shows the lines that arrive in front", () => {
+    const onLoadEarlier = vi.fn();
+    const recent = [said("3", "third"), said("4", "fourth")];
+    const view = render(<Earlier messages={recent} onLoadEarlier={onLoadEarlier} />);
+    // Reaching the top asks by itself; the button is the same request.
+    fireEvent.scroll(view.getByRole("log"));
+    expect(onLoadEarlier).toHaveBeenCalledTimes(1);
+    expect(view.getByText("Loading earlier messages…")).toBeTruthy();
+    fireEvent.scroll(view.getByRole("log"));
+    expect(onLoadEarlier).toHaveBeenCalledTimes(1);
+
+    view.rerender(
+      <Earlier messages={[said("1", "first"), said("2", "second"), ...recent]} onLoadEarlier={onLoadEarlier} />,
+    );
+    const log = view.getByRole("log").textContent ?? "";
+    expect(log.indexOf("first")).toBeLessThan(log.indexOf("third"));
+    expect(view.queryByText("Loading earlier messages…")).toBeNull();
+    // Older lines are not news: no "jump to latest".
+    expect(view.container.querySelector(".chat-jump")).toBeNull();
+    fireEvent.click(view.getByRole("button", { name: "Load earlier messages" }));
+    expect(onLoadEarlier).toHaveBeenCalledTimes(2);
+  });
+
+  it("is not offered when there is nothing earlier", () => {
+    const onLoadEarlier = vi.fn();
+    const view = render(<Earlier messages={[said("1", "first")]} onLoadEarlier={onLoadEarlier} exhausted />);
+    fireEvent.scroll(view.getByRole("log"));
+    expect(onLoadEarlier).not.toHaveBeenCalled();
+    expect(view.queryByRole("button", { name: "Load earlier messages" })).toBeNull();
+  });
+});

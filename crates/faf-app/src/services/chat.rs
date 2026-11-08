@@ -154,6 +154,20 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
             }
             ctx.ports.chat.unreact(channel, msgid, emoji);
         }
+        ChatCommand::LoadEarlierHistory { channel } => {
+            // From before the oldest line the server can name, and only while
+            // there may be more and the channel has room to keep it.
+            let before = out.with_state(|state| {
+                state
+                    .chat
+                    .channel(&channel)
+                    .filter(|c| !c.history_exhausted && !c.history_full())
+                    .and_then(|c| c.oldest_msgid().map(str::to_owned))
+            });
+            if let Some(before) = before {
+                ctx.ports.chat.load_earlier_history(channel, before);
+            }
+        }
         ChatCommand::Disconnect => {
             // Hanging up is a decision, not a fault: the watchdog must not
             // undo it on its next tick.
@@ -230,11 +244,17 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
         // A backfill never notifies or counts as unread. Muted senders stay
         // out of it, and so do the lines already on screen (#471): the
         // reducer would drop them too, but the event need not carry them.
-        if let ChatUpdate::History { channel, messages } = update {
-            let messages: Vec<_> = out.with_state(|state| {
+        if let ChatUpdate::History {
+            channel,
+            messages,
+            earlier,
+            more_before,
+        } = update
+        {
+            let (messages, open): (Vec<_>, bool) = out.with_state(|state| {
                 let shown = state.chat.channel(&channel);
                 let muted = &state.settings.chat.muted_players;
-                messages
+                let messages = messages
                     .into_iter()
                     .filter(|message| {
                         !muted
@@ -242,10 +262,19 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                             .any(|login| login.eq_ignore_ascii_case(&message.sender))
                             && !shown.is_some_and(|c| c.holds(message))
                     })
-                    .collect()
+                    .collect();
+                (messages, shown.is_some())
             });
-            if !messages.is_empty() {
-                out.emit(ChatEvent::HistoryReceived { channel, messages });
+            // Even an empty answer is news: it can say there is nothing
+            // earlier. Not for a conversation closed meanwhile, which it
+            // would open again with nothing in it.
+            if !messages.is_empty() || open {
+                out.emit(ChatEvent::HistoryReceived {
+                    channel,
+                    messages,
+                    earlier,
+                    more_before,
+                });
             }
             continue;
         }
@@ -480,9 +509,17 @@ fn send(ctx: &ServiceCtx, out: &EventSink, channel: String, content: String, rep
 
 fn to_event(update: ChatUpdate, quiet_history: bool) -> ChatEvent {
     match update {
-        ChatUpdate::History { channel, messages } => {
-            ChatEvent::HistoryReceived { channel, messages }
-        }
+        ChatUpdate::History {
+            channel,
+            messages,
+            earlier,
+            more_before,
+        } => ChatEvent::HistoryReceived {
+            channel,
+            messages,
+            earlier,
+            more_before,
+        },
         ChatUpdate::MessageRedacted { channel, msgid } => {
             ChatEvent::MessageRedacted { channel, msgid }
         }

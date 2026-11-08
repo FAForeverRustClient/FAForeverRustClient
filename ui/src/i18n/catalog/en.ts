@@ -419,6 +419,8 @@ export const en = {
   "chat.search.next": "Next match",
   "chat.search.close": "Close search",
   "chat.loadOlder": "Load earlier messages ({count} remaining)",
+  "chat.loadEarlier": "Load earlier messages",
+  "chat.loadingEarlier": "Loading earlier messages…",
   "chat.day.today": "Today",
   "chat.day.yesterday": "Yesterday",
   "maps.generate.copyName": "Copy map name",

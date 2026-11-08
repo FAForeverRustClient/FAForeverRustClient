@@ -40,6 +40,7 @@ function channel(name: string, overrides: Partial<ChatChannel> = {}): ChatChanne
     unreadMentions: 0,
     typing: [],
     reactions: [],
+    historyExhausted: false,
     ...overrides,
   };
 }
@@ -362,12 +363,12 @@ describe("unread counting", () => {
   it("keeps only the most recent messages", () => {
     // Rust: `MAX_MESSAGES` drain. Both sides must keep the *newest*.
     let next = state({ channels: [channel("#uef")], activeChannel: "#uef" });
-    for (let i = 0; i < 520; i += 1) {
+    for (let i = 0; i < 1020; i += 1) {
       next = receive(next, { content: `line ${i}` });
     }
-    expect(next.channels[0].messages).toHaveLength(500);
+    expect(next.channels[0].messages).toHaveLength(1000);
     const last = next.channels[0].messages[next.channels[0].messages.length - 1];
-    expect(last.content).toBe("line 519");
+    expect(last.content).toBe("line 1019");
   });
 });
 
