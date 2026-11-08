@@ -22,6 +22,7 @@ import { useAppStore } from "../../store/store";
 import { GamePathsSection } from "./GamePathsSection";
 import { SettingsGroup } from "./SettingControls";
 import { gameNeedsALaunchWrapper } from "../../shared/platform";
+import { pickOriginalGameFolder } from "../../shared/originalGame";
 
 /** The configurable directories, in the order the tab lists them. */
 const DIRECTORY_FIELDS = [
@@ -37,6 +38,12 @@ type DirectoryField = (typeof DIRECTORY_FIELDS)[number];
 type FileField = "gamePrefsPath" | "javaPath";
 /** A directory, but only on the platforms that have one. */
 type WrapperField = "winePrefix";
+/**
+ * The original game FAF reads movies, sounds, fonts and libraries from. Found
+ * on its own in most places, but not in all, and with no fallback when it is
+ * not: the row then says so rather than "Automatic".
+ */
+type OriginalGameField = "originalGameDir";
 
 const LABEL = {
   vaultDir: "settings.paths.vault",
@@ -47,7 +54,11 @@ const LABEL = {
   gamePrefsPath: "settings.paths.gamePrefs",
   javaPath: "settings.paths.java",
   winePrefix: "settings.paths.winePrefix",
-} as const satisfies Record<DirectoryField | FileField | WrapperField, MessageKey>;
+  originalGameDir: "settings.paths.originalGame",
+} as const satisfies Record<
+  DirectoryField | FileField | WrapperField | OriginalGameField,
+  MessageKey
+>;
 
 const setPaths = (patch: PathPreferencesPatch) =>
   ipc.send({ kind: "Settings", command: { type: "patchPaths", payload: { patch } } });
@@ -58,13 +69,21 @@ function ContentPathRow({
   resolved,
   pick,
 }: {
-  field: DirectoryField | FileField | WrapperField;
+  field: DirectoryField | FileField | WrapperField | OriginalGameField;
   paths: PathPreferences;
   resolved: string;
   pick: () => Promise<string | null>;
 }) {
   const { t } = useTranslation();
   const configured = paths[field];
+  // Only the original game resolves to nothing: every other location has a
+  // fallback. Nothing found is worth a warning, not "Automatic".
+  const status = !resolved && field === "originalGameDir" ? "missing" : configured ? "ok" : "unset";
+  const STATUS_LABEL = {
+    missing: t("settings.paths.notFound"),
+    ok: t("settings.paths.custom"),
+    unset: t("settings.paths.automatic"),
+  } as const;
 
   const choose = () =>
     ipc.run(
@@ -81,9 +100,7 @@ function ContentPathRow({
             string; when it was not, it is the only way to see where the
             fallback landed. */}
         <span className="settings-path-value">{resolved || t("settings.paths.unset")}</span>
-        <span className={`settings-path-status is-${configured ? "ok" : "unset"}`}>
-          {configured ? t("settings.paths.custom") : t("settings.paths.automatic")}
-        </span>
+        <span className={`settings-path-status is-${status}`}>{STATUS_LABEL[status]}</span>
       </div>
       <div className="settings-path-actions">
         <Button onClick={choose}>{t("settings.paths.browse")}</Button>
@@ -108,6 +125,13 @@ export function PathsSettingsSection() {
       {/* The executables first: nothing else here matters if the client
           cannot find a game to launch. */}
       <GamePathsSection />
+      {/* Right below the installs: it is the other half of a playable game. */}
+      <ContentPathRow
+        field="originalGameDir"
+        paths={paths}
+        resolved={resolved.originalGameDir}
+        pick={() => pickOriginalGameFolder(paths.originalGameDir || resolved.originalGameDir)}
+      />
       {DIRECTORY_FIELDS.map((field) => (
         <ContentPathRow
           key={field}

@@ -105,8 +105,11 @@ impl GameUpdaterClient {
         // game provides (#474). Said here, before the launch, rather than by
         // a Windows error box after it. Windows only: under Wine a library
         // can also come from the prefix, where the client cannot look, and
-        // Linux launches are left as they were.
+        // Linux launches are left as they were. The original game first: its
+        // absence is why the libraries are missing too, and it is the one
+        // thing to fix.
         if cfg!(windows) {
+            game_updater::require_original_game(&target_dir)?;
             game_updater::require_game_libraries(&target_dir)?;
         }
 

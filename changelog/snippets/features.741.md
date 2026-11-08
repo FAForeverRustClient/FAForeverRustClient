@@ -1,0 +1,1 @@
+- The client now finds Supreme Commander: Forged Alliance from GOG and from a Steam installed outside Program Files. When Forged Alliance is missing, a banner says so before the first game, with a button to choose its folder, and games are refused with that fix instead of starting without sound, movies or fonts.

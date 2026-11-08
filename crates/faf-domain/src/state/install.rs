@@ -81,6 +81,22 @@ pub struct ResolvedPaths {
     /// The Wine prefix a launch would use, or empty on Windows, where the game
     /// runs without one.
     pub wine_prefix: String,
+    /// The original Supreme Commander: Forged Alliance the client found, the
+    /// folder holding `gamedata/lua.scd`, or empty when it found none.
+    ///
+    /// Unlike the locations above this one has no fallback, and empty is the
+    /// state to warn about: FAF takes the game's movies, sounds, fonts and
+    /// libraries from it, and a game started without it is broken. The
+    /// missing-install banner says so before the first game, and on Windows
+    /// a launch that finds no original game either is refused.
+    pub original_game_dir: String,
+}
+
+impl ResolvedPaths {
+    /// Whether the original game was found. See [`Self::original_game_dir`].
+    pub fn original_game_found(&self) -> bool {
+        !self.original_game_dir.is_empty()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize, Type)]
@@ -215,10 +231,12 @@ mod tests {
             checked: true,
             resolved: ResolvedPaths {
                 maps_dir: "D:/old/maps".into(),
+                original_game_dir: "D:/Games/Supreme Commander Forged Alliance".into(),
                 ..ResolvedPaths::default()
             },
             companions: Vec::new(),
         };
+        assert!(s.resolved.original_game_found());
         reduce(
             &mut s,
             &InstallEvent::Checked {
@@ -236,6 +254,8 @@ mod tests {
         assert!(s.nothing_ready());
         // The check reports where things resolve now, not where they used to.
         assert_eq!(s.resolved.maps_dir, "D:/new/maps");
+        // Including an original game that has gone: nothing to fall back on.
+        assert!(!s.resolved.original_game_found());
     }
 
     #[test]

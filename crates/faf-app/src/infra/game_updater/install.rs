@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::content_store;
+use crate::infra::registry::{Hive, Registry, SystemRegistry};
 
 /// Byte offsets inside `ForgedAlliance.exe` where the 4-byte little-endian
 /// engine version number is stored. Mirrors `FAPatcher.version_addresses` in
@@ -35,12 +36,14 @@ const VERSION_ADDRESSES: [u64; 3] = [0xd3d40, 0x47612d, 0x476666];
 /// Resolution order: explicit `FAF_GAME_INSTALL_DIR` override → the original
 /// game the player picked in Settings (`PathPreferences::original_game_dir`)
 /// → the path the Java or Python client already has configured
-/// ([`crate::infra::game::reference_retail_install_paths`]) → auto-detect
-/// among the usual retail/Steam locations, then in every Steam library →
-/// `target_dir` as a last resort (preserves the old behaviour rather than
-/// writing a knowingly bogus path when nothing is found). Every candidate but
-/// the explicit override is validated by `gamedata/lua.scd`, the same probe
-/// file Python's `validate_game_path` uses.
+/// ([`crate::infra::game::reference_retail_install_paths`]) → the folder GOG
+/// recorded in the registry → the usual retail, GOG and Steam locations →
+/// every Steam library, Steam's own folder taken from Program Files and from
+/// the registry → `target_dir` as a last resort (preserves the old behaviour
+/// rather than writing a knowingly bogus path when nothing is found). Every
+/// candidate but the explicit override is validated by `gamedata/lua.scd`,
+/// the same probe file Python's `validate_game_path` uses. The order is
+/// [`retail_install_candidates`]'s.
 ///
 /// The reference-client configs come before the guessed locations because
 /// guessing only ever covers installs under `%ProgramFiles%`: a retail install
@@ -62,17 +65,47 @@ fn retail_install_dir(target_dir: &Path) -> PathBuf {
 /// [`retail_install_dir`] with the player's pick handed in rather than read
 /// from the configured paths, which are one value for the whole process.
 fn retail_install_dir_with(picked: Option<PathBuf>, target_dir: &Path) -> PathBuf {
-    if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
-        if !dir.is_empty() {
-            return PathBuf::from(dir);
-        }
+    if let Some(dir) = install_dir_override() {
+        return dir;
     }
-    let candidates = picked
+    resolve_retail_install_dir(
+        retail_install_candidates(picked, &SystemRegistry),
+        target_dir,
+    )
+}
+
+/// `FAF_GAME_INSTALL_DIR`, a developer's switch taken as given.
+fn install_dir_override() -> Option<PathBuf> {
+    std::env::var("FAF_GAME_INSTALL_DIR")
+        .ok()
+        .filter(|dir| !dir.is_empty())
+        .map(PathBuf::from)
+}
+
+/// Every place the original game may be, in the order they are tried.
+///
+/// Lazy past the player's pick: the reference configs, the registry and
+/// Steam's library lists are only read when nothing before them was the game.
+fn retail_install_candidates<'a>(
+    picked: Option<PathBuf>,
+    registry: &'a dyn Registry,
+) -> impl Iterator<Item = PathBuf> + 'a {
+    picked
         .into_iter()
-        .chain(crate::infra::game::reference_retail_install_paths())
-        .chain(typical_retail_install_paths())
-        .chain(steam_retail_install_paths());
-    resolve_retail_install_dir(candidates, target_dir)
+        .flat_map(picked_candidates)
+        .chain(std::iter::once_with(crate::infra::game::reference_retail_install_paths).flatten())
+        .chain(std::iter::once_with(move || gog_registry_install_paths(registry)).flatten())
+        .chain(std::iter::once_with(typical_retail_install_paths).flatten())
+        .chain(std::iter::once_with(move || steam_retail_install_paths(registry)).flatten())
+}
+
+/// The folder the player picked, and the one above it.
+///
+/// Asked for the game's folder, people open the one holding the executable
+/// they know, which is `bin`; the game's root is one level up.
+fn picked_candidates(picked: PathBuf) -> Vec<PathBuf> {
+    let parent = picked.parent().map(Path::to_path_buf);
+    std::iter::once(picked).chain(parent).collect()
 }
 
 fn resolve_retail_install_dir(
@@ -87,8 +120,8 @@ fn resolve_retail_install_dir(
         fallback = %target_dir.display(),
         "no retail FA install found: nothing to copy the engine's libraries from, and \
          fa_path falls back to the FAF patch dir, so the game will start without base \
-         textures, sounds, movies or unit animations, if it starts at all. Pick the \
-         original game's executable in Settings, Paths, or set FAF_GAME_INSTALL_DIR to \
+         textures, sounds, movies or unit animations, if it starts at all. Choose the \
+         original game's folder in Settings, Paths, or set FAF_GAME_INSTALL_DIR to \
          the install root holding gamedata/lua.scd."
     );
     target_dir.to_path_buf()
@@ -116,7 +149,6 @@ const VANILLA_GAME_HASHES: [&str; 1] =
 /// `ForgedAlliance.exe` when there is one, `SupremeCommander.exe` otherwise.
 /// An executable that cannot be read is not taken for the original game.
 fn is_vanilla_install_with(dir: &Path, hashes: &[&str]) -> bool {
-    use sha2::{Digest as _, Sha256};
     let bin = dir.join("bin");
     let forged_alliance = bin.join("ForgedAlliance.exe");
     let exe = if forged_alliance.is_file() {
@@ -124,10 +156,9 @@ fn is_vanilla_install_with(dir: &Path, hashes: &[&str]) -> bool {
     } else {
         bin.join("SupremeCommander.exe")
     };
-    let Ok(bytes) = std::fs::read(&exe) else {
+    let Some(hash) = executable_hash(&exe) else {
         return false;
     };
-    let hash = format!("{:x}", Sha256::digest(&bytes));
     let vanilla = hashes.iter().any(|known| known.eq_ignore_ascii_case(&hash));
     if vanilla {
         tracing::warn!(
@@ -138,10 +169,48 @@ fn is_vanilla_install_with(dir: &Path, hashes: &[&str]) -> bool {
     vanilla
 }
 
+/// The SHA-256 of `exe`, remembered while its size and modification time
+/// stay the same.
+///
+/// The discovery runs on every path change and before every launch, and the
+/// executable it hashes is megabytes that never change: reading it each time
+/// made a settings change wait on the disk for nothing.
+fn executable_hash(exe: &Path) -> Option<String> {
+    use sha2::{Digest as _, Sha256};
+    use std::collections::HashMap;
+    use std::sync::{Mutex, OnceLock};
+    use std::time::SystemTime;
+
+    type Stamp = (PathBuf, u64, Option<SystemTime>);
+    static KNOWN: OnceLock<Mutex<HashMap<Stamp, String>>> = OnceLock::new();
+
+    let metadata = std::fs::metadata(exe).ok()?;
+    let stamp: Stamp = (exe.to_path_buf(), metadata.len(), metadata.modified().ok());
+    let known = KNOWN.get_or_init(Mutex::default);
+    if let Some(hash) = known.lock().ok()?.get(&stamp) {
+        return Some(hash.clone());
+    }
+    let bytes = std::fs::read(exe).ok()?;
+    let hash = format!("{:x}", Sha256::digest(&bytes));
+    let mut known = known.lock().ok()?;
+    // A handful of installs at most; a bound in case paths keep changing.
+    if known.len() >= 16 {
+        known.clear();
+    }
+    known.insert(stamp, hash.clone());
+    Some(hash)
+}
+
+/// The folder GOG installs Forged Alliance to, inside the player's GOG
+/// library: its build's install directory on gogdb.org.
+const GOG_FOLDER: &str = "Supreme Commander Forged Alliance";
+
 /// Candidate retail install locations, mirroring the Python client's
 /// `typicalForgedAlliancePaths` (THQ/GPG retail, bare retail, and the Steam
 /// library: both `%ProgramFiles%` and `%ProgramFiles(x86)%`, since the
-/// 32-bit game usually sits under the x86 tree).
+/// 32-bit game usually sits under the x86 tree), followed by GOG's two
+/// default libraries: GOG Galaxy's `Games` folder under Program Files and
+/// the offline installer's `GOG Games` at the root of the system drive.
 fn typical_retail_install_paths() -> Vec<PathBuf> {
     let mut out = Vec::new();
     let suffixes = [
@@ -149,10 +218,21 @@ fn typical_retail_install_paths() -> Vec<PathBuf> {
         r"Supreme Commander - Forged Alliance",
         r"Steam\steamapps\common\Supreme Commander Forged Alliance",
     ];
-    for base in program_files_dirs() {
+    let program_files = program_files_dirs();
+    for base in &program_files {
         for suffix in suffixes {
             out.push(base.join(suffix));
         }
+    }
+    for base in &program_files {
+        out.push(base.join("GOG Galaxy").join("Games").join(GOG_FOLDER));
+    }
+    if let Some(drive) = std::env::var("SystemDrive")
+        .ok()
+        .filter(|drive| !drive.is_empty())
+    {
+        // `C:` alone is the current folder on that drive, not its root.
+        out.push(PathBuf::from(format!(r"{drive}\GOG Games")).join(GOG_FOLDER));
     }
     out
 }
@@ -169,6 +249,38 @@ fn program_files_dirs() -> Vec<PathBuf> {
         .collect()
 }
 
+/// Forged Alliance's GOG product id: "Supreme Commander - Forged Alliance"
+/// on gogdb.org, also the game inside the Supreme Commander Gold Edition
+/// package.
+const GOG_FORGED_ALLIANCE_ID: &str = "1444785261";
+
+/// Where GOG lists its installed games, one subkey per product id, in
+/// `HKEY_LOCAL_MACHINE`. Its installers are 32-bit, so the 64-bit registry
+/// shows them under `WOW6432Node`; the plain key is a 32-bit Windows's.
+const GOG_GAMES_KEYS: [&str; 2] = [
+    r"SOFTWARE\WOW6432Node\GOG.com\Games",
+    r"SOFTWARE\GOG.com\Games",
+];
+
+/// The folder GOG installed Forged Alliance to, from its `path` value.
+///
+/// A GOG install is wherever the player's library is, often on a games
+/// drive, so the guesses above miss it as often as they find it; GOG writes
+/// the answer down, the way Steam writes its libraries down.
+fn gog_registry_install_paths(registry: &dyn Registry) -> Vec<PathBuf> {
+    GOG_GAMES_KEYS
+        .iter()
+        .filter_map(|games| {
+            registry.text(
+                Hive::LocalMachine,
+                &format!(r"{games}\{GOG_FORGED_ALLIANCE_ID}"),
+                "path",
+            )
+        })
+        .map(|path| PathBuf::from(path.trim()))
+        .collect()
+}
+
 /// Forged Alliance in every library Steam knows about.
 ///
 /// The guessed locations above only find the game in Steam's own folder. A
@@ -177,13 +289,11 @@ fn program_files_dirs() -> Vec<PathBuf> {
 /// it has in `steamapps/libraryfolders.vdf` under its own folder. So that is
 /// read rather than guessed at.
 ///
-/// Steam's own folder is looked for under Program Files, where its installer
-/// puts it, and on Linux under the home directory. A Steam installed anywhere
-/// else on Windows is named only in the registry
-/// (`HKCU\Software\Valve\Steam\SteamPath`), which nothing in this crate reads;
-/// that player's way in is picking the game in Settings, which is remembered.
-fn steam_retail_install_paths() -> Vec<PathBuf> {
-    let roots = steam_roots();
+/// Steam's own folder is any of [`steam_roots`]: under Program Files, named
+/// in the registry when Steam was installed anywhere else, and on Linux
+/// under the home directory.
+fn steam_retail_install_paths(registry: &dyn Registry) -> Vec<PathBuf> {
+    let roots = steam_roots(registry);
     // The game in Steam's own folder, also when there is no library list:
     // the Java client's guess `~/.steam/steam/steamapps/common/...`.
     let mut out: Vec<PathBuf> = roots
@@ -200,20 +310,53 @@ fn steam_retail_install_paths() -> Vec<PathBuf> {
 
 /// The original game, wherever [`retail_install_dir`] would look, or `None`
 /// when it is nowhere. Unlike that function it never falls back to the FAF
-/// install: the Linux runtime asks whether there is a game to run at all.
+/// install: the Linux runtime asks whether there is a game to run at all,
+/// and the install check reports where the game was found
+/// (`ResolvedPaths::original_game_dir`).
 pub(crate) fn find_retail_install() -> Option<PathBuf> {
-    if let Ok(dir) = std::env::var("FAF_GAME_INSTALL_DIR") {
-        if !dir.is_empty() {
-            return Some(PathBuf::from(dir));
-        }
-    }
-    crate::infra::paths::original_game_dir()
-        .into_iter()
-        .chain(crate::infra::game::reference_retail_install_paths())
-        .chain(typical_retail_install_paths())
-        .chain(steam_retail_install_paths())
-        .find(|dir| is_retail_install(dir))
+    install_dir_override().or_else(|| {
+        find_retail_install_with(crate::infra::paths::original_game_dir(), &SystemRegistry)
+    })
 }
+
+/// [`find_retail_install`] without the override, with the pick and the
+/// registry handed in.
+fn find_retail_install_with(picked: Option<PathBuf>, registry: &dyn Registry) -> Option<PathBuf> {
+    retail_install_candidates(picked, registry).find(|dir| is_retail_install(dir))
+}
+
+/// Refuse to start a game that would run without the original game's files.
+///
+/// FAF's install holds FAF's executable and Lua, nothing more. Without the
+/// original game behind it, `fa_path.lua` points at FAF's own folder and the
+/// game starts with no movies, no sounds and broken menu fonts, or not at
+/// all for want of `BugSplat.dll`: a broken first game whose only
+/// explanation is a line in the client log. Said before the launch instead,
+/// with the fix.
+///
+/// A FAF install that is itself a full copy of the game passes, as it always
+/// has: [`retail_install_dir`] falls back to it, and it holds everything.
+/// Windows only, like [`require_game_libraries`]: under Wine the game may sit
+/// in a prefix the client cannot look into, and the Linux runtime checks for
+/// the game on its own.
+pub fn require_original_game(install_dir: &Path) -> Result<(), String> {
+    require_original_game_given(find_retail_install(), install_dir)
+}
+
+/// [`require_original_game`] with the discovery's answer handed in.
+fn require_original_game_given(found: Option<PathBuf>, install_dir: &Path) -> Result<(), String> {
+    if found.is_some() || is_retail_install(install_dir) {
+        return Ok(());
+    }
+    Err(ORIGINAL_GAME_MISSING.to_string())
+}
+
+/// What [`require_original_game`] says. The settings row it names is the
+/// one the missing-install banner opens the same picker for.
+const ORIGINAL_GAME_MISSING: &str =
+    "Supreme Commander: Forged Alliance was not found. FAF requires \
+     Forged Alliance from Steam, GOG or disc for movies, sounds, fonts and libraries; the original \
+     Supreme Commander is not sufficient. Choose its folder in Settings → Paths → Forged Alliance.";
 
 /// Steam's own folder outside Windows: the first of [`steam_roots`] that
 /// holds a library list, which is how faf-linux's `setup.sh` picks it. The
@@ -222,19 +365,44 @@ pub(crate) fn steam_install_dir() -> Option<PathBuf> {
     if cfg!(windows) {
         return None;
     }
-    steam_roots()
+    steam_roots(&SystemRegistry)
         .into_iter()
         .find(|root| root.join("steamapps").join("libraryfolders.vdf").is_file())
 }
 
-/// Where Steam itself is installed: under Program Files on Windows; outside
-/// it, `~/.steam/steam` (the Java client's guess), its usual target
-/// `~/.local/share/Steam`, the Flatpak's and the Snap's.
-fn steam_roots() -> Vec<PathBuf> {
+/// Where Steam names its own folder in the registry: per user (`SteamPath`,
+/// which the Python client reads), then for the machine (`InstallPath`,
+/// written by Steam's 32-bit installer, hence `WOW6432Node`).
+const STEAM_REGISTRY: [(Hive, &str, &str); 3] = [
+    (Hive::CurrentUser, r"Software\Valve\Steam", "SteamPath"),
+    (
+        Hive::LocalMachine,
+        r"SOFTWARE\WOW6432Node\Valve\Steam",
+        "InstallPath",
+    ),
+    (Hive::LocalMachine, r"SOFTWARE\Valve\Steam", "InstallPath"),
+];
+
+/// Where Steam itself is installed: under Program Files and wherever the
+/// registry says on Windows; outside it, `~/.steam/steam` (the Java client's
+/// guess), its usual target `~/.local/share/Steam`, the Flatpak's and the
+/// Snap's. Each folder once: the registry usually names the Program Files
+/// one again, in its own spelling.
+fn steam_roots(registry: &dyn Registry) -> Vec<PathBuf> {
     let mut roots: Vec<PathBuf> = program_files_dirs()
         .into_iter()
         .map(|base| base.join("Steam"))
         .collect();
+    roots.extend(STEAM_REGISTRY.iter().filter_map(|&(hive, key, value)| {
+        let path = registry.text(hive, key, value)?;
+        let path = path.trim();
+        // `SteamPath` is written with forward slashes and in lower case.
+        Some(PathBuf::from(if cfg!(windows) {
+            path.replace('/', "\\")
+        } else {
+            path.to_string()
+        }))
+    }));
     if !cfg!(windows) {
         if let Some(dirs) = directories::BaseDirs::new() {
             let home = dirs.home_dir();
@@ -244,17 +412,34 @@ fn steam_roots() -> Vec<PathBuf> {
             roots.push(home.join("snap/steam/common/.local/share/Steam"));
         }
     }
+    let mut seen = std::collections::HashSet::new();
+    roots.retain(|root| {
+        let key = root
+            .to_string_lossy()
+            .trim_end_matches(['\\', '/'])
+            .to_string();
+        seen.insert(if cfg!(windows) {
+            key.to_lowercase()
+        } else {
+            key
+        })
+    });
     roots
 }
 
+/// Every library a Steam folder lists. Current Steam keeps the list in
+/// `steamapps`, older ones kept it in `config`; both are read, since a
+/// library named twice costs one more look and a list missed costs the game.
 fn steam_retail_install_paths_in(steam_roots: impl IntoIterator<Item = PathBuf>) -> Vec<PathBuf> {
     steam_roots
         .into_iter()
-        .filter_map(|root| {
-            crate::infra::game::read_small_text_file(
-                &root.join("steamapps").join("libraryfolders.vdf"),
-            )
+        .flat_map(|root| {
+            [
+                root.join("steamapps").join("libraryfolders.vdf"),
+                root.join("config").join("libraryfolders.vdf"),
+            ]
         })
+        .filter_map(|list| crate::infra::game::read_small_text_file(&list))
         .flat_map(|vdf| steam_library_paths(&vdf))
         .map(|library| {
             library
@@ -534,12 +719,10 @@ pub fn require_game_libraries(target_dir: &Path) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "Forged Alliance cannot start without BugSplat.dll, and {} has none. FAF copies it, \
-         with the game's other libraries, from your own Supreme Commander: Forged Alliance, \
-         and no install of it was found that has them. In Settings → Paths, choose the \
-         original game's executable as the game install (on Steam: \
-         steamapps\\common\\Supreme Commander Forged Alliance\\bin\\SupremeCommander.exe). \
-         The client remembers where it is and still plays from FAF's own copy.",
+        "Forged Alliance cannot start without BugSplat.dll, and {} has none. FAF copies it \
+         from your Supreme Commander: Forged Alliance (not the original Supreme Commander), \
+         and none with it was found. Choose its folder in Settings → Paths → Forged Alliance \
+         (on Steam: steamapps\\common\\Supreme Commander Forged Alliance).",
         bin.display()
     ))
 }
@@ -886,6 +1069,215 @@ mod tests {
             resolve_retail_install_dir(steam_retail_install_paths_in([steam]), &patch_dir),
             game
         );
+    }
+
+    /// A Forged Alliance root with the probe file, at `dir`.
+    fn a_retail_install(dir: &Path) {
+        std::fs::create_dir_all(dir.join("gamedata")).unwrap();
+        std::fs::write(dir.join("gamedata").join("lua.scd"), b"base game").unwrap();
+    }
+
+    /// A Steam library list naming `libraries`, written the way Steam writes
+    /// it, every backslash doubled.
+    fn a_library_list(steam: &Path, libraries: &[&Path]) {
+        let entries: String = libraries
+            .iter()
+            .enumerate()
+            .map(|(index, library)| {
+                let quoted = library.display().to_string().replace('\\', r"\\");
+                format!("\t\"{index}\"\n\t{{\n\t\t\"path\"\t\t\"{quoted}\"\n\t}}\n")
+            })
+            .collect();
+        std::fs::create_dir_all(steam.join("steamapps")).unwrap();
+        std::fs::write(
+            steam.join("steamapps").join("libraryfolders.vdf"),
+            format!("\"libraryfolders\"\n{{\n{entries}}}\n"),
+        )
+        .unwrap();
+    }
+
+    /// Steam installed somewhere other than Program Files is named only in
+    /// the registry, and its libraries are read from there as from any
+    /// other Steam folder.
+    #[test]
+    fn a_steam_installed_outside_program_files_is_found_through_the_registry() {
+        use crate::infra::registry::fake::FakeRegistry;
+        let temp = tempfile::tempdir().unwrap();
+        let steam = temp.path().join("Games").join("Steam");
+        let library = temp.path().join("Library");
+        let game = library
+            .join("steamapps")
+            .join("common")
+            .join("Supreme Commander Forged Alliance");
+        a_retail_install(&game);
+        a_library_list(&steam, &[steam.as_path(), library.as_path()]);
+        // `SteamPath` is written with forward slashes.
+        let registry = FakeRegistry::default().with(
+            Hive::CurrentUser,
+            r"Software\Valve\Steam",
+            "SteamPath",
+            &steam.display().to_string().replace('\\', "/"),
+        );
+
+        assert!(steam_roots(&registry).contains(&steam));
+        let candidates = steam_retail_install_paths(&registry);
+        assert!(candidates.contains(&game), "{candidates:?}");
+        // Without the registry entry that library is nowhere in the list.
+        assert!(!steam_retail_install_paths(&FakeRegistry::default()).contains(&game));
+    }
+
+    /// Steam's machine-wide entry is read as well, and a folder the registry
+    /// names twice, in two spellings, is read once.
+    #[cfg(windows)]
+    #[test]
+    fn steams_machine_entry_counts_and_one_folder_is_one_root() {
+        use crate::infra::registry::fake::FakeRegistry;
+        let steam = r"E:\Apps\Steam";
+        let registry = FakeRegistry::default()
+            .with(
+                Hive::CurrentUser,
+                r"Software\Valve\Steam",
+                "SteamPath",
+                "e:/apps/steam",
+            )
+            .with(
+                Hive::LocalMachine,
+                r"SOFTWARE\WOW6432Node\Valve\Steam",
+                "InstallPath",
+                steam,
+            );
+        let roots = steam_roots(&registry);
+        let named = roots
+            .iter()
+            .filter(|root| root.to_string_lossy().eq_ignore_ascii_case(steam))
+            .count();
+        assert_eq!(named, 1, "{roots:?}");
+    }
+
+    /// GOG writes down where it installed each game, under the game's product
+    /// id; Forged Alliance's is read from there, wherever the library is.
+    #[test]
+    fn gogs_record_of_forged_alliance_is_a_candidate() {
+        use crate::infra::registry::fake::FakeRegistry;
+        let temp = tempfile::tempdir().unwrap();
+        let game = temp.path().join("GOG Library").join(GOG_FOLDER);
+        a_retail_install(&game);
+        let registry = FakeRegistry::default().with(
+            Hive::LocalMachine,
+            r"SOFTWARE\WOW6432Node\GOG.com\Games\1444785261",
+            "path",
+            &game.display().to_string(),
+        );
+
+        assert_eq!(
+            gog_registry_install_paths(&registry),
+            std::slice::from_ref(&game)
+        );
+        let patch_dir = temp.path().join("FAForever");
+        assert_eq!(
+            resolve_retail_install_dir(gog_registry_install_paths(&registry), &patch_dir),
+            game
+        );
+        // Another GOG game is not taken for it.
+        let other = FakeRegistry::default().with(
+            Hive::LocalMachine,
+            r"SOFTWARE\WOW6432Node\GOG.com\Games\1158031056",
+            "path",
+            &game.display().to_string(),
+        );
+        assert!(gog_registry_install_paths(&other).is_empty());
+    }
+
+    /// The player's pick first, GOG's record before the guesses, Steam's
+    /// libraries last: what GOG wrote down beats any guess.
+    #[test]
+    fn the_candidates_come_in_the_documented_order() {
+        use crate::infra::registry::fake::FakeRegistry;
+        let temp = tempfile::tempdir().unwrap();
+        let picked = temp.path().join("Picked");
+        let gog = temp.path().join("GOG").join(GOG_FOLDER);
+        let steam = temp.path().join("Steam");
+        let registry = FakeRegistry::default()
+            .with(
+                Hive::LocalMachine,
+                r"SOFTWARE\WOW6432Node\GOG.com\Games\1444785261",
+                "path",
+                &gog.display().to_string(),
+            )
+            .with(
+                Hive::CurrentUser,
+                r"Software\Valve\Steam",
+                "SteamPath",
+                &steam.display().to_string(),
+            );
+        let steam_game = steam
+            .join("steamapps")
+            .join("common")
+            .join("Supreme Commander Forged Alliance");
+
+        let candidates: Vec<PathBuf> =
+            retail_install_candidates(Some(picked.clone()), &registry).collect();
+        let at = |path: &Path| candidates.iter().position(|candidate| candidate == path);
+        assert_eq!(at(&picked), Some(0));
+        let (gog_at, steam_at) = (at(&gog).unwrap(), at(&steam_game).unwrap());
+        assert!(gog_at < steam_at, "{candidates:?}");
+    }
+
+    /// Asked for the game's folder, a player who opens `bin` still gets the
+    /// game: its root is the folder above.
+    #[test]
+    fn a_picked_bin_folder_finds_the_game_above_it() {
+        let temp = tempfile::tempdir().unwrap();
+        let game = temp.path().join("Supreme Commander Forged Alliance");
+        a_retail_install(&game);
+        std::fs::create_dir_all(game.join("bin")).unwrap();
+        let faf = temp.path().join("FAForever");
+
+        assert_eq!(retail_install_dir_with(Some(game.join("bin")), &faf), game);
+    }
+
+    /// No original game: the launch is refused with the way to fix it,
+    /// unless the FAF install is itself a full copy of the game.
+    #[test]
+    fn a_launch_without_the_original_game_is_refused_with_the_fix() {
+        let temp = tempfile::tempdir().unwrap();
+        let faf = temp.path().join("FAForever");
+        std::fs::create_dir_all(faf.join("bin")).unwrap();
+
+        let error = require_original_game_given(None, &faf).expect_err("no original game");
+        assert!(
+            error.contains("Settings → Paths → Forged Alliance"),
+            "{error}"
+        );
+        assert!(
+            error.contains("not sufficient"),
+            "names the base game it is not: {error}"
+        );
+        assert!(error.contains("Settings"), "{error}");
+        require_original_game_given(Some(temp.path().join("game")), &faf).unwrap();
+
+        a_retail_install(&faf);
+        require_original_game_given(None, &faf).unwrap();
+    }
+
+    /// The remembered hash follows the file: a changed executable is hashed
+    /// again rather than answered from memory.
+    #[test]
+    fn a_changed_executable_is_hashed_again() {
+        use sha2::{Digest as _, Sha256};
+        let temp = tempfile::tempdir().unwrap();
+        let exe = temp.path().join("SupremeCommander.exe");
+        std::fs::write(&exe, b"first").unwrap();
+        assert_eq!(
+            executable_hash(&exe),
+            Some(format!("{:x}", Sha256::digest(b"first")))
+        );
+        std::fs::write(&exe, b"second build").unwrap();
+        assert_eq!(
+            executable_hash(&exe),
+            Some(format!("{:x}", Sha256::digest(b"second build")))
+        );
+        assert_eq!(executable_hash(&temp.path().join("missing.exe")), None);
     }
 
     /// When nothing could be copied, the game cannot start, and the player

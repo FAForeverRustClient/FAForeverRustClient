@@ -8826,6 +8826,7 @@
                   "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
                   "mapsDir": "D:/faf/vault/maps",
                   "modsDir": "D:/faf/vault/mods",
+                  "originalGameDir": "D:/Games/Supreme Commander Forged Alliance",
                   "replaysDir": "C:/ProgramData/FAForever/replays",
                   "vaultDir": "D:/faf/vault",
                   "winePrefix": ""
@@ -8848,6 +8849,7 @@
               "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
               "mapsDir": "D:/faf/vault/maps",
               "modsDir": "D:/faf/vault/mods",
+              "originalGameDir": "D:/Games/Supreme Commander Forged Alliance",
               "replaysDir": "C:/ProgramData/FAForever/replays",
               "vaultDir": "D:/faf/vault",
               "winePrefix": ""
@@ -8867,6 +8869,7 @@
                 "mapGeneratorDir": "C:/Users/ada/AppData/Roaming/faf/map_generator",
                 "mapsDir": "D:/faf/vault/maps",
                 "modsDir": "D:/faf/vault/mods",
+                "originalGameDir": "D:/Games/Supreme Commander Forged Alliance",
                 "replaysDir": "C:/ProgramData/FAForever/replays",
                 "vaultDir": "D:/faf/vault",
                 "winePrefix": ""
@@ -8925,6 +8928,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -8956,6 +8960,7 @@
                 "mapGeneratorDir": "",
                 "mapsDir": "",
                 "modsDir": "",
+                "originalGameDir": "",
                 "replaysDir": "",
                 "vaultDir": "",
                 "winePrefix": ""
@@ -9020,6 +9025,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -9062,6 +9068,7 @@
                 "mapGeneratorDir": "",
                 "mapsDir": "",
                 "modsDir": "",
+                "originalGameDir": "",
                 "replaysDir": "",
                 "vaultDir": "",
                 "winePrefix": ""
@@ -9126,6 +9133,7 @@
               "mapGeneratorDir": "",
               "mapsDir": "",
               "modsDir": "",
+              "originalGameDir": "",
               "replaysDir": "",
               "vaultDir": "",
               "winePrefix": ""
@@ -9168,6 +9176,7 @@
                 "mapGeneratorDir": "",
                 "mapsDir": "",
                 "modsDir": "",
+                "originalGameDir": "",
                 "replaysDir": "",
                 "vaultDir": "",
                 "winePrefix": ""
@@ -137270,6 +137279,7 @@
         "mapGeneratorDir": "",
         "mapsDir": "",
         "modsDir": "",
+        "originalGameDir": "",
         "replaysDir": "",
         "vaultDir": "",
         "winePrefix": ""

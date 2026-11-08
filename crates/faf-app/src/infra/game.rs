@@ -348,6 +348,15 @@ impl GameProcess {
             .parent()
             .map(PathBuf::from)
             .ok_or_else(|| format!("game path has no parent dir: {game_path}"))?;
+        // Every launch comes through here, offline games, replays and lessons
+        // included, and none of them is playable without the original game's
+        // movies, sounds and fonts. Live games were already told so by the
+        // updater; the rest hear it here rather than from a silent game.
+        if cfg!(windows) {
+            if let Some(install_dir) = work_dir.parent() {
+                crate::infra::game_updater::require_original_game(install_dir)?;
+            }
+        }
 
         let config = self.config.lock().unwrap();
         let wrapper = split_command(&config.launch_wrapper);
