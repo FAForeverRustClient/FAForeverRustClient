@@ -105,6 +105,9 @@ pub(crate) enum Key {
     GuidesVerdict,
     /// Launching a tutorial or a catalogue lesson.
     TutorialLaunch,
+    /// "Play offline": a second press while the first one is still setting
+    /// the game up would only start the same update again.
+    OfflineGameLaunch,
     /// Loading the training hub: one at a time, since a second load repeats
     /// every request and the replay scan.
     TrainingLoad,
@@ -212,6 +215,8 @@ pub(crate) enum Pair {
     /// A tutorial's launch. Apart from [`Self::LessonLaunch`]: each has a
     /// cancel of its own, which reaches only its own kind.
     TutorialLaunch,
+    /// "Play offline" setting the game up before it starts it.
+    OfflineGame,
     /// Galactic War's install, alone or as the first step of Play.
     GalacticWarInstall,
     /// Checking and setting up the Linux runtime.
@@ -372,7 +377,11 @@ fn auth(command: &AuthCommand) -> CommandPolicy {
             service_guarded(ServiceGuard::Login).starts(Pair::Auth)
         }
         AuthCommand::CancelLogin => release(Pair::Auth),
-        AuthCommand::PlayOffline | AuthCommand::LaunchOfflineGame => ORDINARY,
+        AuthCommand::PlayOffline => ORDINARY,
+        AuthCommand::LaunchOfflineGame => {
+            single_flight(Key::OfflineGameLaunch).starts(Pair::OfflineGame)
+        }
+        AuthCommand::CancelOfflineGame => release(Pair::OfflineGame),
         AuthCommand::LoginTest => ORDINARY.starts(Pair::Auth),
         // In the ordinary lane, behind the test sign-in it ends; still the
         // release, so a test sign-in queued before it is dropped.
@@ -1658,6 +1667,10 @@ mod tests {
                     TutorialsCommand::Launch { tutorial_id: 7 }.into(),
                     TutorialsCommand::CancelLaunch.into(),
                 ),
+                Pair::OfflineGame => (
+                    AuthCommand::LaunchOfflineGame.into(),
+                    AuthCommand::CancelOfflineGame.into(),
+                ),
                 Pair::GalacticWarInstall => (
                     GalacticWarCommand::Play.into(),
                     GalacticWarCommand::CancelInstall.into(),
@@ -1688,6 +1701,7 @@ mod tests {
             Pair::ModVault,
             Pair::LessonLaunch,
             Pair::TutorialLaunch,
+            Pair::OfflineGame,
             Pair::GalacticWarInstall,
             Pair::LinuxRuntime,
         ];

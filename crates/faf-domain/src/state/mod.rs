@@ -39,7 +39,9 @@ pub mod tutorials;
 pub mod unit_history;
 pub mod uploads;
 
-pub use auth::{AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, Player};
+pub use auth::{
+    AuthCommand, AuthEvent, AuthMode, AuthState, AuthStatus, OfflineGamePreparation, Player,
+};
 pub use changelog::{
     ChangelogCommand, ChangelogEntryStatus, ChangelogEvent, ChangelogState, ChangelogStatus,
 };

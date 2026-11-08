@@ -1136,7 +1136,7 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
 }
 
 /// Push the current paths into the launcher and report what actually exists.
-fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
+pub(crate) fn sync_installs(ctx: &ServiceCtx, out: &EventSink) {
     let settings = out.with_state(|state| state.settings.clone());
     ctx.ports
         .process

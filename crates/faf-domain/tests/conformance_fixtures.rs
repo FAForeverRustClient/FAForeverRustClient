@@ -4605,6 +4605,23 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "setting the offline game up shows its step and goes when it ends",
+            vec![
+                AuthEvent::LoggedIn { player: player() }.into(),
+                AuthEvent::OfflineGamePreparing {
+                    detail: "Setting up the game".into(),
+                    progress: None,
+                }
+                .into(),
+                AuthEvent::OfflineGamePreparing {
+                    detail: "Downloading ForgedAlliance.exe".into(),
+                    progress: Some(40),
+                }
+                .into(),
+                AuthEvent::OfflineGamePreparationEnded.into(),
+            ],
+        ),
+        case(
             "auth failure keeps the error",
             vec![
                 AuthEvent::LoginStarted.into(),

@@ -292,8 +292,15 @@ export type AuthCommand =
  *  in: the Java client's "Play Offline" (#397). Skirmish against the AI
  *  needs no server. A failure is reported as a failed login, which is what
  *  the login screen it is started from shows.
+ *
+ *  A signed-in player whose install has no FAF files yet gets them first:
+ *  the same featured-mod update an online game runs, narrated in
+ *  [`AuthState::offline_game`] and stopped by [`Self::CancelOfflineGame`].
+ *  Signed out, it is refused with how to get them.
  */
-{ type: "launchOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
+{ type: "launchOfflineGame" } |
+/**  Stop setting the offline game up. The game is not started afterwards. */
+{ type: "cancelOfflineGame" } | { type: "loginTest" } | { type: "logout" } | { type: "logoutTest" };
 
 /**  The only way [`AuthState`] changes. */
 export type AuthEvent = { type: "loginStarted" } |
@@ -323,7 +330,17 @@ export type AuthEvent = { type: "loginStarted" } |
 	message: string,
 } } | { type: "loginFailed"; payload: {
 	message: string,
-} } | { type: "loggedOut" };
+} } | { type: "loggedOut" } |
+/**
+ *  The offline game is being set up before it starts. Replaces the step
+ *  before it. See [`AuthState::offline_game`].
+ */
+{ type: "offlineGamePreparing"; payload: {
+	detail: string,
+	progress: number | null,
+} } |
+/**  Setting the offline game up ended, however it ended. */
+{ type: "offlineGamePreparationEnded" };
 
 /**  Where the active shell session came from. */
 export type AuthMode =
@@ -359,6 +376,17 @@ export type AuthState = {
 	 *  leaves the client. Cleared by everything that ends the attempt.
 	 */
 	signInLink: string | null,
+	/**
+	 *  A signed-in player's "Play offline" that is setting the game up first,
+	 *  while it does.
+	 *
+	 *  FAF's copy of the game only exists once the client has patched it,
+	 *  which used to happen only when somebody played or watched a game. A
+	 *  player who signed in on a fresh machine and asked for an offline game
+	 *  was refused, although the client could fetch the files right then.
+	 *  Now it does, and this is what the status bar shows while it runs.
+	 */
+	offlineGame: OfflineGamePreparation | null,
 };
 
 export type AuthStatus = "loggedOut" | "loggingIn" | "loggedIn" | "failed";
@@ -7318,6 +7346,17 @@ export type NotificationState = {
 export type NotificationText = {
 	key: string,
 	params: { [key in string]: string },
+};
+
+/**
+ *  One step of setting the game up for an offline start. See
+ *  [`AuthState::offline_game`].
+ */
+export type OfflineGamePreparation = {
+	/**  What the updater is doing now, in its own words. */
+	detail: string,
+	/**  A measured share, when the step has one. */
+	progress: number | null,
 };
 
 /**

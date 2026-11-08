@@ -226,6 +226,10 @@ export function useBackgroundActivities(): BackgroundActivity[] {
   const replayStarting = useAppStore((s) => s.state.replays.status.type === "connecting");
   const replayStep = useAppStore((s) => s.state.replays.preparing?.detail ?? null);
   const replayStepProgress = useAppStore((s) => s.state.replays.preparing?.progress ?? null);
+  // "Play offline" on an install FAF never patched: the client fetches the
+  // game first, which on a fresh machine is the whole download.
+  const offlineGameStep = useAppStore((s) => s.state.auth.offlineGame?.detail ?? null);
+  const offlineGameProgress = useAppStore((s) => s.state.auth.offlineGame?.progress ?? null);
   const replayDownload = useAppStore((s) =>
     s.state.replays.downloadStatus.type === "downloading" ? s.state.replays.downloadStatus.payload.uid : null);
   const replayDownloadProgress = useAppStore((s) =>
@@ -341,6 +345,12 @@ export function useBackgroundActivities(): BackgroundActivity[] {
         : t("status.activity.startingReplay"),
       progress: replayStepProgress,
       cancel: send({ kind: "Replays", command: { type: "cancelWatch" } }),
+    },
+    offlineGameStep !== null && {
+      id: "offline-game",
+      label: t("status.activity.settingUpOfflineGame", { detail: offlineGameStep }),
+      progress: offlineGameProgress,
+      cancel: send({ kind: "Auth", command: { type: "cancelOfflineGame" } }),
     },
     replayDownload !== null && {
       id: "replay-download",

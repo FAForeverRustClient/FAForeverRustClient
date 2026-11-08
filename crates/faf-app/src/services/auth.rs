@@ -3,10 +3,10 @@
 //! Translates [`AuthCommand`]s into the [`AuthPort`](crate::ports::AuthPort) calls
 //! and emits the resulting events. Holds no state; the `auth` slice does.
 
-use faf_domain::state::{AuthCommand, AuthEvent, Player};
+use faf_domain::state::{AuthCommand, AuthEvent, NotificationKind, Player};
 use tokio_util::sync::CancellationToken;
 
-use crate::runtime::{EventSink, LatestRequest, SerialMutation, ServiceCtx};
+use crate::runtime::{CancellationSlot, EventSink, LatestRequest, SerialMutation, ServiceCtx};
 use crate::services::notifications;
 
 /// Why an offline game did not start, said where the person who asked is.
@@ -51,6 +51,105 @@ pub struct AuthContext {
     /// Login, restore and logout act on the same session behind the auth
     /// port, so one finishes before the next begins.
     mutation: SerialMutation,
+    /// A "Play offline" that is setting the game up, so its Cancel, or the
+    /// player signing out, can stop it.
+    offline_game: CancellationSlot,
+}
+
+/// The featured mod an offline game starts with: plain FAF, as in the Java
+/// client's `launchOfflineGame`.
+const OFFLINE_FEATURED_MOD: &str = "faf";
+
+/// What a signed-out "Play offline" is told when FAF's copy of the game has
+/// never been set up on this machine.
+const SIGN_IN_TO_SET_UP: &str = "Forged Alliance with FAF's files was not found. Sign in once \
+     and choose Play offline in the menu on your name, or play or watch any game, so the client \
+     can set the game up; after that, playing offline works without an account.";
+
+/// Whether Forged Alliance is running for this client already.
+fn game_running(ctx: &ServiceCtx) -> bool {
+    ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some()
+}
+
+/// Whether the configured game path holds FAF's copy of the game.
+fn game_installed(ctx: &ServiceCtx, out: &EventSink) -> bool {
+    let game_path = out.with_state(|state| state.settings.game_path.clone());
+    ctx.ports.process.install_path_is_present(&game_path)
+}
+
+/// Fetch FAF's files for an offline game, the way an online launch does
+/// before its first game: the `faf` featured mod brought up to date, which on
+/// a fresh machine is what creates the game's own folder.
+///
+/// Only for a signed-in player. The update asks FAF's API which files make up
+/// the current build, so signed out it has nothing to ask with, and the
+/// player is told how to get there instead.
+///
+/// Answers `Err` with what to tell the player, or anything at all when
+/// `cancel` was raised, which the caller does not report.
+async fn set_up_offline_game(
+    ctx: &ServiceCtx,
+    out: &EventSink,
+    cancel: &CancellationToken,
+) -> Result<(), String> {
+    if !out.with_state(|state| state.auth.player.is_some()) {
+        return Err(SIGN_IN_TO_SET_UP.into());
+    }
+    // A path the client does not manage (Steam's executable, say) is one the
+    // updater cannot write FAF's files into.
+    if ctx.ports.process.game_install_dir().is_none() {
+        return Err(
+            "Forged Alliance with FAF's files was not found at the game path in Settings → \
+             Paths, and the client cannot set the game up there."
+                .into(),
+        );
+    }
+    out.emit(AuthEvent::OfflineGamePreparing {
+        detail: "Setting up the game".into(),
+        progress: None,
+    });
+    // Said where it will be seen: the status bar's line is easy to miss, and
+    // a "Play offline" that starts a download without a word reads as the
+    // client doing something it was not asked to.
+    notifications::add_text(
+        out,
+        NotificationKind::GameInstall,
+        notifications::Text::new("notifications.msg.offlineGameDownloading"),
+        "Downloading the game for offline play",
+        "FAF's game files are not on this computer yet, so the client downloads them once \
+         before the offline game starts. After that, Play offline starts without a download. \
+         You can cancel it from the status bar.",
+        None,
+    );
+    let outcome = super::launcher::prepare_featured_mod_narrated(
+        OFFLINE_FEATURED_MOD,
+        ctx,
+        out,
+        cancel,
+        |step| {
+            out.emit(AuthEvent::OfflineGamePreparing {
+                detail: step.detail,
+                progress: step.progress,
+            })
+        },
+    )
+    .await;
+    out.emit(AuthEvent::OfflineGamePreparationEnded);
+    if let Err(reason) = outcome {
+        return Err(format!("The game could not be set up: {reason}"));
+    }
+    // The files are there now, which the missing-install banner and the login
+    // screen's hint read from the install slice.
+    super::settings::sync_installs(ctx, out);
+    if game_running(ctx) {
+        return Err("Forged Alliance is already running.".into());
+    }
+    if !game_installed(ctx, out) {
+        return Err(
+            "The game was set up, but Forged Alliance is still missing from the game path.".into(),
+        );
+    }
+    Ok(())
 }
 
 pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -126,33 +225,34 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
             call_off_sign_in(ctx);
             out.emit(AuthEvent::WentOffline);
         }
+        AuthCommand::CancelOfflineGame => ctx.auth.offline_game.cancel(),
         AuthCommand::LaunchOfflineGame => {
-            let game_path = out.with_state(|state| state.settings.game_path.clone());
-            // No updater run, unlike every other launch: there may be no
-            // network at all, and an install that was patched once is a
-            // playable install. Without one there is nothing to start, which
-            // is the Java client's answer too.
+            crate::runtime::expect_admitted(crate::runtime::Key::OfflineGameLaunch);
+            let cancel = ctx.auth.offline_game.begin();
             // Java's `GameRunner.startOffline` answers a second press with
             // "game is running"; here it would have replaced the game, online
             // or not, because the game slot holds one process.
-            if ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some() {
+            if game_running(ctx) {
                 offline_game_failed(out, "Forged Alliance is already running.".into());
                 return;
             }
-            if !ctx.ports.process.install_path_is_present(&game_path) {
-                offline_game_failed(
-                    out,
-                    "Forged Alliance with FAF's files was not found. Sign in once and \
-                     play or watch a game, so the client can set the game up, then \
-                     playing offline works without an account."
-                        .into(),
-                );
-                return;
+            // No updater run while the install is there, unlike every other
+            // launch: there may be no network at all, and an install that was
+            // patched once is a playable install. Without one, a signed-in
+            // player gets it now; signed out there is nothing to start, which
+            // is the Java client's answer too.
+            if !game_installed(ctx, out) {
+                if let Err(reason) = set_up_offline_game(ctx, out, &cancel).await {
+                    if !cancel.is_cancelled() {
+                        offline_game_failed(out, reason);
+                    }
+                    return;
+                }
             }
             if let Err(reason) = ctx
                 .ports
                 .process
-                .launch_offline("faf".into(), String::new())
+                .launch_offline(OFFLINE_FEATURED_MOD.into(), String::new())
                 .await
             {
                 offline_game_failed(
@@ -173,6 +273,9 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         AuthCommand::Logout => {
             let generation = call_off_sign_in(ctx);
+            // Setting the offline game up needs the session that is ending,
+            // and its progress and Cancel live in the shell being left.
+            ctx.auth.offline_game.cancel();
             let _guard = ctx.auth.mutation.acquire().await;
             if !is_current(ctx, generation) {
                 return;
@@ -185,6 +288,7 @@ pub async fn handle(cmd: AuthCommand, ctx: &ServiceCtx, out: &EventSink) {
         }
         AuthCommand::LogoutTest => {
             call_off_sign_in(ctx);
+            ctx.auth.offline_game.cancel();
             out.emit(AuthEvent::LoggedOut);
         }
     }

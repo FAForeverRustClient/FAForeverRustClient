@@ -91,6 +91,7 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
             | AuthCommand::Restore
             | AuthCommand::PlayOffline
             | AuthCommand::LaunchOfflineGame
+            | AuthCommand::CancelOfflineGame
             | AuthCommand::LoginTest
             | AuthCommand::Logout
             | AuthCommand::LogoutTest,
