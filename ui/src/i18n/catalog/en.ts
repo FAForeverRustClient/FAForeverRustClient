@@ -304,7 +304,7 @@ export const en = {
   "shell.install.dismiss": "Dismiss",
   "shell.install.dismissTitle": "Dismiss until the next launch",
   "shell.install.originalMissing": "Supreme Commander: Forged Alliance not found",
-  "shell.install.originalMissingHint": "FAF plays from its own copy but takes the movies, sounds, fonts and libraries from the game you own on Steam, GOG or disc. Games will not start until the client finds it.",
+  "shell.install.originalMissingHint": "FAF needs Forged Alliance from Steam, GOG or disc for movies, sounds and fonts. The original Supreme Commander will not do. Games won't start without it.",
   "shell.install.chooseOriginal": "Choose game folder",
 
   // Login screen.
@@ -1909,8 +1909,8 @@ export const en = {
   "settings.paths.gamePrefs": "game.prefs",
   "settings.paths.java": "Java runtime",
   "settings.paths.winePrefix": "Wine prefix",
-  "settings.paths.originalGame": "Original game",
-  "settings.paths.originalGamePickTitle": "Select the Supreme Commander: Forged Alliance folder",
+  "settings.paths.originalGame": "Forged Alliance",
+  "settings.paths.originalGamePickTitle": "Select the Forged Alliance folder",
   "settings.paths.notFound": "Not found",
   "settings.paths.browse": "Browse…",
   "settings.paths.reset": "Reset",

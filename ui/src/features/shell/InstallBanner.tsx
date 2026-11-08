@@ -133,7 +133,8 @@ export function InstallBanner() {
  *
  * Its own banner rather than a variant of the one above: the fix is a
  * different folder (the game from Steam, GOG or a disc, never FAF's), and the
- * button opens the same folder picker as Settings, Paths, Original game.
+ * button opens the same folder picker as the Forged Alliance row in Settings,
+ * Paths.
  * Launches on Windows are refused until it is found, so this is the last
  * place to learn it before a game would have started.
  */

@@ -353,11 +353,9 @@ fn require_original_game_given(found: Option<PathBuf>, install_dir: &Path) -> Re
 
 /// What [`require_original_game`] says. The settings row it names is the
 /// one the missing-install banner opens the same picker for.
-const ORIGINAL_GAME_MISSING: &str = "Supreme Commander: Forged Alliance was not found on this \
-     computer. FAF plays from its own copy of the engine, but takes the game's movies, sounds, \
-     fonts and libraries from the game you own, on Steam, GOG or disc, and without them the game \
-     starts broken or not at all. Choose the game's folder in Settings → Paths → Original game, \
-     then start again.";
+const ORIGINAL_GAME_MISSING: &str = "Supreme Commander: Forged Alliance was not found. FAF needs \
+     Forged Alliance from Steam, GOG or disc for movies, sounds, fonts and libraries; the original \
+     Supreme Commander will not do. Choose its folder in Settings → Paths → Forged Alliance.";
 
 /// Steam's own folder outside Windows: the first of [`steam_roots`] that
 /// holds a library list, which is how faf-linux's `setup.sh` picks it. The
@@ -720,12 +718,10 @@ pub fn require_game_libraries(target_dir: &Path) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "Forged Alliance cannot start without BugSplat.dll, and {} has none. FAF copies it, \
-         with the game's other libraries, from your own Supreme Commander: Forged Alliance, \
-         and no install of it was found that has them. In Settings → Paths → Original game, \
-         choose the game's folder (on Steam: \
-         steamapps\\common\\Supreme Commander Forged Alliance). The client remembers where \
-         it is and still plays from FAF's own copy.",
+        "Forged Alliance cannot start without BugSplat.dll, and {} has none. FAF copies it \
+         from your Supreme Commander: Forged Alliance (not the original Supreme Commander), \
+         and none with it was found. Choose its folder in Settings → Paths → Forged Alliance \
+         (on Steam: steamapps\\common\\Supreme Commander Forged Alliance).",
         bin.display()
     ))
 }
@@ -1248,7 +1244,14 @@ mod tests {
         std::fs::create_dir_all(faf.join("bin")).unwrap();
 
         let error = require_original_game_given(None, &faf).expect_err("no original game");
-        assert!(error.contains("Original game"), "{error}");
+        assert!(
+            error.contains("Settings → Paths → Forged Alliance"),
+            "{error}"
+        );
+        assert!(
+            error.contains("not do"),
+            "names the base game it is not: {error}"
+        );
         assert!(error.contains("Settings"), "{error}");
         require_original_game_given(Some(temp.path().join("game")), &faf).unwrap();
 
