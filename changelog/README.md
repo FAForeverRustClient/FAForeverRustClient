@@ -33,6 +33,9 @@ that nothing changes in use and naming the area:
 - No visible changes: the settings code is split into smaller files.
 ```
 
+A pull request that only adds or fixes snippets for other pull requests gets
+none of its own: the release notes describe changes, and it makes none.
+
 The snippet follows its pull request: when review fixes or a rebase change
 what the pull request does, change the snippet with it. The pull request
 number is only known once the pull request is open, so the snippet is usually
