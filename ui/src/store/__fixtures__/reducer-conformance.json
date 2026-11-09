@@ -7024,6 +7024,7 @@
             "activeChannel": "",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "private message",
@@ -9224,6 +9225,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9255,6 +9257,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9265,6 +9268,7 @@
                 "users": []
               },
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9305,6 +9309,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9315,6 +9320,7 @@
                 "users": []
               },
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello Ada",
@@ -9356,6 +9362,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9366,6 +9373,7 @@
                 "users": []
               },
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello Ada",
@@ -9432,6 +9440,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9463,6 +9472,7 @@
             "activeChannel": "Stormlord",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9473,6 +9483,7 @@
                 "users": []
               },
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "Stormlord",
                 "reactions": [],
@@ -9504,6 +9515,7 @@
             "activeChannel": "Stormlord",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -9514,6 +9526,7 @@
                 "users": []
               },
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "Stormlord",
                 "reactions": [],
@@ -9550,6 +9563,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9590,6 +9604,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "remember this",
@@ -9675,6 +9690,7 @@
             "activeChannel": "",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "remember this",
@@ -9730,6 +9746,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9762,6 +9779,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9795,6 +9813,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9851,6 +9870,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9886,6 +9906,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9923,6 +9944,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -9956,6 +9978,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -10088,6 +10111,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -10120,6 +10144,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -10161,6 +10186,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -10201,6 +10227,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#uef",
                 "reactions": [],
@@ -10250,6 +10277,7 @@
             "activeChannel": "#uef",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "restored history",
@@ -10325,6 +10353,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#newbie",
                 "reactions": [],
@@ -10365,6 +10394,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10415,6 +10445,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10474,6 +10505,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10530,6 +10562,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10586,6 +10619,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10645,6 +10679,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10704,6 +10739,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10772,6 +10808,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10840,6 +10877,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10908,6 +10946,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -10976,6 +11015,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "how long until my rating shows?",
@@ -11049,6 +11089,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#newbie",
                 "reactions": [],
@@ -11089,6 +11130,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "anyone up for a 2v2?",
@@ -11165,6 +11207,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "anyone up for a 2v2?",
@@ -11215,6 +11258,7 @@
             "activeChannel": "#newbie",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "anyone up for a 2v2?",
@@ -11231,6 +11275,235 @@
                 "topic": "",
                 "typing": [],
                 "unread": 0,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "history arrives in one step, earlier history in front, without repeats",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus",
+                "message": {
+                  "content": "third",
+                  "id": "m-Bob-third",
+                  "kind": "message",
+                  "msgid": "srv-Bob-third",
+                  "replyTo": "",
+                  "sender": "Bob",
+                  "timestamp": "2026-01-01T00:00:00Z"
+                }
+              },
+              "type": "messageReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [
+              {
+                "historyExhausted": false,
+                "messages": [
+                  {
+                    "content": "third",
+                    "id": "m-Bob-third",
+                    "kind": "message",
+                    "msgid": "srv-Bob-third",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus",
+                "earlier": false,
+                "messages": [
+                  {
+                    "content": "third",
+                    "id": "replayed",
+                    "kind": "message",
+                    "msgid": "srv-Bob-third",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "fourth",
+                    "id": "m-Aurora-fourth",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-fourth",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "moreBefore": true
+              },
+              "type": "historyReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [
+              {
+                "historyExhausted": false,
+                "messages": [
+                  {
+                    "content": "third",
+                    "id": "m-Bob-third",
+                    "kind": "message",
+                    "msgid": "srv-Bob-third",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "fourth",
+                    "id": "m-Aurora-fourth",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-fourth",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
+                "unreadMentions": 0,
+                "users": []
+              }
+            ],
+            "retainedHistories": [],
+            "serverAutoJoin": [],
+            "showJoinsParts": false,
+            "status": "disconnected",
+            "username": ""
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "channel": "#aeolus",
+                "earlier": true,
+                "messages": [
+                  {
+                    "content": "first",
+                    "id": "m-Ann-first",
+                    "kind": "message",
+                    "msgid": "srv-Ann-first",
+                    "replyTo": "",
+                    "sender": "Ann",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "first",
+                    "id": "m-Ann-first",
+                    "kind": "message",
+                    "msgid": "srv-Ann-first",
+                    "replyTo": "",
+                    "sender": "Ann",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "second",
+                    "id": "m-Bob-second",
+                    "kind": "message",
+                    "msgid": "srv-Bob-second",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "moreBefore": false
+              },
+              "type": "historyReceived"
+            },
+            "kind": "Chat"
+          },
+          "expected": {
+            "activeChannel": "",
+            "channels": [
+              {
+                "historyExhausted": true,
+                "messages": [
+                  {
+                    "content": "first",
+                    "id": "m-Ann-first",
+                    "kind": "message",
+                    "msgid": "srv-Ann-first",
+                    "replyTo": "",
+                    "sender": "Ann",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "second",
+                    "id": "m-Bob-second",
+                    "kind": "message",
+                    "msgid": "srv-Bob-second",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "third",
+                    "id": "m-Bob-third",
+                    "kind": "message",
+                    "msgid": "srv-Bob-third",
+                    "replyTo": "",
+                    "sender": "Bob",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  },
+                  {
+                    "content": "fourth",
+                    "id": "m-Aurora-fourth",
+                    "kind": "message",
+                    "msgid": "srv-Aurora-fourth",
+                    "replyTo": "",
+                    "sender": "Aurora",
+                    "timestamp": "2026-01-01T00:00:00Z"
+                  }
+                ],
+                "name": "#aeolus",
+                "reactions": [],
+                "topic": "",
+                "typing": [],
+                "unread": 1,
                 "unreadMentions": 0,
                 "users": []
               }
@@ -11281,6 +11554,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -11315,6 +11589,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -11354,6 +11629,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "#aeolus",
                 "reactions": [],
@@ -11399,6 +11675,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11443,6 +11720,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11499,6 +11777,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11556,6 +11835,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11613,6 +11893,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11670,6 +11951,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11726,6 +12008,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11770,6 +12053,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11819,6 +12103,7 @@
             "activeChannel": "#aeolus",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "hello",
@@ -11886,6 +12171,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "Bob",
                 "reactions": [],
@@ -11926,6 +12212,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "remove me",
@@ -11976,6 +12263,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "remove me",
@@ -12029,6 +12317,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "remove me",
@@ -12092,6 +12381,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [
                   {
                     "content": "keep me",
@@ -12194,6 +12484,7 @@
             "activeChannel": "Bob",
             "channels": [
               {
+                "historyExhausted": false,
                 "messages": [],
                 "name": "Bob",
                 "reactions": [],

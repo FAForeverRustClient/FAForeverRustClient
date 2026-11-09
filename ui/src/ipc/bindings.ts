@@ -1061,6 +1061,12 @@ export type ChatChannel = {
 	typing?: TypingNotice[],
 	/**  Reactions to messages in this channel, keyed by the server's message id. */
 	reactions?: MessageReactions[],
+	/**
+	 *  Nothing earlier to load: the server's history has no more before the
+	 *  oldest line here, or this channel already holds as many lines as it
+	 *  keeps. Scrolling to the top asks for more only while this is false.
+	 */
+	historyExhausted?: boolean,
 };
 
 export type ChatCommand =
@@ -1118,6 +1124,13 @@ export type ChatCommand =
 	channel: string,
 	msgid: string,
 	emoji: string,
+} } |
+/**
+ *  Ask the server for the history before the oldest line `channel`
+ *  shows, when the reader has scrolled to the top of it.
+ */
+{ type: "loadEarlierHistory"; payload: {
+	channel: string,
 } } | { type: "disconnect" };
 
 export type ChatEvent = { type: "connecting" } |
@@ -1150,6 +1163,22 @@ export type ChatEvent = { type: "connecting" } |
 { type: "messageReceivedQuietly"; payload: {
 	channel: string,
 	message: ChatMessage,
+} } |
+/**
+ *  A conversation's history from the server, whole and oldest first.
+ *  Added like quiet messages, in one step: applied a line at a time, the
+ *  open channel scrolled through hundreds of old lines as they arrived.
+ */
+{ type: "historyReceived"; payload: {
+	channel: string,
+	messages: ChatMessage[],
+	/**
+	 *  Lines from before everything the channel shows, asked for by
+	 *  scrolling up: they go in front rather than at the end.
+	 */
+	earlier?: boolean,
+	/**  Whether the server may have more before these. */
+	moreBefore?: boolean,
 } } |
 /**  A full roster snapshot, replacing whatever we had (`RPL_ENDOFNAMES`). */
 { type: "usersUpdated"; payload: {

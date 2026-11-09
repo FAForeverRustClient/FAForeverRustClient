@@ -363,6 +363,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "chat.search.next": "Nächster Treffer",
   "chat.search.close": "Suche schließen",
   "chat.loadOlder": "Ältere Nachrichten laden ({count} verbleibend)",
+  "chat.loadEarlier": "Frühere Nachrichten laden",
+  "chat.loadingEarlier": "Frühere Nachrichten werden geladen…",
   "chat.day.today": "Heute",
   "chat.day.yesterday": "Gestern",
   "maps.generate.copyName": "Kartennamen kopieren",

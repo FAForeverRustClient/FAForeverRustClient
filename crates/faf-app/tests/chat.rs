@@ -713,3 +713,107 @@ async fn the_offline_scrollback_is_not_repeated_by_a_reconnect() {
         seeded + 1
     );
 }
+
+/// A chat server that answers the join with one history batch.
+struct HistoryChat;
+
+fn said(sender: &str, msgid: &str, content: &str) -> ChatMessage {
+    ChatMessage {
+        id: format!("local-{msgid}"),
+        sender: sender.into(),
+        content: content.into(),
+        timestamp: "2026-01-01T17:37:00.000Z".into(),
+        kind: ChatMessageKind::Message,
+        msgid: msgid.into(),
+        reply_to: String::new(),
+    }
+}
+
+#[async_trait]
+impl ChatPort for HistoryChat {
+    async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
+        let (tx, rx) = mpsc::channel(8);
+        for update in [
+            ChatUpdate::Status(ChatStatus::Connecting, String::new()),
+            ChatUpdate::Status(ChatStatus::Connected, username),
+            ChatUpdate::ChannelJoined(DEFAULT_CHANNEL.into()),
+            ChatUpdate::History {
+                channel: DEFAULT_CHANNEL.into(),
+                messages: vec![
+                    said("Bob", "h1", "gg"),
+                    said("Stormlord", "h2", "muted all along"),
+                    said("Cid", "h3", "Aurora: you there?"),
+                ],
+                earlier: false,
+                more_before: true,
+            },
+        ] {
+            tx.try_send(update).unwrap();
+        }
+        rx
+    }
+    fn send_message(&self, _: String, _: String, _: String) {}
+    fn send_action(&self, _: String, _: String) {}
+    fn join_channel(&self, _: String) {}
+    fn leave_channel(&self, _: String, _: String) {}
+    fn set_topic(&self, _: String, _: String) {}
+    fn disconnect(&self) {}
+}
+
+/// The backfill lands whole, quietly: no unread, no notification for the
+/// mention in it, and nothing from a muted player.
+#[tokio::test]
+async fn a_history_lands_whole_and_quietly() {
+    let (app, app_loop) = App::new(
+        "test",
+        Ports {
+            chat: Arc::new(HistoryChat),
+            ..fake_ports()
+        },
+    );
+    tokio::spawn(app_loop.run());
+    let mut preferences = app.snapshot().settings.chat;
+    preferences.muted_players.push("stormlord".into());
+    app.dispatch(
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| !state.settings.chat.muted_players.is_empty()).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |state| {
+        state
+            .chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|channel| !channel.messages.is_empty())
+    })
+    .await;
+
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    let msgids: Vec<&str> = channel.messages.iter().map(|m| m.msgid.as_str()).collect();
+    assert_eq!(
+        msgids,
+        ["h1", "h3"],
+        "the whole history, without the muted player"
+    );
+    assert_eq!((channel.unread, channel.unread_mentions), (0, 0));
+    assert!(
+        state
+            .notifications
+            .items
+            .iter()
+            .all(|item| item.kind != NotificationKind::Mention),
+        "a mention in the history does not notify"
+    );
+}

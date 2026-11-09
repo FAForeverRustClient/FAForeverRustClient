@@ -37,10 +37,15 @@ pub enum ChatUpdate {
         channel: String,
         message: ChatMessage,
     },
-    /// Server backfill never represents a new notification or unread message.
-    HistoryMessage {
+    /// A conversation's server backfill, whole and oldest first. Never a new
+    /// notification or unread message.
+    History {
         channel: String,
-        message: ChatMessage,
+        messages: Vec<ChatMessage>,
+        /// Asked for by scrolling up: from before everything shown.
+        earlier: bool,
+        /// Whether the server may have more before these.
+        more_before: bool,
     },
     /// A fresh full snapshot of who's in the channel.
     Users {
@@ -137,6 +142,9 @@ pub trait ChatPort: Send + Sync {
 
     /// Take our own reaction back off that message.
     fn unreact(&self, _channel: String, _msgid: String, _emoji: String) {}
+    /// Ask for the history before the line with server id `before_msgid`.
+    /// The answer arrives as a [`ChatUpdate::History`] marked `earlier`.
+    fn load_earlier_history(&self, _channel: String, _before_msgid: String) {}
 
     /// Cancel the active connection, if any. Idempotent.
     fn disconnect(&self);

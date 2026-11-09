@@ -28,10 +28,10 @@ pub fn read_marker_key(username: &str, channel: &str) -> String {
 }
 
 /// Bound on retained history *per channel* so a long-running session doesn't
-/// grow state unbounded. Oldest messages are evicted first. Matches the Python
-/// client's `max_chat_lines` default and the size of the history backfill the
-/// server will hand us on join.
-const MAX_MESSAGES: usize = 500;
+/// grow state unbounded. Oldest messages are evicted first. Also how far back
+/// scrolling up can load earlier history from the server
+/// ([`ChatCommand::LoadEarlierHistory`]).
+const MAX_MESSAGES: usize = 1000;
 
 /// Bound on the client's own commentary (joins, parts, quits, topic changes)
 /// per channel, counted apart from [`MAX_MESSAGES`] (#441). In #aeolus the
@@ -189,6 +189,11 @@ pub struct ChatChannel {
     /// Reactions to messages in this channel, keyed by the server's message id.
     #[serde(default)]
     pub reactions: Vec<MessageReactions>,
+    /// Nothing earlier to load: the server's history has no more before the
+    /// oldest line here, or this channel already holds as many lines as it
+    /// keeps. Scrolling to the top asks for more only while this is false.
+    #[serde(default)]
+    pub history_exhausted: bool,
 }
 
 /// Someone composing a message, and when we last heard so.
@@ -250,6 +255,25 @@ impl ChatChannel {
         !self.name.starts_with('#')
     }
 
+    /// Whether this channel holds as many people's lines as it keeps, so
+    /// loading earlier ones would only push them straight out again.
+    pub fn history_full(&self) -> bool {
+        self.messages
+            .iter()
+            .filter(|message| message.kind != ChatMessageKind::Info)
+            .count()
+            >= MAX_MESSAGES
+    }
+
+    /// The server id of the oldest line here that has one: where earlier
+    /// history is asked for from.
+    pub fn oldest_msgid(&self) -> Option<&str> {
+        self.messages
+            .iter()
+            .map(|message| message.msgid.as_str())
+            .find(|msgid| !msgid.is_empty())
+    }
+
     /// Who is still composing as of `now` (Unix seconds), excluding `viewer`.
     ///
     /// Filtering at read time rather than expiring with a timer is deliberate:
@@ -285,16 +309,7 @@ impl ChatChannel {
     ///
     /// The TypeScript twin is `holds` in `ui/src/store/reducers/chat.ts`.
     pub fn holds(&self, incoming: &ChatMessage) -> bool {
-        self.messages.iter().any(|held| {
-            if !held.msgid.is_empty() && !incoming.msgid.is_empty() {
-                return held.msgid == incoming.msgid;
-            }
-            held.sender == incoming.sender
-                && held.content == incoming.content
-                && held.kind == incoming.kind
-                && (held.timestamp == incoming.timestamp
-                    || (held.msgid.is_empty() && !incoming.msgid.is_empty()))
-        })
+        self.messages.iter().any(|held| same_line(held, incoming))
     }
 
     /// The reactions on one message, or an empty slice when it has none.
@@ -432,6 +447,18 @@ impl ChatState {
         }
         self.channel_mut(name).expect("just inserted")
     }
+}
+
+/// Whether `incoming` is the line `held` already is. See [`ChatChannel::holds`].
+fn same_line(held: &ChatMessage, incoming: &ChatMessage) -> bool {
+    if !held.msgid.is_empty() && !incoming.msgid.is_empty() {
+        return held.msgid == incoming.msgid;
+    }
+    held.sender == incoming.sender
+        && held.content == incoming.content
+        && held.kind == incoming.kind
+        && (held.timestamp == incoming.timestamp
+            || (held.msgid.is_empty() && !incoming.msgid.is_empty()))
 }
 
 /// Whether `message` is addressed to `username`: it names them, or it replies
@@ -788,6 +815,20 @@ pub enum ChatEvent {
         channel: String,
         message: ChatMessage,
     },
+    /// A conversation's history from the server, whole and oldest first.
+    /// Added like quiet messages, in one step: applied a line at a time, the
+    /// open channel scrolled through hundreds of old lines as they arrived.
+    HistoryReceived {
+        channel: String,
+        messages: Vec<ChatMessage>,
+        /// Lines from before everything the channel shows, asked for by
+        /// scrolling up: they go in front rather than at the end.
+        #[serde(default)]
+        earlier: bool,
+        /// Whether the server may have more before these.
+        #[serde(default)]
+        more_before: bool,
+    },
     /// A full roster snapshot, replacing whatever we had (`RPL_ENDOFNAMES`).
     UsersUpdated {
         channel: String,
@@ -914,6 +955,11 @@ pub enum ChatCommand {
         msgid: String,
         emoji: String,
     },
+    /// Ask the server for the history before the oldest line `channel`
+    /// shows, when the reader has scrolled to the top of it.
+    LoadEarlierHistory {
+        channel: String,
+    },
     Disconnect,
 }
 
@@ -1014,6 +1060,30 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                     c.unread_mentions = c.unread_mentions.saturating_add(1);
                 }
             }
+        }
+        ChatEvent::HistoryReceived {
+            channel,
+            messages,
+            earlier,
+            more_before,
+        } => {
+            let c = state.ensure_channel(channel);
+            // The backfill overlaps the scrollback after a reconnect or a
+            // rejoin (#471), and a line on screen is not added twice.
+            let mut fresh: Vec<ChatMessage> = Vec::new();
+            for message in messages {
+                if !c.holds(message) && !fresh.iter().any(|held| same_line(held, message)) {
+                    fresh.push(message.clone());
+                }
+            }
+            if *earlier {
+                fresh.append(&mut c.messages);
+                c.messages = fresh;
+            } else {
+                c.messages.append(&mut fresh);
+            }
+            cap_messages(&mut c.messages);
+            c.history_exhausted = !more_before || c.history_full();
         }
         ChatEvent::UsersUpdated { channel, users } => {
             let c = state.ensure_channel(channel);
@@ -1295,6 +1365,99 @@ mod tests {
         assert_eq!(channel.messages, vec![message("history")]);
         assert_eq!(channel.unread, 0);
         assert_eq!(channel.unread_mentions, 0);
+    }
+
+    #[test]
+    fn a_history_is_added_in_one_step_without_repeats_or_unread() {
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "#newbie".into(),
+                message: message("live"),
+            },
+        );
+        let before = s.channel("#newbie").unwrap().unread;
+        reduce(
+            &mut s,
+            &ChatEvent::HistoryReceived {
+                channel: "#newbie".into(),
+                messages: vec![replayed(&message("live")), message("earlier")],
+                earlier: false,
+                more_before: true,
+            },
+        );
+        let channel = s.channel("#newbie").unwrap();
+        assert_eq!(
+            channel
+                .messages
+                .iter()
+                .map(|m| m.id.as_str())
+                .collect::<Vec<_>>(),
+            ["live", "earlier"],
+            "the line on screen is not repeated"
+        );
+        assert_eq!(channel.unread, before, "history is never unread");
+
+        let backfill: Vec<_> = (0..MAX_MESSAGES + 3)
+            .map(|i| message(&format!("old-{i}")))
+            .collect();
+        reduce(
+            &mut s,
+            &ChatEvent::HistoryReceived {
+                channel: "#newbie".into(),
+                messages: backfill,
+                earlier: false,
+                more_before: true,
+            },
+        );
+        let channel = s.channel("#newbie").unwrap();
+        assert_eq!(
+            channel.messages.len(),
+            MAX_MESSAGES,
+            "the bound still holds"
+        );
+        assert_eq!(channel.messages[0].id, "old-3", "the oldest go first");
+        assert!(channel.history_exhausted, "a full channel loads no more");
+    }
+
+    #[test]
+    fn earlier_history_goes_in_front_and_says_when_there_is_no_more() {
+        let mut s = connected("Aurora");
+        let history =
+            |messages: Vec<ChatMessage>, earlier, more_before| ChatEvent::HistoryReceived {
+                channel: "#newbie".into(),
+                messages,
+                earlier,
+                more_before,
+            };
+        reduce(
+            &mut s,
+            &history(vec![message("c"), message("d")], false, true),
+        );
+        assert!(!s.channel("#newbie").unwrap().history_exhausted);
+        assert_eq!(s.channel("#newbie").unwrap().oldest_msgid(), Some("srv-c"));
+
+        // Overlapping the oldest line on screen, as BEFORE can at a boundary.
+        reduce(
+            &mut s,
+            &history(
+                vec![message("a"), message("b"), replayed(&message("c"))],
+                true,
+                false,
+            ),
+        );
+        let channel = s.channel("#newbie").unwrap();
+        assert_eq!(
+            channel
+                .messages
+                .iter()
+                .map(|m| m.id.as_str())
+                .collect::<Vec<_>>(),
+            ["a", "b", "c", "d"]
+        );
+        assert!(channel.history_exhausted, "the server had no more");
+        assert_eq!(channel.unread, 0);
     }
 
     /// The same line as the server replays it: a fresh local `id`, because

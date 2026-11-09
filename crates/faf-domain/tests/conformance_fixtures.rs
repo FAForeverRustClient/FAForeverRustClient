@@ -5081,6 +5081,42 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
+            "history arrives in one step, earlier history in front, without repeats",
+            vec![
+                ChatEvent::MessageReceived {
+                    channel: "#aeolus".into(),
+                    message: chat_message("Bob", "third"),
+                }
+                .into(),
+                ChatEvent::HistoryReceived {
+                    channel: "#aeolus".into(),
+                    messages: vec![
+                        ChatMessage {
+                            id: "replayed".into(),
+                            ..chat_message("Bob", "third")
+                        },
+                        chat_message("Aurora", "fourth"),
+                    ],
+                    earlier: false,
+                    more_before: true,
+                }
+                .into(),
+                // Scrolled up: in front, a repeat in the answer dropped, and a
+                // short answer means there is nothing earlier.
+                ChatEvent::HistoryReceived {
+                    channel: "#aeolus".into(),
+                    messages: vec![
+                        chat_message("Ann", "first"),
+                        chat_message("Ann", "first"),
+                        chat_message("Bob", "second"),
+                    ],
+                    earlier: true,
+                    more_before: false,
+                }
+                .into(),
+            ],
+        ),
+        case(
             "someone composes, reacts, and their message clears the indicator",
             vec![
                 ChatEvent::Connected {

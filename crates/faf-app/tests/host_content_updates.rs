@@ -106,6 +106,8 @@ impl MapsPort for Maps {
 #[derive(Default)]
 struct Mods {
     updates: Mutex<Vec<(String, String, String)>>,
+    /// When set, a lookup says it started (`.0`) and waits to be let go (`.1`).
+    lookup_gate: Mutex<Option<Arc<(tokio::sync::Notify, tokio::sync::Notify)>>>,
 }
 
 fn installed(uid: &str, folder: &str, enabled: bool) -> InstalledMod {
@@ -175,6 +177,11 @@ impl ModsPort for Mods {
         Ok(())
     }
     async fn latest_mod_version(&self, uid: &str) -> Result<Option<LatestModVersion>, String> {
+        let gate = self.lookup_gate.lock().unwrap().clone();
+        if let Some(gate) = gate {
+            gate.0.notify_one();
+            gate.1.notified().await;
+        }
         Ok(match uid {
             "outdated-1" => Some(LatestModVersion {
                 uid: "outdated-2".into(),
@@ -366,4 +373,46 @@ async fn nothing_is_updated_by_default() {
     assert_eq!(h.lobby.hosted_configs()[0].map, "dualgap.v0003");
     assert!(h.maps.lookups.lock().unwrap().is_empty());
     assert!(h.mods.updates.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn a_cancelled_host_stops_updating_and_leaves_the_screen_idle() {
+    use faf_domain::state::JoinState;
+
+    let h = harness();
+    switch_on(&h).await;
+    let gate = Arc::new((tokio::sync::Notify::new(), tokio::sync::Notify::new()));
+    *h.mods.lookup_gate.lock().unwrap() = Some(gate.clone());
+
+    // An official map, so the first thing the host waits on is a mod lookup.
+    h.app
+        .dispatch(
+            LobbyCommand::Host {
+                config: config("SCMP_009"),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(3), gate.0.notified())
+        .await
+        .expect("the host never looked a mod up");
+    h.app
+        .dispatch_and_wait(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+    assert!(matches!(h.app.snapshot().lobby.join, JoinState::Idle));
+
+    gate.1.notify_one();
+    tokio::time::sleep(Duration::from_millis(300)).await;
+
+    assert!(
+        h.mods.updates.lock().unwrap().is_empty(),
+        "a cancelled host still installed a mod"
+    );
+    assert!(
+        matches!(h.app.snapshot().lobby.join, JoinState::Idle),
+        "a cancelled host put its preparation back on screen"
+    );
+    assert!(h.lobby.hosted_configs().is_empty());
 }

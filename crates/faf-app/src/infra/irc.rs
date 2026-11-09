@@ -34,9 +34,10 @@
 //! Two behaviours are lifted from the Python client because they're what make
 //! the channel usable rather than merely connected:
 //!
-//! * **History backfill.** Right after joining we ask for
-//!   `CHATHISTORY LATEST <channel> * 500`, so opening the tab shows the
-//!   conversation already in progress instead of an empty pane. This is also
+//! * **History backfill.** Right after joining we ask for the latest lines
+//!   (`CHATHISTORY LATEST`, 200 for a channel), so opening the tab shows the
+//!   conversation already in progress instead of an empty pane, and
+//!   scrolling to the top asks for the lines before those. This is also
 //!   why `server-time` is negotiated: replayed lines carry their original
 //!   instant in a `@time` tag, and without it they'd all be stamped "now".
 //! * **Reconnection.** A dropped socket is retried with a backoff instead of
@@ -65,7 +66,9 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_util::sync::CancellationToken;
 
 use crate::infra::env_or;
-use crate::infra::irc_session::{self, Effect, SessionContext, SessionEnd, SessionState};
+use crate::infra::irc_session::{
+    self, Effect, HistoryLine, SessionContext, SessionEnd, SessionState,
+};
 use crate::infra::session::TokenStore;
 use crate::ports::{ChatPort, ChatUpdate};
 
@@ -409,6 +412,13 @@ impl ChatPort for IrcClient {
         // The server's own JOIN echo confirms it; no optimistic event here.
     }
 
+    fn load_earlier_history(&self, channel: String, before_msgid: String) {
+        self.send(irc_session::Outgoing::EarlierHistory {
+            channel,
+            before: before_msgid,
+        });
+    }
+
     fn leave_channel(&self, channel: String, reason: String) {
         self.wanted_channels.lock().unwrap().remove(&channel);
         if !channel.starts_with('#') {
@@ -528,41 +538,20 @@ impl ChatEmitter {
             .await
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn message(
-        &self,
-        channel: &str,
-        sender: &str,
-        content: &str,
-        kind: ChatMessageKind,
-        timestamp: Option<&str>,
-        msgid: &str,
-        reply_to: &str,
-        history: bool,
-    ) -> bool {
-        let message = ChatMessage {
+    /// A [`ChatMessage`] with the next local id, stamped now when the server
+    /// sent no `server-time`.
+    fn chat_message(&self, line: HistoryLine) -> ChatMessage {
+        ChatMessage {
             id: self.next_id.fetch_add(1, Ordering::SeqCst).to_string(),
-            sender: sender.to_string(),
-            content: content.to_string(),
-            timestamp: timestamp
-                .map(str::to_string)
+            sender: line.sender,
+            content: line.content,
+            timestamp: line
+                .timestamp
                 .unwrap_or_else(|| chrono::Utc::now().to_rfc3339()),
-            kind,
-            msgid: msgid.to_string(),
-            reply_to: reply_to.to_string(),
-        };
-        self.send(if history {
-            ChatUpdate::HistoryMessage {
-                channel: channel.to_string(),
-                message,
-            }
-        } else {
-            ChatUpdate::Message {
-                channel: channel.to_string(),
-                message,
-            }
-        })
-        .await
+            kind: line.kind,
+            msgid: line.msgid,
+            reply_to: line.reply_to,
+        }
     }
 }
 
@@ -820,21 +809,42 @@ where
             timestamp,
             msgid,
             reply_to,
-            history,
-        } => (!params
-            .emitter
-            .message(
-                &channel,
-                &sender,
-                &content,
+        } => {
+            let message = params.emitter.chat_message(HistoryLine {
+                sender,
+                content,
                 kind,
-                timestamp.as_deref(),
-                &msgid,
-                &reply_to,
-                history,
-            )
-            .await)
-            .then_some(SessionEnd::Cancelled),
+                timestamp,
+                msgid,
+                reply_to,
+            });
+            (!params
+                .emitter
+                .send(ChatUpdate::Message { channel, message })
+                .await)
+                .then_some(SessionEnd::Cancelled)
+        }
+        Effect::History {
+            channel,
+            lines,
+            earlier,
+            more_before,
+        } => {
+            let messages = lines
+                .into_iter()
+                .map(|line| params.emitter.chat_message(line))
+                .collect();
+            (!params
+                .emitter
+                .send(ChatUpdate::History {
+                    channel,
+                    messages,
+                    earlier,
+                    more_before,
+                })
+                .await)
+                .then_some(SessionEnd::Cancelled)
+        }
         Effect::TagsEnabled(enabled) => {
             params.tags_enabled.store(enabled, Ordering::SeqCst);
             None

@@ -2716,6 +2716,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "chat.roster.view.reset": "Resetuj",
   "chat.message.openConversation": "Napisz do {name}",
   "chat.loadOlder": "Wczytaj wcześniejsze wiadomości (pozostało {count})",
+  "chat.loadEarlier": "Wczytaj wcześniejsze wiadomości",
+  "chat.loadingEarlier": "Wczytywanie wcześniejszych wiadomości…",
   "chat.day.today": "Dzisiaj",
   "chat.day.yesterday": "Wczoraj",
   "maps.generate.copyName": "Kopiuj nazwę mapy",

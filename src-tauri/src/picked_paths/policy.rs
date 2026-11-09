@@ -138,6 +138,7 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
                 msgid: _,
                 emoji: _,
             }
+            | ChatCommand::LoadEarlierHistory { channel: _ }
             | ChatCommand::Disconnect,
         )
         | AppCommand::Clan(
