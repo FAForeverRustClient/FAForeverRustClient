@@ -1,0 +1,1 @@
+- Chat history no longer scrolls past line by line after signing in: a channel's history arrives in one step, starting with the latest 200 lines, and scrolling to the top loads earlier messages, up to 1000 per conversation.

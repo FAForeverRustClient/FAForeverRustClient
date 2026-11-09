@@ -1,0 +1,1 @@
+- Calling off a host while "Update map and mods when hosting" runs now stops the lookups and downloads.
