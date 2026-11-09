@@ -41,7 +41,7 @@ The migration is complete. Challonge is gone from the tree; the tab is built on
   really advances along `winner_to`.
 - `services/tourney.rs`: `SerialMutation` for writes, `LatestRequest` for detail
   and chat reads, a reload after every write.
-- `tests/tourney.rs`, two conformance cases, and the frontend twin in
+- `tests/it/tourney.rs`, two conformance cases, and the frontend twin in
   `store/reducers/tourney.ts`.
 - The tab: list, then Overview / Rules / Entrants / Bracket / Chat / Manage.
   Bracket connectors are drawn from `winnerTo` rather than from column geometry.
