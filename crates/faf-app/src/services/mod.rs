@@ -99,6 +99,7 @@ pub mod training;
 pub mod tutorials;
 pub mod unit_history;
 pub mod uploads;
+pub mod web_link;
 
 #[cfg(test)]
 mod progress_tests {

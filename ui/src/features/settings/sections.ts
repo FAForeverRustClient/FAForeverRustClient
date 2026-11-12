@@ -35,6 +35,7 @@ import { NotificationsSettingsSection } from "./NotificationsSettingsSection";
 import { PathsSettingsSection } from "./PathsSettingsSection";
 import { SteamSettingsSection } from "./SteamSettingsSection";
 import { UpdatesSettingsSection } from "./UpdatesSettingsSection";
+import { WebLinkSettingsSection } from "./WebLinkSettingsSection";
 
 /**
  * The section keys are the backend's `SettingsSection`, because the open
@@ -93,7 +94,7 @@ export const SECTIONS: Record<SectionKey, SectionDef> = {
     description: "settings.page.account.description",
     keywords: "settings.section.account.keywords",
     icon: "user",
-    panels: [AccountSupportSettingsSection, DiscordSettingsSection, SteamSettingsSection],
+    panels: [AccountSupportSettingsSection, DiscordSettingsSection, WebLinkSettingsSection, SteamSettingsSection],
   },
   game: {
     title: "settings.page.game.title",

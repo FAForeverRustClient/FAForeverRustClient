@@ -7036,7 +7036,14 @@ export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "fr
  *  tournament avatar went to the next winner) and the client put the one
  *  before it back. Said once, so the change is not a mystery.
  */
-"avatarRestored" | "error";
+"avatarRestored" |
+/**
+ *  The web client did something on this computer: started or stopped a
+ *  search, or joined a game. Said every time, so a search nobody at this
+ *  desk started is never a mystery, and so a player who did not turn the
+ *  link on for themselves finds out that it is on.
+ */
+"webLink" | "error";
 
 /**  What the popup window shows: at most three cards, newest first. */
 export type NotificationPopupBatch = {
@@ -10607,6 +10614,8 @@ export type SettingsCommand = { type: "load" } | { type: "setTheme"; payload: {
 	patch: GamePreferencesPatch,
 } } | { type: "patchDiscord"; payload: {
 	patch: DiscordPreferencesPatch,
+} } | { type: "patchWebLink"; payload: {
+	patch: WebLinkPreferencesPatch,
 } } | { type: "patchConnectivity"; payload: {
 	patch: ConnectivityPreferencesPatch,
 } } | { type: "patchDebug"; payload: {
@@ -10736,6 +10745,8 @@ export type SettingsEvent = { type: "loaded"; payload: {
 	preferences: GamePreferences,
 } } | { type: "discordChanged"; payload: {
 	preferences: DiscordPreferences,
+} } | { type: "webLinkChanged"; payload: {
+	preferences: WebLinkPreferences,
 } } | { type: "connectivityChanged"; payload: {
 	preferences: ConnectivityPreferences,
 } } | { type: "debugChanged"; payload: {
@@ -10808,6 +10819,7 @@ export type SettingsState = {
 	chat: ChatPreferences,
 	game: GamePreferences,
 	discord: DiscordPreferences,
+	webLink: WebLinkPreferences,
 	connectivity: ConnectivityPreferences,
 	debug: DebugPreferences,
 	updates: UpdatePreferences,
@@ -10867,7 +10879,7 @@ export type SettingsState = {
  *  Preference-group assignments, not another implementation of normalization.
  *  Changing one group never resends unrelated player notes or browsing history.
  */
-export type SettingsUpdate = { field: "all"; value: SettingsState } | { field: "theme"; value: Theme } | { field: "gamePath"; value: string } | { field: "replayGamePath"; value: string } | { field: "paths"; value: PathPreferences } | { field: "general"; value: GeneralPreferences } | { field: "appearance"; value: AppearancePreferences } | { field: "social"; value: SocialPreferences } | { field: "notifications"; value: NotificationPreferences } | { field: "chat"; value: ChatPreferences } | { field: "game"; value: GamePreferences } | { field: "discord"; value: DiscordPreferences } | { field: "connectivity"; value: ConnectivityPreferences } | { field: "debug"; value: DebugPreferences } | { field: "updates"; value: UpdatePreferences } | { field: "browsing"; value: BrowsingPreferences } | { field: "events"; value: EventsPreferences } | { field: "keptGeneratedMaps"; value: string[] } | { field: "mapGenerator"; value: GeneratorOptions } | { field: "matchmakerVetoes"; value: PlayerVeto[] } | { field: "mapPoolsSeen"; value: MapPoolsSeen[] } | { field: "avatarHistory"; value: string[] } | { field: "cacheInfo"; value: GameCacheInfo };
+export type SettingsUpdate = { field: "all"; value: SettingsState } | { field: "theme"; value: Theme } | { field: "gamePath"; value: string } | { field: "replayGamePath"; value: string } | { field: "paths"; value: PathPreferences } | { field: "general"; value: GeneralPreferences } | { field: "appearance"; value: AppearancePreferences } | { field: "social"; value: SocialPreferences } | { field: "notifications"; value: NotificationPreferences } | { field: "chat"; value: ChatPreferences } | { field: "game"; value: GamePreferences } | { field: "discord"; value: DiscordPreferences } | { field: "webLink"; value: WebLinkPreferences } | { field: "connectivity"; value: ConnectivityPreferences } | { field: "debug"; value: DebugPreferences } | { field: "updates"; value: UpdatePreferences } | { field: "browsing"; value: BrowsingPreferences } | { field: "events"; value: EventsPreferences } | { field: "keptGeneratedMaps"; value: string[] } | { field: "mapGenerator"; value: GeneratorOptions } | { field: "matchmakerVetoes"; value: PlayerVeto[] } | { field: "mapPoolsSeen"; value: MapPoolsSeen[] } | { field: "avatarHistory"; value: string[] } | { field: "cacheInfo"; value: GameCacheInfo };
 
 /**  How entrants get in. */
 export type SignupMode =
@@ -15170,6 +15182,28 @@ export type VetoTeamA =
 export type WeaponStat = "dps" | "damage" | "damageRadius" | "range" | "minRange" |
 /**  Shots per second, as the game fires them: whole ticks between shots. */
 "rateOfFire" | "salvoSize" | "salvoDelay" | "dotPulses" | "dotTime";
+
+/**
+ *  The web client (webclient.faforever.com) steering this client: see
+ *  `protocol::web_link`.
+ */
+export type WebLinkPreferences = {
+	/**
+	 *  Connect to the web client while signed in, so a browser logged in with
+	 *  the same FAF account can see this client's state, start or stop a
+	 *  matchmaker search, and join a game here.
+	 *
+	 *  Off until the player turns it on. It hands a website the power to
+	 *  start games on this computer, and nobody should find that switched on
+	 *  without having chosen it.
+	 */
+	enabled: boolean,
+};
+
+/**  A change to [`WebLinkPreferences`]. */
+export type WebLinkPreferencesPatch = {
+	enabled?: boolean,
+};
 
 /**
  *  Which rendering engine the client actually ended up in.

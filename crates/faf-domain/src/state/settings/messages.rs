@@ -56,6 +56,9 @@ pub enum SettingsEvent {
     DiscordChanged {
         preferences: DiscordPreferences,
     },
+    WebLinkChanged {
+        preferences: WebLinkPreferences,
+    },
     ConnectivityChanged {
         preferences: ConnectivityPreferences,
     },
@@ -171,6 +174,9 @@ pub enum SettingsCommand {
     },
     PatchDiscord {
         patch: DiscordPreferencesPatch,
+    },
+    PatchWebLink {
+        patch: WebLinkPreferencesPatch,
     },
     PatchConnectivity {
         patch: ConnectivityPreferencesPatch,

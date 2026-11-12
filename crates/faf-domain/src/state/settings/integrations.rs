@@ -1,5 +1,5 @@
-//! The client's ties to services outside it: Discord Rich Presence, and the
-//! client's own updates.
+//! The client's ties to services outside it: Discord Rich Presence, the web
+//! client, and the client's own updates.
 
 use super::*;
 
@@ -59,6 +59,41 @@ impl<'de> Deserialize<'de> for DiscordPreferences {
         Ok(Self {
             enabled: wire.enabled,
             disallow_joins: wire.disallow_joins,
+        })
+    }
+}
+
+/// The web client (webclient.faforever.com) steering this client: see
+/// `protocol::web_link`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WebLinkPreferences {
+    /// Connect to the web client while signed in, so a browser logged in with
+    /// the same FAF account can see this client's state, start or stop a
+    /// matchmaker search, and join a game here.
+    ///
+    /// Off until the player turns it on. It hands a website the power to
+    /// start games on this computer, and nobody should find that switched on
+    /// without having chosen it.
+    pub enabled: bool,
+}
+
+// Same reason as `DiscordPreferences`: a settings file gains later fields at
+// their defaults, and a file written before this group existed reads as off.
+impl<'de> Deserialize<'de> for WebLinkPreferences {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize, Default)]
+        #[serde(rename_all = "camelCase", default)]
+        struct Wire {
+            enabled: bool,
+        }
+
+        let wire = Wire::deserialize(deserializer)?;
+        Ok(Self {
+            enabled: wire.enabled,
         })
     }
 }
@@ -197,6 +232,13 @@ preference_patch! {
 }
 
 preference_patch! {
+    /// A change to [`WebLinkPreferences`].
+    WebLinkPreferencesPatch for WebLinkPreferences {
+        enabled: bool,
+    }
+}
+
+preference_patch! {
     /// A change to [`UpdatePreferences`].
     UpdatePreferencesPatch for UpdatePreferences {
         automatic: bool,
@@ -254,6 +296,19 @@ mod tests {
             serde_json::from_str(r#"{"discord":{"enabled":false}}"#).unwrap();
         assert!(!settings.discord.enabled);
         assert!(!settings.discord.disallow_joins);
+    }
+
+    #[test]
+    fn the_web_link_is_off_until_turned_on_and_stays_on_once_it_is() {
+        let older: SettingsState = serde_json::from_str(r#"{"theme":"forgeDark"}"#).unwrap();
+        assert!(!older.web_link.enabled);
+        assert!(!SettingsState::default().web_link.enabled);
+
+        let patch: WebLinkPreferencesPatch = serde_json::from_str(r#"{"enabled":true}"#).unwrap();
+        let on = patch.apply_to(older.web_link);
+        assert!(on.enabled);
+        let saved: SettingsState = serde_json::from_str(r#"{"webLink":{"enabled":true}}"#).unwrap();
+        assert!(saved.web_link.enabled);
     }
 
     #[test]

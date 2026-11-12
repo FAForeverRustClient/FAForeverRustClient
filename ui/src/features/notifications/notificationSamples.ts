@@ -36,6 +36,7 @@ export const NOTIFICATION_SAMPLES = {
   mapPoolReleased: { title: "notifications.msg.newMapPool.title", body: "notifications.msg.newMapPool.body", action: { type: "openMatchmaking" } },
   uploadFinished: { title: "notifications.msg.mapPublished.title", body: "notifications.msg.mapPublished.body" },
   avatarRestored: { title: "notifications.msg.avatarRestored.title", body: "notifications.msg.avatarRestored.body", image: "avatar" },
+  webLink: { title: "notifications.msg.webLinkSearch.title", body: "notifications.msg.webLinkSearch.body" },
   error: { title: "notifications.msg.replayFailed.title" },
 } satisfies Record<NotificationKind, Sample>;
 
@@ -44,7 +45,7 @@ export function sampleNotification(kind: NotificationKind, id: string, scenario:
   const sample: Sample = NOTIFICATION_SAMPLES[kind];
   const player = t("notifications.test.player");
   const params = { login: player, host: player, sender: player, first: player, players: player,
-    title: t("notifications.test.game"), game: t("notifications.test.game"), name: t("notifications.test.game"), queue: "1v1", count: 1, teamSize: 1, version: "0.0.0" };
+    title: t("notifications.test.game"), game: t("notifications.test.game"), name: t("notifications.test.game"), queue: "1v1", queues: "1 vs 1", count: 1, teamSize: 1, version: "0.0.0" };
   const body = sample.body ? t(sample.body, params) : t("notifications.test.message");
   return { item: { id, kind, title: `[${t("notifications.test.badge")}] ${t(sample.title, params)}`,
     body: scenario === "long" ? Array.from({ length: 6 }, () => body).join(" ") : body,

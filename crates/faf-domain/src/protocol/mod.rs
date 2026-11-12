@@ -30,3 +30,4 @@ pub mod stun;
 pub mod tourney;
 pub mod unit_history;
 pub mod vault_query;
+pub mod web_link;

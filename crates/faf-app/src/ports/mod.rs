@@ -42,6 +42,7 @@ pub mod tutorials;
 pub mod unit_history;
 pub mod updater;
 pub mod uploads;
+pub mod web_link;
 
 pub use auth::{AuthError, AuthPort, AuthResult};
 pub use changelog::ChangelogPort;
@@ -94,6 +95,7 @@ pub use updater::{
     UpdateProgress,
 };
 pub use uploads::UploadsPort;
+pub use web_link::{WebLinkError, WebLinkPort, WebLinkSession};
 
 use std::sync::Arc;
 
@@ -106,6 +108,9 @@ pub struct Ports {
     pub chat: Arc<dyn ChatPort>,
     pub coop: Arc<dyn CoopPort>,
     pub discord: Arc<dyn DiscordPort>,
+    /// The web client (webclient.faforever.com) steering this client, once the
+    /// player allows it. See `services::web_link`.
+    pub web_link: Arc<dyn WebLinkPort>,
     pub lobby: Arc<dyn LobbyPort>,
     pub settings: Arc<dyn SettingsPort>,
     /// Connectivity + launch ports. Authenticated sessions use real adapters;

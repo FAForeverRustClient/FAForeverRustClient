@@ -48,7 +48,7 @@ it("covers all event kinds with translated local samples and local artwork", () 
 it("shows all three real card layouts and simulates dangerous actions without commands", async () => {
   render(<NotificationTestDialog onClose={vi.fn()} />);
   await flush();
-  expect(within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option")).toHaveLength(27);
+  expect(within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option")).toHaveLength(28);
   choose("notifications.test.event", "partyInvite");
   // The invite has an action button, which acts; the rest of the card dismisses.
   fireEvent.click(document.querySelector(".desktop-notification-action")!);

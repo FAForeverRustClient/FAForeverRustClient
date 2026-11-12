@@ -788,6 +788,7 @@ pub(super) fn path_rule(command: &AppCommand) -> PathRule<'_> {
             | SettingsCommand::RemoveNotificationSound { name: _ }
             | SettingsCommand::PatchChat { patch: _ }
             | SettingsCommand::PatchDiscord { patch: _ }
+            | SettingsCommand::PatchWebLink { patch: _ }
             | SettingsCommand::PatchConnectivity { patch: _ }
             | SettingsCommand::PatchDebug { patch: _ }
             | SettingsCommand::PatchUpdates { patch: _ }

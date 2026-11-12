@@ -71,6 +71,11 @@ pub enum NotificationKind {
     /// tournament avatar went to the next winner) and the client put the one
     /// before it back. Said once, so the change is not a mystery.
     AvatarRestored,
+    /// The web client did something on this computer: started or stopped a
+    /// search, or joined a game. Said every time, so a search nobody at this
+    /// desk started is never a mystery, and so a player who did not turn the
+    /// link on for themselves finds out that it is on.
+    WebLink,
     Error,
 }
 
@@ -385,6 +390,7 @@ mod tests {
             NotificationKind::ClientUpdate,
             NotificationKind::UploadFinished,
             NotificationKind::AvatarRestored,
+            NotificationKind::WebLink,
             NotificationKind::FriendOnline,
             NotificationKind::FriendOffline,
             NotificationKind::FriendPlaying,
