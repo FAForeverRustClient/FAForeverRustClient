@@ -1,0 +1,803 @@
+//! Chat service tests: drive the streaming port end-to-end against the fake.
+//!
+//! The unit tests in `faf-domain` cover the reducer and the input grammar in
+//! isolation; these cover the wiring between them, which is where a
+//! multi-channel client can plausibly go wrong: does a slash command reach the
+//! right port method, and does the resulting update land in the right channel?
+
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use async_trait::async_trait;
+use faf_app::infra::fake_ports;
+use faf_app::ports::{ChatPort, ChatUpdate, SettingsPort};
+use faf_app::{App, Ports};
+use faf_domain::state::{
+    ChatCommand, ChatMessage, ChatMessageKind, ChatStatus, LobbyCommand, NotificationKind,
+    SettingsCommand, SettingsState, DEFAULT_CHANNEL,
+};
+use faf_domain::AppState;
+use tokio::sync::mpsc;
+
+use crate::support;
+
+#[derive(Default)]
+struct RecordingSettings {
+    saved: Arc<Mutex<Vec<SettingsState>>>,
+}
+
+#[async_trait]
+impl SettingsPort for RecordingSettings {
+    async fn load(&self) -> Option<SettingsState> {
+        Some(SettingsState::default())
+    }
+
+    async fn save(&self, settings: &SettingsState) -> Result<(), String> {
+        self.saved.lock().unwrap().push(settings.clone());
+        Ok(())
+    }
+}
+
+/// Poll the snapshot until `predicate` holds, so a test never depends on how
+/// many events a command happens to produce.
+async fn until(app: &App, predicate: impl Fn(&AppState) -> bool) -> AppState {
+    let satisfied = support::find(app, support::PATIENCE, |state| {
+        predicate(state).then(|| state.clone())
+    })
+    .await;
+    match satisfied {
+        Some(snapshot) => snapshot,
+        None => panic!("timed out; last snapshot: {:?}", app.snapshot().chat),
+    }
+}
+
+async fn connected() -> App {
+    let app = support::start(fake_ports());
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Connected).await;
+    app
+}
+
+#[tokio::test]
+async fn connect_joins_the_default_channel_with_a_roster_and_history() {
+    let app = connected().await;
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty() && !c.users.is_empty())
+    })
+    .await;
+
+    assert_eq!(state.chat.username, "Aurora");
+    assert_eq!(state.chat.active_channel, DEFAULT_CHANNEL);
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    assert!(
+        !channel.topic.is_empty(),
+        "topic should be published on join"
+    );
+    assert!(channel.users.iter().any(|u| u.name == "Aurora"));
+    assert!(channel.users.iter().any(|u| u.is_moderator()));
+    // Active is not read: lines that arrived count until the channel is
+    // looked at, which the chat view does by selecting it again.
+    assert!(channel.unread > 0);
+    app.dispatch(
+        ChatCommand::SelectChannel {
+            channel: DEFAULT_CHANNEL.into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.unread == 0)
+    })
+    .await;
+    assert_eq!(
+        state.chat.channel(DEFAULT_CHANNEL).unwrap().unread_mentions,
+        0
+    );
+}
+
+#[tokio::test]
+async fn a_plain_line_is_echoed_into_its_channel() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "hello everyone".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.content == "hello everyone"))
+    })
+    .await;
+    let echo = state
+        .chat
+        .channel(DEFAULT_CHANNEL)
+        .unwrap()
+        .messages
+        .iter()
+        .find(|m| m.content == "hello everyone")
+        .unwrap();
+    assert_eq!(echo.sender, "Aurora");
+    assert_eq!(echo.kind, ChatMessageKind::Message);
+}
+
+#[tokio::test]
+async fn me_becomes_an_action_line() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "/me waves".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.kind == ChatMessageKind::Action))
+    })
+    .await;
+    let action = state
+        .chat
+        .channel(DEFAULT_CHANNEL)
+        .unwrap()
+        .messages
+        .iter()
+        .find(|m| m.kind == ChatMessageKind::Action)
+        .unwrap();
+    assert_eq!(action.content, "waves");
+}
+
+#[tokio::test]
+async fn join_opens_a_second_channel_without_stealing_focus() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "/join newbie".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| s.chat.channel("#newbie").is_some()).await;
+    // `/join newbie` must be normalised to `#newbie`, and reading position
+    // stays where the user left it.
+    assert_eq!(state.chat.active_channel, DEFAULT_CHANNEL);
+    assert_eq!(state.chat.channels.len(), 2);
+}
+
+#[tokio::test]
+async fn msg_opens_a_private_conversation_and_sends_into_it() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "/msg Stormlord good game".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| {
+        s.chat
+            .channel("Stormlord")
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await;
+    let conversation = state.chat.channel("Stormlord").unwrap();
+    assert!(conversation.is_private());
+    assert_eq!(conversation.messages[0].content, "good game");
+    // Our own line never marks the conversation unread.
+    assert_eq!(conversation.unread, 0);
+}
+
+#[tokio::test]
+async fn an_unknown_command_reports_locally_instead_of_being_sent() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "/kick Stormlord".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.kind == ChatMessageKind::Error))
+    })
+    .await;
+    let messages = &state.chat.channel(DEFAULT_CHANNEL).unwrap().messages;
+    assert!(
+        !messages
+            .iter()
+            .any(|m| m.content.contains("/kick Stormlord")),
+        "the raw command must not be sent to the channel"
+    );
+    assert!(messages
+        .iter()
+        .any(|m| m.kind == ChatMessageKind::Error && m.content.contains("/kick")));
+}
+
+#[tokio::test]
+async fn selecting_a_channel_moves_the_reading_position() {
+    // (That selecting also clears the unread counters is covered by the
+    // reducer's own tests, which can synthesise foreign traffic; the fake only
+    // ever echoes our own lines, which never count as unread.)
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::JoinChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.channel("#newbie").is_some()).await;
+    assert_eq!(app.snapshot().chat.active_channel, DEFAULT_CHANNEL);
+
+    app.dispatch(
+        ChatCommand::SelectChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.active_channel == "#newbie").await;
+}
+
+#[tokio::test]
+async fn rapid_channel_selection_batches_read_marker_persistence() {
+    let saved = Arc::new(Mutex::new(Vec::new()));
+    let ports = Ports {
+        settings: Arc::new(RecordingSettings {
+            saved: saved.clone(),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    // Nothing is written back before the settings file has been read, the
+    // read markers included, so the startup load comes first as it does in
+    // the client. See `crates/faf-app/tests/it/settings_startup.rs`.
+    app.dispatch_and_wait(faf_domain::state::SettingsCommand::Load.into())
+        .await
+        .unwrap();
+    saved.lock().unwrap().clear();
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| state.chat.status == ChatStatus::Connected).await;
+    app.dispatch(
+        ChatCommand::JoinChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: "#newbie".into(),
+            content: "hello newbie".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| {
+        state
+            .chat
+            .channel("#newbie")
+            .is_some_and(|channel| !channel.messages.is_empty())
+    })
+    .await;
+
+    for channel in ["#newbie", DEFAULT_CHANNEL, "#newbie"] {
+        app.dispatch(
+            ChatCommand::SelectChannel {
+                channel: channel.into(),
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+        until(&app, |state| state.chat.active_channel == channel).await;
+    }
+
+    tokio::time::sleep(Duration::from_millis(550)).await;
+    let saved = saved.lock().unwrap();
+    assert_eq!(
+        saved.len(),
+        1,
+        "the selection burst should produce one write"
+    );
+    assert_eq!(saved[0].chat.read_markers.len(), 2);
+}
+
+#[tokio::test]
+async fn leaving_a_channel_closes_it_and_falls_back() {
+    let app = connected().await;
+    app.dispatch(
+        ChatCommand::JoinChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.channel("#newbie").is_some()).await;
+
+    app.dispatch(
+        ChatCommand::SelectChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.active_channel == "#newbie").await;
+
+    app.dispatch(
+        ChatCommand::LeaveChannel {
+            channel: "#newbie".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |s| s.chat.channel("#newbie").is_none()).await;
+    assert_eq!(state.chat.active_channel, DEFAULT_CHANNEL);
+}
+
+#[tokio::test]
+async fn the_joins_parts_preference_round_trips_through_the_loop() {
+    let app = connected().await;
+    app.dispatch(ChatCommand::SetShowJoinsParts { enabled: true }.into())
+        .await
+        .unwrap();
+    until(&app, |s| s.chat.show_joins_parts).await;
+}
+
+#[tokio::test]
+async fn disconnect_clears_rosters_but_keeps_the_scrollback() {
+    let app = connected().await;
+    until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await;
+
+    app.dispatch(ChatCommand::Disconnect.into()).await.unwrap();
+
+    let state = until(&app, |s| s.chat.status == ChatStatus::Disconnected).await;
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    assert!(channel.users.is_empty(), "roster goes stale on disconnect");
+    assert!(!channel.messages.is_empty(), "scrollback survives");
+}
+
+/// The lobby announces the account's channels before chat is up.
+///
+/// This is the usual ordering: the lobby socket connects at login, chat some
+/// time after. The announcement has to survive the gap, which is why the list
+/// lives in state instead of being acted on where it arrives.
+#[tokio::test]
+async fn channels_announced_by_the_lobby_are_joined_when_chat_connects() {
+    let app = support::start(fake_ports());
+
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    until(&app, |state| !state.chat.server_auto_join.is_empty()).await;
+    // The lobby sends bare names; the domain adds the prefix.
+    assert_eq!(
+        app.snapshot().chat.server_auto_join,
+        vec!["#aeolus", "#clan_bc"]
+    );
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| state.chat.channel("#clan_bc").is_some()).await;
+}
+
+/// The reverse ordering: chat is already connected when the announcement lands,
+/// so nothing later will re-read the list and it has to be acted on at once.
+#[tokio::test]
+async fn channels_announced_while_chat_is_connected_are_joined_immediately() {
+    let app = connected().await;
+
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    until(&app, |state| state.chat.channel("#clan_bc").is_some()).await;
+}
+
+/// The reported bug: the language channel is derived from the account's country
+/// flag, and that country arrives on the lobby socket *after* chat has already
+/// connected. Nothing re-ran the derivation, so the channel was never joined.
+///
+/// The fake profile for "Aurora" carries country `fr`, so the expected channel
+/// is `#french`.
+#[tokio::test]
+async fn the_language_channel_is_joined_once_our_country_is_known() {
+    let app = connected().await;
+    assert!(
+        app.snapshot().chat.channel("#french").is_none(),
+        "nothing knows our country yet"
+    );
+
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    until(&app, |state| state.chat.channel("#french").is_some()).await;
+}
+
+#[tokio::test]
+async fn the_language_channel_is_not_joined_when_the_preference_is_off() {
+    let app = support::start(fake_ports());
+    let mut preferences = app.snapshot().settings.chat;
+    preferences.auto_join_language_channel = false;
+    app.dispatch(
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| {
+        !state.settings.chat.auto_join_language_channel
+    })
+    .await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    // The server's list still lands, which is what makes this a real assertion
+    // rather than a race the test wins by being fast.
+    until(&app, |state| state.chat.channel("#clan_bc").is_some()).await;
+    assert!(app.snapshot().chat.channel("#french").is_none());
+}
+
+#[tokio::test]
+async fn muted_players_are_filtered_before_messages_enter_state() {
+    let app = support::start(fake_ports());
+    let mut preferences = app.snapshot().settings.chat;
+    preferences.muted_players.push("stormlord".into());
+    app.dispatch(
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| !state.settings.chat.muted_players.is_empty()).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |state| {
+        state.chat.channel(DEFAULT_CHANNEL).is_some_and(|channel| {
+            channel
+                .messages
+                .iter()
+                .any(|message| message.sender == "Aurora")
+        })
+    })
+    .await;
+    let messages = &state.chat.channel(DEFAULT_CHANNEL).unwrap().messages;
+    assert!(messages
+        .iter()
+        .all(|message| !message.sender.eq_ignore_ascii_case("Stormlord")));
+}
+
+/// A chat server that hands over the same history on every connection, as
+/// `CHATHISTORY LATEST` does, plus whatever was said in between.
+#[derive(Default)]
+struct ReplayingChat {
+    connects: Mutex<usize>,
+    updates: Mutex<Option<mpsc::Sender<ChatUpdate>>>,
+}
+
+/// One line of that history, as the port builds it on each receipt: a fresh
+/// local `id` every time, and the server's id and time unchanged.
+fn history_line(receipt: usize, msgid: &str, content: &str) -> ChatUpdate {
+    ChatUpdate::Message {
+        channel: DEFAULT_CHANNEL.into(),
+        message: ChatMessage {
+            id: format!("{receipt}-{msgid}"),
+            sender: "Stormlord".into(),
+            content: content.into(),
+            timestamp: "2026-01-01T17:37:00.000Z".into(),
+            kind: ChatMessageKind::Message,
+            msgid: msgid.into(),
+            reply_to: String::new(),
+        },
+    }
+}
+
+#[async_trait]
+impl ChatPort for ReplayingChat {
+    async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
+        let receipt = {
+            let mut connects = self.connects.lock().unwrap();
+            *connects += 1;
+            *connects
+        };
+        let (tx, rx) = mpsc::channel(64);
+        let mut lines = vec![
+            ChatUpdate::Status(ChatStatus::Connecting, String::new()),
+            ChatUpdate::Status(ChatStatus::Connected, username),
+            ChatUpdate::ChannelJoined(DEFAULT_CHANNEL.into()),
+            history_line(receipt, "srv-1", "Aurora: rematch?"),
+        ];
+        if receipt > 1 {
+            lines.push(history_line(receipt, "srv-2", "said while you were away"));
+        }
+        for line in lines {
+            tx.try_send(line).unwrap();
+        }
+        *self.updates.lock().unwrap() = Some(tx);
+        rx
+    }
+    fn send_message(&self, _: String, _: String, _: String) {}
+    fn send_action(&self, _: String, _: String) {}
+    fn join_channel(&self, _: String) {}
+    fn leave_channel(&self, _: String, _: String) {}
+    fn set_topic(&self, _: String, _: String) {}
+    fn disconnect(&self) {
+        // Dropping the sender ends the stream, as a closed socket does.
+        *self.updates.lock().unwrap() = None;
+    }
+}
+
+/// #471: reconnecting joined the channel again, the join asked for the
+/// history again, and every line already on screen was appended a second
+/// time. A mention among them raised its notification a second time too.
+#[tokio::test]
+async fn a_reconnect_does_not_repeat_the_history_or_its_notifications() {
+    let app = support::start(Ports {
+        chat: Arc::new(ReplayingChat::default()),
+        ..fake_ports()
+    });
+    let connect = || {
+        app.dispatch(
+            ChatCommand::Connect {
+                username: "Aurora".into(),
+            }
+            .into(),
+        )
+    };
+
+    connect().await.unwrap();
+    until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await;
+    app.dispatch(ChatCommand::Disconnect.into()).await.unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Disconnected).await;
+
+    connect().await.unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.msgid == "srv-2"))
+    })
+    .await;
+
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    let msgids: Vec<&str> = channel.messages.iter().map(|m| m.msgid.as_str()).collect();
+    assert_eq!(msgids, vec!["srv-1", "srv-2"], "the history was repeated");
+    let mentions = state
+        .notifications
+        .items
+        .iter()
+        .filter(|item| item.kind == NotificationKind::Mention)
+        .count();
+    assert_eq!(mentions, 1, "the replayed mention notified a second time");
+}
+
+/// The offline fake replays its scrollback on every connect, as the server
+/// does, so a reconnect there must not repeat it either.
+#[tokio::test]
+async fn the_offline_scrollback_is_not_repeated_by_a_reconnect() {
+    let app = connected().await;
+    let seeded = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| !c.messages.is_empty())
+    })
+    .await
+    .chat
+    .channel(DEFAULT_CHANNEL)
+    .unwrap()
+    .messages
+    .len();
+    app.dispatch(ChatCommand::Disconnect.into()).await.unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Disconnected).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |s| s.chat.status == ChatStatus::Connected).await;
+    // The echo lands after the replayed scrollback, so once it is there the
+    // replay has been applied.
+    app.dispatch(
+        ChatCommand::SendMessage {
+            channel: DEFAULT_CHANNEL.into(),
+            content: "back again".into(),
+            reply_to: String::new(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |s| {
+        s.chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|c| c.messages.iter().any(|m| m.content == "back again"))
+    })
+    .await;
+    assert_eq!(
+        state.chat.channel(DEFAULT_CHANNEL).unwrap().messages.len(),
+        seeded + 1
+    );
+}
+
+/// A chat server that answers the join with one history batch.
+struct HistoryChat;
+
+fn said(sender: &str, msgid: &str, content: &str) -> ChatMessage {
+    ChatMessage {
+        id: format!("local-{msgid}"),
+        sender: sender.into(),
+        content: content.into(),
+        timestamp: "2026-01-01T17:37:00.000Z".into(),
+        kind: ChatMessageKind::Message,
+        msgid: msgid.into(),
+        reply_to: String::new(),
+    }
+}
+
+#[async_trait]
+impl ChatPort for HistoryChat {
+    async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
+        let (tx, rx) = mpsc::channel(8);
+        for update in [
+            ChatUpdate::Status(ChatStatus::Connecting, String::new()),
+            ChatUpdate::Status(ChatStatus::Connected, username),
+            ChatUpdate::ChannelJoined(DEFAULT_CHANNEL.into()),
+            ChatUpdate::History {
+                channel: DEFAULT_CHANNEL.into(),
+                messages: vec![
+                    said("Bob", "h1", "gg"),
+                    said("Stormlord", "h2", "muted all along"),
+                    said("Cid", "h3", "Aurora: you there?"),
+                ],
+                earlier: false,
+                more_before: true,
+            },
+        ] {
+            tx.try_send(update).unwrap();
+        }
+        rx
+    }
+    fn send_message(&self, _: String, _: String, _: String) {}
+    fn send_action(&self, _: String, _: String) {}
+    fn join_channel(&self, _: String) {}
+    fn leave_channel(&self, _: String, _: String) {}
+    fn set_topic(&self, _: String, _: String) {}
+    fn disconnect(&self) {}
+}
+
+/// The backfill lands whole, quietly: no unread, no notification for the
+/// mention in it, and nothing from a muted player.
+#[tokio::test]
+async fn a_history_lands_whole_and_quietly() {
+    let app = support::start(Ports {
+        chat: Arc::new(HistoryChat),
+        ..fake_ports()
+    });
+    let mut preferences = app.snapshot().settings.chat;
+    preferences.muted_players.push("stormlord".into());
+    app.dispatch(
+        SettingsCommand::PatchChat {
+            patch: Box::new(preferences.into()),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    until(&app, |state| !state.settings.chat.muted_players.is_empty()).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    let state = until(&app, |state| {
+        state
+            .chat
+            .channel(DEFAULT_CHANNEL)
+            .is_some_and(|channel| !channel.messages.is_empty())
+    })
+    .await;
+
+    let channel = state.chat.channel(DEFAULT_CHANNEL).unwrap();
+    let msgids: Vec<&str> = channel.messages.iter().map(|m| m.msgid.as_str()).collect();
+    assert_eq!(
+        msgids,
+        ["h1", "h3"],
+        "the whole history, without the muted player"
+    );
+    assert_eq!((channel.unread, channel.unread_mentions), (0, 0));
+    assert!(
+        state
+            .notifications
+            .items
+            .iter()
+            .all(|item| item.kind != NotificationKind::Mention),
+        "a mention in the history does not notify"
+    );
+}

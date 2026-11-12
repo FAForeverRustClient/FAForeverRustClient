@@ -47,7 +47,7 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 | Token-Refresh / Session-Persistenz | ✅ | ✅ | ✅ | `crates/faf-app/src/infra/auth.rs`, `infra/session.rs` |
 | Lobby-Session-Handshake (`/lobby/access`) | ✅ | ✅ | ✅ | `crates/faf-app/src/infra/lobby_ws.rs` (`fetch_access_url`) |
 | UID-/Hardware-Token beim Login | ✅ | ✅ | ✅ | `natives/faf-uid*`, gebündelt via `src-tauri/tauri.conf.json` |
-| Login-UI inkl. Fehlerpfade | ✅ | ✅ | ✅ | `ui/src/features/auth/LoginView.tsx`; Test `crates/faf-app/tests/auth.rs` |
+| Login-UI inkl. Fehlerpfade | ✅ | ✅ | ✅ | `ui/src/features/auth/LoginView.tsx`; Test `crates/faf-app/tests/it/auth.rs` |
 | Abmelden / Account wechseln | ✅ | ✅ | ✅ | `crates/faf-app/src/services/auth.rs` |
 
 ### Lobby, Custom Games & Matchmaking
@@ -118,7 +118,7 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 | Clan-Tag + Clan-Ansicht | ✅ | ✅ | ✅ | `ui/src/features/player-card/PlayerClanView.tsx` |
 | Avatare in Roster/Karte | ✅ | ✅ | ✅ | `state/social.rs` (`avatar_url`) |
 | Länderflaggen | ✅ | ✅ | ✅ | `ui/src/shared/countryFlags.ts` |
-| Private Notizen zu Spielern | ❌ | ✅ | ✅ | `PlayerNoteEditor.tsx`; Test `tests/player_notes.rs` |
+| Private Notizen zu Spielern | ❌ | ✅ | ✅ | `PlayerNoteEditor.tsx`; Test `tests/it/player_notes.rs` |
 | Emoticons / Emoji-Picker | ❌ | ✅ | ❌ | Java: `chat/emoticons/` (7 Klassen) |
 | Nachrichten-Reaktionen | ❌ | ✅ | ❌ | Java: `chat/ReactionController.java` |
 | Typing-Indikator | ❌ | ✅ | ❌ | Java: `chat/TypingState.java` |
@@ -131,11 +131,11 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 |---|---|---|---|---|
 | Online-Vault-Suche | ✅ | ✅ | ✅ | `crates/faf-app/src/infra/replay.rs:542` |
 | Erweiterte Filter | ✅ | ✅ | ✅ | `ui/src/features/replays/AdvancedReplayFilters.tsx` |
-| Replay-Download + lokale Ablage | ✅ | ✅ | ✅ | `replay.rs:282`; Test `tests/replay_download.rs` |
+| Replay-Download + lokale Ablage | ✅ | ✅ | ✅ | `replay.rs:282`; Test `tests/it/replay_download.rs` |
 | Lokale Replays scannen | ✅ | ✅ | ✅ | `replay.rs:601` |
 | `.fafreplay`-Header parsen (Lua-Binärformat) | ✅ | ✅ | ✅ | `replay.rs:869 parse_replay_lua()` |
 | Live-Replay (WebSocket-Relay + FA) | ✅ | ✅ | ✅ | `replay.rs`, `services/replays.rs:31` |
-| 5-Minuten-Live-Delay durchgesetzt | ✅ | ✅ | ✅ | Test `tests/live_replay_delay.rs` |
+| 5-Minuten-Live-Delay durchgesetzt | ✅ | ✅ | ✅ | Test `tests/it/live_replay_delay.rs` |
 | Live-Replay "später automatisch starten" | ❌ | 🟡 | ✅ | `services/replays.rs:79 TrackLive` |
 | Detail-Tabs (Chat-Log, Economy-Charts) | ✅ | 🟡 | ❌ | Python: `src/replays/replaydetails/tabs/`, `zigparser/` |
 
@@ -147,8 +147,8 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 | Installieren / Deinstallieren | ✅ | ✅ | ✅ | `infra/vault_install.rs`, `maps.rs:195` |
 | `mod_info.lua` parsen | ✅ | ✅ | 🟡 | `mods.rs:295`: zeilenbasiert, kein vollständiger Lua-Parser |
 | Mods aktivieren/deaktivieren via `game.prefs` | ✅ | ✅ | ✅ | `mods.rs:569` |
-| Bewertungen lesen und schreiben | ✅ | ✅ | ✅ | `infra/reviews.rs`; Test `tests/reviews.rs` |
-| Map/Mod hochladen | ✅ | ✅ | ✅ | `infra/uploads.rs`; Test `tests/uploads.rs` |
+| Bewertungen lesen und schreiben | ✅ | ✅ | ✅ | `infra/reviews.rs`; Test `tests/it/reviews.rs` |
+| Map/Mod hochladen | ✅ | ✅ | ✅ | `infra/uploads.rs`; Test `tests/it/uploads.rs` |
 | Map-Generator (Neroxis) | ✅ | ✅ | ✅ | `infra/map_generator.rs` |
 
 ### Leaderboards, Turniere, Co-op, Tutorials
@@ -178,7 +178,7 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 | Taskbar-Fortschritt | ❌ | ✅ | ❌ | Java: `ui/taskbar/` |
 | Persistente Einstellungen | ✅ | ✅ | ✅ | `infra/settings_file.rs` |
 | Themes | ✅ | ✅ | 🟡 | Rust: feste Token-Themes; Java/Python laden Themes vom Datenträger |
-| Client-Update via GitHub Releases | ✅ | ✅ | ✅ | `infra/client_update.rs`; Test `tests/client_update.rs` |
+| Client-Update via GitHub Releases | ✅ | ✅ | ✅ | `infra/client_update.rs`; Test `tests/it/client_update.rs` |
 | Signaturprüfung des Updates | ❌ | ❌ | ❌ | In `client_update.rs:21-26` als bewusste Lücke dokumentiert |
 
 ### Lokalisierung (i18n)
@@ -197,10 +197,10 @@ Dateien wurden inzwischen entfernt (siehe Abschnitt "Erledigt").
 |---|---|---|---|---|
 | News | ✅ | ✅ | 🟡 | `NewsView.tsx`: iframe auf `faforever.com/newshub` |
 | Unit-Datenbank | ✅ | ✅ | 🟡 | `UnitsView.tsx`: iframe auf die ETFreeman-DB |
-| Discord Rich Presence | ❌ | ✅ | ✅ | `infra/discord.rs`; Test `tests/discord_presence.rs` |
+| Discord Rich Presence | ❌ | ✅ | ✅ | `infra/discord.rs`; Test `tests/it/discord_presence.rs` |
 | Steam-Integration | ✅ | ✅ | ❌ | Java: `steam/SteamService.java` |
 | Screenshot-Upload zu Imgur | ❌ | ✅ | ❌ | Java: `uploader/imgur/` |
-| Spieler melden (Moderation Report) | ✅ | ✅ | ✅ | `infra/reporting.rs`; Test `tests/reporting.rs` |
+| Spieler melden (Moderation Report) | ✅ | ✅ | ✅ | `infra/reporting.rs`; Test `tests/it/reporting.rs` |
 | Admin: Spiel schließen, Broadcast, Ban | ✅ | ✅ | ❌ | Java: `moderator/ModeratorService.java`; Python: `src/power/actions.py` |
 
 ---
