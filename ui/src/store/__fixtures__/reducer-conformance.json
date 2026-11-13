@@ -3465,6 +3465,12 @@
                   ],
                   "rankedGames": 3,
                   "report": {
+                    "activity": {
+                      "factions": [],
+                      "milestones": [],
+                      "months": [],
+                      "weekMinutes": []
+                    },
                     "averageMinutesTenths": 0,
                     "bestDays": [],
                     "bestMonths": [],
@@ -3557,6 +3563,12 @@
               ],
               "rankedGames": 3,
               "report": {
+                "activity": {
+                  "factions": [],
+                  "milestones": [],
+                  "months": [],
+                  "weekMinutes": []
+                },
                 "averageMinutesTenths": 0,
                 "bestDays": [],
                 "bestMonths": [],

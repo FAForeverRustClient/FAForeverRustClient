@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { playedHours } from "./PlayerStatistics";
+import { playedHours } from "./playerActivity";
 
 // Issue 748: the time played, as the Statistics tab prints it.
 describe("playedHours", () => {

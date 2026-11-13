@@ -24,6 +24,7 @@ pub mod maps;
 pub mod mods;
 pub mod nav;
 pub mod notifications;
+pub mod player_activity;
 pub mod player_card;
 pub mod player_report;
 pub mod replays;
@@ -127,6 +128,10 @@ pub use nav::{
 pub use notifications::{
     ClientNotification, NotificationAction, NotificationCommand, NotificationEvent,
     NotificationKind, NotificationState, NotificationText,
+};
+pub use player_activity::{
+    build_player_activity, PlayerActivity, PlayerActivityMonth, PlayerFactionTime, PlayerMilestone,
+    PlayerQueueMinutes,
 };
 pub use player_card::{
     aggregate_map_stats, is_retired_leaderboard, leaderboard_display_rank, sort_league_placements,

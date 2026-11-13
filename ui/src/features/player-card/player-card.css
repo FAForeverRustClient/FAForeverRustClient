@@ -2635,3 +2635,250 @@ img.player-results-map-thumb {
   align-items: center;
   gap: var(--space-2);
 }
+
+/* Statistics: Performance and Activity (issue 748), switched above the cards. */
+.player-stats-views {
+  justify-self: start;
+}
+
+/* The overview's time played: a number that opens Activity, or the ask to
+   count it. Text in the facts strip's own size, underlined on hover only. */
+.player-overview-fact-link {
+  padding: 0;
+  color: var(--color-text);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.player-overview-fact-link:hover,
+.player-overview-fact-link:focus-visible {
+  text-decoration: underline;
+}
+
+/* Activity: the queue legend above the hours chart. */
+.player-activity-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  list-style: none;
+}
+
+.player-activity-legend li,
+.player-activity-tooltip-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-activity-swatch {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 2px;
+}
+
+/* Hours per month or year: bars over recessive gridlines, the hour labels in
+   the left gutter. */
+.player-activity-chart {
+  position: relative;
+  height: 230px;
+  padding: 10px 0 22px 44px;
+}
+
+.player-activity-gridlines {
+  position: absolute;
+  inset: 10px 0 22px 44px;
+  pointer-events: none;
+}
+
+.player-activity-gridlines span {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.player-activity-gridlines em {
+  position: absolute;
+  right: calc(100% + 6px);
+  transform: translateY(-50%);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.player-activity-bars {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  height: 100%;
+}
+
+.player-activity-bar {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  outline: none;
+}
+
+.player-activity-bar small {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 50%;
+  color: var(--color-muted);
+  font-size: 11px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* A bar's queues, the first at the bottom, 2px of chart between them and a
+   rounded data end on top. */
+.player-activity-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  max-width: 28px;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 4px 4px 0 0;
+}
+
+.player-activity-stack span {
+  min-height: 1px;
+  flex-basis: 0;
+}
+
+.player-activity-bar.is-hovered .player-activity-stack,
+.player-activity-bar:focus-visible .player-activity-stack {
+  box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 3px var(--color-muted);
+}
+
+.player-activity-tooltip {
+  position: absolute;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Near either edge the box hangs off the bar's side instead of its middle,
+   so it never runs out of the chart. */
+.player-activity-tooltip.is-start {
+  transform: none;
+}
+
+.player-activity-tooltip.is-end {
+  transform: translateX(-100%);
+}
+
+.player-activity-tooltip-row em {
+  margin-left: auto;
+  padding-left: var(--space-3);
+  font-style: normal;
+}
+
+/* Playing times: weekdays down, hours across, one hue from faint to strong. */
+.player-activity-week {
+  display: grid;
+  gap: 2px;
+}
+
+.player-activity-week-row {
+  display: grid;
+  grid-template-columns: 34px repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  align-items: center;
+}
+
+.player-activity-week-row > span:first-child {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.player-activity-cell {
+  aspect-ratio: 1;
+  min-height: 8px;
+  background: var(--color-surface-raised);
+  border-radius: 2px;
+}
+
+.player-activity-week-hours small {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+/* Time per faction: name, a track filled by its share, the hours. */
+.player-activity-factions {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-activity-factions li {
+  display: grid;
+  grid-template-columns: minmax(90px, auto) minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.player-activity-track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--color-surface-raised);
+  border-radius: 4px;
+}
+
+.player-activity-track span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+.player-activity-faction-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Milestones: the count, the day, and how long after registering. */
+.player-activity-milestones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.player-activity-milestones li {
+  display: grid;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-sm);
+}
+
+.player-activity-milestone-count {
+  color: var(--color-muted);
+  font-size: 12px;
+}

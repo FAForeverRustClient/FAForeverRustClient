@@ -2,4 +2,4 @@
 - On Linux, a new game install and the replay folder go to ~/.local/share/faforever instead of a folder in your home directory. An existing ~/.faforever is still used.
 - The client keeps a weekly copy of your game.prefs (the last three), so key bindings and game options survive a bad write. Open them from Settings, Paths.
 - A map in the matchmaker's map pool can be hosted as a custom game straight from its large preview.
-- Your profile's Statistics tab shows your time played.
+- A profile's Statistics tab is split into Performance and Activity. Activity shows the time played: hours per month or year by queue, the hours of the week games are played in, time per faction, and when the 1st, 10th, 100th and 1000th games were played. The overview can count the time played too.

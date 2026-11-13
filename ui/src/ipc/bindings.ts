@@ -7780,6 +7780,38 @@ export type PlayerAchievement = {
 
 export type PlayerAchievementState = "locked" | "unlocked";
 
+export type PlayerActivity = {
+	/**
+	 *  Every month from the first game's to the last game's, oldest first,
+	 *  months without a game included, so a break shows as one.
+	 */
+	months: PlayerActivityMonth[],
+	/**
+	 *  Minutes played by the hour of the week the game started in, UTC:
+	 *  Monday 00:00 to 00:59 first, Sunday 23:00 last, [`WEEK_HOURS`] in all.
+	 *  UTC because the domain has no clock or time zone; the view turns it
+	 *  into the reader's local week.
+	 */
+	weekMinutes: number[],
+	/**  Games and minutes per faction played, most minutes first. */
+	factions: PlayerFactionTime[],
+	/**  When each of [`MILESTONES`] was reached, as far as the scan reaches. */
+	milestones: PlayerMilestone[],
+};
+
+/**  One calendar month (UTC) of games. */
+export type PlayerActivityMonth = {
+	/**  `YYYY-MM`. */
+	period: string,
+	games: number,
+	minutes: number,
+	/**
+	 *  The minutes per queue (leaderboard name), most first; queues without
+	 *  a minute are left out.
+	 */
+	queues: PlayerQueueMinutes[],
+};
+
 export type PlayerAvatar = {
 	url: string,
 	tooltip: string,
@@ -8003,6 +8035,13 @@ export type PlayerFactionStatus =
 	reason: string,
 } };
 
+export type PlayerFactionTime = {
+	/**  The game's faction id. */
+	faction: number,
+	games: number,
+	minutes: number,
+};
+
 /**
  *  One game of a player's results list (#344), newest first.
  *
@@ -8201,6 +8240,12 @@ export type PlayerMapTrend = {
 	ratingDeltaHundredths: number,
 };
 
+/**  The `games`-th game of the history, and when it started (ISO). */
+export type PlayerMilestone = {
+	games: number,
+	reached: string,
+};
+
 export type PlayerNameRecord = {
 	name: string,
 	changeTime: string,
@@ -8263,6 +8308,11 @@ export type PlayerProfile = {
 	avatarUrl: string,
 	/**  The avatar's hover text (its name), as the reference clients show it. */
 	avatarTooltip: string,
+};
+
+export type PlayerQueueMinutes = {
+	queue: string,
+	minutes: number,
 };
 
 /**
@@ -8345,6 +8395,8 @@ export type PlayerReport = {
 	 *  played on FAF (issue 748). A game without both ends adds nothing.
 	 */
 	playedMinutes?: number,
+	/**  When, how long and in which queue: the tab's Activity part. */
+	activity?: PlayerActivity,
 	/**  The longest unbroken runs of ranked wins and of ranked losses. */
 	maxWinStreak: PlayerStreak,
 	maxLossStreak: PlayerStreak,

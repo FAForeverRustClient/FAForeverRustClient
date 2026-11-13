@@ -8,6 +8,10 @@
 // more. What the tracker shows that the profile already has elsewhere stays
 // there: the rating trend on Ratings, the map tendencies on Maps, the game
 // history on Results.
+//
+// Two parts behind a switch (issue 748): Performance, the tracker's report,
+// and Activity, when and how long the games were played. Both read the same
+// scan, so switching costs nothing.
 
 import { useMemo, useState, type ReactNode } from "react";
 import { Button } from "../../design-system/Button";
@@ -23,6 +27,7 @@ import { formatDecimal, formatNumber, getLocale, intlTag } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { HistoryFailure } from "./HistoryFailure";
 import { HistoryScopeNote } from "./HistoryScopeNote";
+import { PlayerActivityView } from "./PlayerActivityView";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { usePlayerHistory } from "./usePlayerHistory";
 
@@ -70,6 +75,19 @@ export function factionRecords(profile: PlayerCardProfile): FactionRecord[] {
 
 const NO_STREAK = { size: 0, first: "", last: "" };
 
+export type StatisticsView = "performance" | "activity";
+
+/**
+ * The part the tab opens on next: set by a link elsewhere on the card (the
+ * overview's time played opens Activity), read once as the tab mounts.
+ */
+let nextView: StatisticsView = "performance";
+
+/** Open the Statistics tab on `view` the next time it mounts. */
+export function openStatisticsOn(view: StatisticsView) {
+  nextView = view;
+}
+
 /** A scan that carried no report: every figure empty. */
 const EMPTY_REPORT: PlayerReport = {
   ratedGames: 0,
@@ -77,6 +95,7 @@ const EMPTY_REPORT: PlayerReport = {
   recentDecided: 0,
   averageMinutesTenths: 0,
   playedMinutes: 0,
+  activity: { months: [], weekMinutes: [], factions: [], milestones: [] },
   maxWinStreak: NO_STREAK,
   maxLossStreak: NO_STREAK,
   worstLossStreak: 0,
@@ -94,15 +113,6 @@ const EMPTY_REPORT: PlayerReport = {
   opponents: [],
   factions: [],
 };
-
-/**
- * Minutes as hours: one decimal below ten hours, where a tenth is still six
- * minutes worth telling apart, whole hours above.
- */
-export function playedHours(minutes: number): string {
-  const hours = minutes / 60;
-  return hours < 10 ? formatDecimal(Math.round(hours * 10) / 10) : formatNumber(Math.round(hours));
-}
 
 /** Wins out of wins and losses, in percent; `null` with neither. */
 export function decidedRate(wins: number, losses: number): number | null {
@@ -221,6 +231,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
   const { t } = useTranslation();
   const { stats, status, error, full, loadFull, retry } = usePlayerHistory(profile.playerId);
   const ratings = useAppStore((state) => state.state.playerCard.profile?.ratings);
+  const [view, setView] = useState<StatisticsView>(() => nextView);
 
   if (status === "failed") return <HistoryFailure error={error} onRetry={retry} />;
   if (!stats) {
@@ -254,12 +265,6 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
       label: t("playerCard.stats.averageDuration"),
       value: t("playerCard.stats.minutes", { minutes: formatDecimal(report.averageMinutesTenths / 10) }),
     },
-    // Issue 748: the games' own start and end, summed. Over the games the
-    // scan read, which the note under the cards spells out.
-    {
-      label: t("playerCard.stats.timePlayed"),
-      value: t("playerCard.stats.hours", { hours: playedHours(report.playedMinutes ?? 0) }),
-    },
     {
       label: t("playerCard.stats.maxWinStreak"),
       value: report.maxWinStreak.size > 0
@@ -276,8 +281,38 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
     },
   ];
 
+  const switcher = (
+    <div className="settings-segmented player-stats-views" role="group" aria-label={t("playerCard.stats.viewsAria")}>
+      {(["performance", "activity"] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          className={view === option ? "is-active" : undefined}
+          aria-pressed={view === option}
+          onClick={() => {
+            setView(option);
+            nextView = option;
+          }}
+        >
+          {t(option === "performance" ? "playerCard.stats.viewPerformance" : "playerCard.stats.viewActivity")}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (view === "activity") {
+    return (
+      <div className="player-statistics">
+        {switcher}
+        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
+        <PlayerActivityView stats={stats} report={report} full={full} registeredAt={profile.registeredAt} />
+      </div>
+    );
+  }
+
   return (
     <div className="player-statistics">
+      {switcher}
       <dl className="player-account-details player-stats-cards surface">
         {cards.map((card) => (
           <div key={card.label}>

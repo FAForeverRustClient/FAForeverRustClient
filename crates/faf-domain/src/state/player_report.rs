@@ -49,6 +49,9 @@ pub struct PlayerReport {
     /// played on FAF (issue 748). A game without both ends adds nothing.
     #[serde(default)]
     pub played_minutes: i32,
+    /// When, how long and in which queue: the tab's Activity part.
+    #[serde(default)]
+    pub activity: super::player_activity::PlayerActivity,
     /// The longest unbroken runs of ranked wins and of ranked losses.
     pub max_win_streak: PlayerStreak,
     pub max_loss_streak: PlayerStreak,
@@ -243,6 +246,7 @@ pub fn build_player_report(games: &[PlayedGame]) -> PlayerReport {
     report.runbacks = runbacks(games);
     (report.teammates, report.opponents) = relations(games);
     report.factions = factions(&stats_games);
+    report.activity = super::player_activity::build_player_activity(games);
     report
 }
 
