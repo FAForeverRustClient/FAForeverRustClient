@@ -1468,6 +1468,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.folders.vault": "Katalog główny vaulta",
   "settings.folders.gameCache": "Pamięć podręczna gry",
   "settings.folders.gamePrefs": "game.prefs",
+  "settings.folders.gamePrefsBackups": "Kopie zapasowe game.prefs",
   "settings.connectivity.connectivityAdapter": "Dołączanie przez",
   "settings.connectivity.connectivityAdapterHint": "Dynamiczny używa adaptera hosta: Go dla lobby z [go-adapter] w tytule, Exp Java dla lobby z [exp-java-adapter], Java dla wszystkich pozostałych. Działa od następnej gry.",
   "settings.connectivity.hostAdapter": "Hostowanie przez",

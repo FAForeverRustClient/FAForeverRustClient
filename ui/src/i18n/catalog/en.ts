@@ -2042,6 +2042,7 @@ export const en = {
   "settings.folders.vault": "Vault root",
   "settings.folders.gameCache": "Game cache",
   "settings.folders.gamePrefs": "game.prefs",
+  "settings.folders.gamePrefsBackups": "game.prefs backups",
   "log.analysis.heading": "This log was analysed automatically and shows the following issue(s):",
   "log.analysis.gameMinimized":
     "Minimizing the game or using Alt+Tab while it is in fullscreen may cause crashes. Playing in windowed mode avoids this.",

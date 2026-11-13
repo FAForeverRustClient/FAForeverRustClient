@@ -1530,6 +1530,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.folders.vault": "Raíz del vault",
   "settings.folders.gameCache": "Caché del juego",
   "settings.folders.gamePrefs": "game.prefs",
+  "settings.folders.gamePrefsBackups": "Copias de game.prefs",
   "settings.game.argumentsLabel": "Argumentos de arranque adicionales",
   "settings.game.argumentsHint": "Un argumento por línea, pasado a partidas y repeticiones sin shell.",
   "settings.game.argumentsNote": "Los argumentos que exige el protocolo los gestiona el cliente.",

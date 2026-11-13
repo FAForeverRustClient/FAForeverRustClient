@@ -704,6 +704,8 @@ impl ProcessPort for GameProcess {
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         require_init_name(&params.featured_mod)?;
         let target = self.play_target(&params.featured_mod)?;
+        // Before the game can rewrite it on exit (issue 750).
+        crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
 
         // Started before the game, so the port in `/savereplay` is already
@@ -761,6 +763,7 @@ impl ProcessPort for GameProcess {
     ) -> Result<Option<PathBuf>, String> {
         require_init_name(&featured_mod)?;
         let target = self.play_target(&featured_mod)?;
+        crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         allow_second_instance(&target.exe).await;
         self.spawn(

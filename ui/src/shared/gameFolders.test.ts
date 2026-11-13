@@ -13,7 +13,15 @@ describe("the folder catalogue", () => {
     const folders = allFolderEntries()
       .map((entry) => (entry.target.kind === "client" ? entry.target.folder : null))
       .filter((folder) => folder !== null);
-    expect(folders).toEqual(["maps", "mods", "replays", "vault", "gameCache", "gamePrefs"]);
+    expect(folders).toEqual([
+      "maps",
+      "mods",
+      "replays",
+      "vault",
+      "gameCache",
+      "gamePrefs",
+      "gamePrefsBackups",
+    ]);
   });
 
   it("covers both log folders", () => {

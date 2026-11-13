@@ -1605,6 +1605,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.folders.vault": "Корень хранилища",
   "settings.folders.gameCache": "Кэш игры",
   "settings.folders.gamePrefs": "game.prefs",
+  "settings.folders.gamePrefsBackups": "Резервные копии game.prefs",
   "settings.game.argumentsLabel": "Дополнительные аргументы запуска",
   "settings.game.argumentsHint": "По одному аргументу на строку; клиент передаёт их игре и при просмотре реплеев напрямую, без shell.",
   "settings.game.argumentsNote": "Аргументы, обязательные по протоколу, клиент добавляет автоматически.",

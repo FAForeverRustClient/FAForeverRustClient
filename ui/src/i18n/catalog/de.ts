@@ -1723,6 +1723,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.folders.vault": "Vault-Wurzel",
   "settings.folders.gameCache": "Spiel-Cache",
   "settings.folders.gamePrefs": "game.prefs",
+  "settings.folders.gamePrefsBackups": "game.prefs-Sicherungen",
   "log.analysis.heading": "Dieses Protokoll wurde automatisch ausgewertet und zeigt folgende Probleme:",
   "log.analysis.gameMinimized":
     "Das Spiel zu minimieren oder im Vollbild Alt+Tab zu benutzen kann zu Abstürzen führen. Im Fenstermodus tritt das nicht auf.",
