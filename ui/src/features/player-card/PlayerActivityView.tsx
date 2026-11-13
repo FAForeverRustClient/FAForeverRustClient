@@ -24,6 +24,7 @@ import {
   type ActivityBar,
   type ActivityQueue,
 } from "./playerActivity";
+import { StatTiles, TabCard, type StatTile } from "./StatParts";
 
 const EMPTY_ACTIVITY: PlayerActivity = { months: [], weekMinutes: [], factions: [], milestones: [] };
 
@@ -68,7 +69,7 @@ export function PlayerActivityView({ stats, report, full, registeredAt }: {
   }, [activity.months]);
   const firstGame = activity.milestones.find((milestone) => milestone.games === 1)?.reached ?? "";
 
-  const cards: Array<{ label: string; value: string; detail?: string }> = [
+  const cards: StatTile[] = [
     { label: t("playerCard.stats.timePlayed"), value: t("playerCard.stats.hours", { hours: playedHours(report.playedMinutes ?? 0) }) },
     { label: t("playerCard.activity.lastYear"), value: t("playerCard.stats.hours", { hours: playedHours(recent) }) },
     { label: t("playerCard.activity.perWeek"), value: t("playerCard.stats.hours", { hours: playedHours(recent / 52) }) },
@@ -77,20 +78,12 @@ export function PlayerActivityView({ stats, report, full, registeredAt }: {
       value: busiest ? monthLabel(busiest.period) : "–",
       detail: busiest ? t("playerCard.stats.hours", { hours: playedHours(busiest.minutes) }) : undefined,
     },
-    { label: t("playerCard.activity.firstGame"), value: formatDate(firstGame, "–") },
+    { label: t("playerCard.activity.firstGame"), value: formatDate(firstGame, "–"), empty: firstGame === "" },
   ];
 
   return (
     <div className="player-statistics">
-      <dl className="player-account-details player-stats-cards surface">
-        {cards.map((card) => (
-          <div key={card.label}>
-            <dt>{card.label}</dt>
-            <dd className="player-maps-value">{card.value}</dd>
-            {card.detail && <dd className="player-maps-detail">{card.detail}</dd>}
-          </div>
-        ))}
-      </dl>
+      <StatTiles columns={5} tiles={cards} />
 
       <HoursChart activity={activity} />
 
@@ -99,11 +92,12 @@ export function PlayerActivityView({ stats, report, full, registeredAt }: {
         <FactionTime activity={activity} />
       </div>
 
-      <section className="player-stats-chart surface-panel">
-        <h3>{t("playerCard.activity.milestonesTitle")}</h3>
+      <TabCard title={t("playerCard.activity.milestonesTitle")} className="player-stats-chart">
         {!full || stats.truncated ? (
-          <p className="muted">{t("playerCard.activity.milestonesNeedFull")}</p>
+          <p className="player-tab-card-empty muted">{t("playerCard.activity.milestonesNeedFull")}</p>
         ) : (
+          // A timeline: a dot per milestone on one line, the count over the
+          // day it was reached and how long after registering that was.
           <ol className="player-activity-milestones">
             {activity.milestones.map((milestone) => {
               const days = daysBetween(registeredAt, milestone.reached);
@@ -123,7 +117,7 @@ export function PlayerActivityView({ stats, report, full, registeredAt }: {
             })}
           </ol>
         )}
-      </section>
+      </TabCard>
     </div>
   );
 }
@@ -154,10 +148,11 @@ function HoursChart({ activity }: { activity: PlayerActivity }) {
   const shown: ActivityBar | null = hovered === null ? null : bars[hovered] ?? null;
 
   return (
-    <section className="player-stats-chart surface-panel">
-      <div className="player-stats-head">
-        <h3>{t("playerCard.activity.hoursTitle")}</h3>
-        <div className="settings-segmented" role="group" aria-label={t("playerCard.activity.scaleAria")}>
+    <TabCard
+      title={t("playerCard.activity.hoursTitle")}
+      className="player-stats-chart"
+      actions={
+        <div className="settings-segmented player-tab-segmented" role="group" aria-label={t("playerCard.activity.scaleAria")}>
           {(["months", "years"] as const).map((option) => (
             <button
               key={option}
@@ -173,7 +168,8 @@ function HoursChart({ activity }: { activity: PlayerActivity }) {
             </button>
           ))}
         </div>
-      </div>
+      }
+    >
       {bars.length === 0 ? (
         <p className="muted">{t("playerCard.maps.empty")}</p>
       ) : (
@@ -242,7 +238,7 @@ function HoursChart({ activity }: { activity: PlayerActivity }) {
           </div>
         </>
       )}
-    </section>
+    </TabCard>
   );
 }
 
@@ -260,8 +256,7 @@ function WeekHeatmap({ weekMinutes }: { weekMinutes: number[] }) {
   const max = Math.max(0, ...week);
   const days = weekdayNames();
   return (
-    <section className="player-stats-chart surface-panel">
-      <h3>{t("playerCard.activity.weekTitle")}</h3>
+    <TabCard title={t("playerCard.activity.weekTitle")} className="player-stats-chart">
       <div className="player-activity-week" role="table" aria-label={t("playerCard.activity.weekTitle")}>
         {days.map((day, row) => (
           <div key={day} className="player-activity-week-row" role="row">
@@ -297,7 +292,7 @@ function WeekHeatmap({ weekMinutes }: { weekMinutes: number[] }) {
         </div>
       </div>
       <p className="muted player-stats-insight-note">{t("playerCard.activity.weekNote")}</p>
-    </section>
+    </TabCard>
   );
 }
 
@@ -306,8 +301,7 @@ function FactionTime({ activity }: { activity: PlayerActivity }) {
   const { t } = useTranslation();
   const total = activity.factions.reduce((sum, row) => sum + row.minutes, 0);
   return (
-    <section className="player-stats-chart surface-panel">
-      <h3>{t("playerCard.activity.factionsTitle")}</h3>
+    <TabCard title={t("playerCard.activity.factionsTitle")} className="player-stats-chart">
       {total === 0 ? (
         <p className="muted">{t("playerCard.maps.empty")}</p>
       ) : (
@@ -332,6 +326,6 @@ function FactionTime({ activity }: { activity: PlayerActivity }) {
           })}
         </ul>
       )}
-    </section>
+    </TabCard>
   );
 }

@@ -493,7 +493,8 @@
 }
 
 .player-overview-cards > .player-note-card .player-card-eyebrow,
-.player-overview-card-head h3 {
+.player-overview-card-head h3,
+.player-tab-card-head h3 {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -1071,7 +1072,6 @@ button.player-avatar-tile:disabled {
 
 .player-card-section-heading h3,
 .player-achievements-view h3,
-.player-stats-chart h3,
 .player-clan-overview h3 {
   font-size: 15px;
 }
@@ -1090,39 +1090,6 @@ button.player-avatar-tile:disabled {
   min-width: 0;
 }
 
-/* The tracker's ten overview figures, five to a line. */
-.player-account-details.player-stats-cards {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  margin: 0;
-}
-
-.player-stats-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.player-stats-search {
-  width: min(200px, 50%);
-  min-height: 28px;
-  padding: 0 var(--space-2);
-  color: var(--color-text);
-  font: inherit;
-  font-size: 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-}
-
-.player-stats-table-wrap {
-  min-width: 0;
-  margin-top: var(--space-2);
-  overflow-x: auto;
-  scrollbar-gutter: stable;
-}
-
 .player-stats-table {
   width: 100%;
   border-collapse: collapse;
@@ -1130,16 +1097,8 @@ button.player-avatar-tile:disabled {
 
 .player-stats-table th,
 .player-stats-table td {
-  padding: 6px 10px;
-  font-size: 12px;
   text-align: right;
   white-space: nowrap;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.player-stats-table th {
-  color: var(--color-muted);
-  font-weight: 600;
 }
 
 /* Every heading sorts its column; the button fills the cell and keeps the
@@ -1183,7 +1142,6 @@ button.player-avatar-tile:disabled {
 .player-stats-table th:first-child,
 .player-stats-table td:first-child {
   width: 100%;
-  padding-left: 0;
   text-align: left;
 }
 
@@ -1218,19 +1176,48 @@ button.player-avatar-tile:disabled {
   margin-top: var(--space-2);
 }
 
+/* An insight on the facts strip's tinted ground, its accent along the top:
+   green for what went well, red for what went badly, as a galactic war
+   faction card carries its colour (see `.gw-faction`). */
 .player-stats-insight {
+  --insight-tone: var(--color-border-strong);
   display: grid;
   align-content: start;
   gap: var(--space-2);
   min-width: 0;
   padding: var(--space-3);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--insight-tone) 75%, transparent);
+}
+
+.player-stats-insight.is-good {
+  --insight-tone: var(--color-ok);
+}
+
+.player-stats-insight.is-bad {
+  --insight-tone: var(--color-error);
 }
 
 .player-stats-insight h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0;
   font-size: 13px;
+  font-weight: 600;
+}
+
+/* The tone's mark before the heading, so the accent is not colour alone at
+   the card's edge. */
+.player-stats-insight h4::before {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  content: "";
+  background: var(--insight-tone);
+  border-radius: 50%;
 }
 
 .player-stats-insight p {
@@ -1250,6 +1237,12 @@ button.player-avatar-tile:disabled {
 .player-stats-insight li {
   display: grid;
   gap: 2px;
+}
+
+/* A hairline between entries rather than a gap alone. */
+.player-stats-insight li + li {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
 }
 
 .player-stats-insight .player-stats-insight-note {
@@ -1603,10 +1596,6 @@ button.player-avatar-tile:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.player-stats-chart {
-  padding: var(--space-4);
-}
-
 .player-stats-chart:last-child {
   grid-column: 1 / -1;
 }
@@ -1614,126 +1603,6 @@ button.player-avatar-tile:disabled {
 /* Teammates beside opponents: two halves, neither the odd one out. */
 .player-statistics-grid.is-pair > .player-stats-chart:last-child {
   grid-column: auto;
-}
-
-.player-stats-chart > h3 {
-  margin-bottom: var(--space-3);
-}
-
-/* A chart is a small table: the name, the bar, the two counts and the share.
-   One label column for the whole chart, as wide as its longest label, and the
-   bar starting straight after it (issue 351); the rows are subgrids so every
-   row shares the tracks. */
-.player-metric-table {
-  display: grid;
-  grid-template-columns: max-content minmax(60px, 1fr) repeat(3, max-content);
-  column-gap: var(--space-4);
-}
-
-.player-metric-head,
-.player-metric {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: subgrid;
-  align-items: center;
-}
-
-.player-metric-head {
-  padding-bottom: 6px;
-  color: var(--color-muted);
-  font-size: 11px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-/* The counts and the share right-aligned, so the digits line up. */
-.player-metric-head > span:nth-child(n + 3),
-.player-metric-count,
-.player-metric-rate {
-  justify-self: end;
-  text-align: right;
-}
-
-.player-metric-head > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-}
-
-/* The key to the bar's two colours, beside the column it counts. */
-.player-metric-head i {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-}
-
-.player-metric {
-  min-height: 36px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.player-metric:last-child {
-  border-bottom: 0;
-}
-
-.player-metric-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.player-metric-count,
-.player-metric-rate {
-  color: var(--color-text);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-.player-metric-rate {
-  min-width: 44px;
-  font-weight: 600;
-}
-
-/* One bar per row: its length is the row's total against the largest, and
-   the split inside it is the ratio. Softened, because the bar is the shape and
-   the numbers beside it are the reading; at full strength the two status
-   colours were the loudest thing on the card. */
-.player-metric-bar {
-  display: block;
-  min-width: 0;
-}
-
-.player-metric-bar > span {
-  display: flex;
-  min-width: 3px;
-  height: 8px;
-  gap: 1px;
-  overflow: hidden;
-  border-radius: 3px;
-}
-
-.player-metric-bar > span > span {
-  flex-basis: 0;
-  min-width: 0;
-}
-
-.player-metric-head .is-first,
-.player-metric-bar .is-first {
-  background: color-mix(in srgb, var(--color-ok) 70%, var(--color-surface));
-}
-
-.player-metric-head .is-second,
-.player-metric-bar .is-second {
-  background: color-mix(in srgb, var(--color-error) 60%, var(--color-surface));
-}
-
-/* The games that were not wins, where nothing says whether they were losses
-   or draws: neutral, so the bar does not claim either. */
-.player-metric-bar .is-rest {
-  background: var(--color-border-strong);
 }
 
 .player-achievement-summary .player-recent-achievement {
@@ -2053,53 +1922,33 @@ button.player-avatar-tile:disabled {
   min-height: 0;
 }
 
-/* The figures a host reads first, before scanning the table below. The
-   ranked and unranked split stays, in each figure's detail line: it is what
-   makes this panel comparable with faftracker's, which it is read against.
-   Two class selectors so they win over `.player-account-details dd`. */
-.player-maps-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-}
-
-.player-maps-summary > div {
-  padding: var(--space-3);
-}
-
-.player-maps-summary .player-maps-value {
-  margin-top: var(--space-1);
-  font-size: 20px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-.player-maps-summary .player-maps-detail {
-  overflow: hidden;
-  color: var(--color-muted);
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .player-maps-note {
   margin: 0;
   font-size: 11.5px;
   line-height: 1.5;
 }
 
-/* `.search-field` carries `flex: 1 1 240px`, written for a toolbar row. Inside
-   this column the grow factor applies to the *height*, so the filter stretched
-   into a block several times taller than an input.
+/* `.search-field` carries `flex: 1 1 240px`, written for a toolbar row; in
+   the card's head it takes a fixed share of the line instead.
    Two class selectors rather than one: `.search-field` is a single class as
    well, so an equal-specificity override would be decided by stylesheet order,
    and this feature's CSS arrives in a lazily loaded chunk. That is what let the
    growth survive the first attempt at this. */
-.player-maps-view .player-maps-search {
-  flex: 0 0 auto;
-  width: 100%;
-  min-height: 50px;
+.player-maps-view .player-maps-search,
+.player-tab-card .player-stats-search {
+  flex: 0 1 240px;
+  min-width: 140px;
+  min-height: 30px;
+}
+
+.player-tab-card .player-stats-search {
+  flex-basis: 180px;
+}
+
+.player-maps-view .player-maps-search input,
+.player-tab-card .player-stats-search input {
+  padding: 5px 0;
+  font-size: 12px;
 }
 
 .player-maps-map {
@@ -2117,10 +1966,11 @@ button.player-avatar-tile:disabled {
 
 .player-maps-thumb {
   flex: none;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   object-fit: cover;
   border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 1px var(--color-border);
 }
 
 /* A span, not an image: without a box of its own the 34px square collapsed to
@@ -2136,20 +1986,10 @@ button.player-avatar-tile:disabled {
   border: 1px solid var(--color-border);
 }
 
-.player-maps-table {
-  width: 100%;
-  border-collapse: collapse;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
 .player-maps-table th,
 .player-maps-table td {
-  padding: 7px 16px;
-  font-size: 12px;
   text-align: right;
   white-space: nowrap;
-  border-bottom: 1px solid var(--color-border);
 }
 
 /* The figures are what a host is reading, and shrink-to-fit columns had them
@@ -2163,12 +2003,6 @@ button.player-avatar-tile:disabled {
 .player-maps-table th:last-child,
 .player-maps-table td:last-child {
   min-width: 132px;
-  padding-right: 18px;
-}
-
-.player-maps-table th {
-  font-weight: 600;
-  color: var(--color-muted);
 }
 
 /* The map name is the row's identity, so it leads and takes the slack. */
@@ -2187,14 +2021,6 @@ button.player-avatar-tile:disabled {
 
 .player-maps-table td {
   font-variant-numeric: tabular-nums;
-}
-
-/* Stacked rather than two by two: three figures in a two-column grid leave a
-   cell over. */
-@media (max-width: 720px) {
-  .player-maps-summary {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Sortable headers: the whole cell is the target, so the hit area matches
@@ -2515,7 +2341,9 @@ button.player-avatar-tile:disabled {
    is listed, this sums it up. */
 .player-results-summary {
   margin: 0;
-  font-size: 12px;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -2562,16 +2390,16 @@ button.player-avatar-tile:disabled {
   white-space: nowrap;
 }
 
-/* The chat tab's small map picture (`chat-game-map`), at the same size, so a
-   game reads the same in both places. */
+/* The chat tab's small map picture (`chat-game-map`), a size up: in a table
+   of fifty rows it is what the eye finds a game by. */
 .player-results-map-thumb {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: var(--radius-xs, 2px);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   box-shadow: 0 0 0 1px var(--color-border);
   object-fit: cover;
@@ -2587,35 +2415,72 @@ img.player-results-map-thumb {
   color: var(--color-subtle);
 }
 
+.player-results-date {
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.player-results-queue {
+  white-space: nowrap;
+}
+
+/* The outcome as a pill in its colour, on a wash of the same. */
 .player-results-outcome {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  color: var(--color-muted);
+  font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-pill);
 }
 
 .player-results-outcome.is-win {
   color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 16%, transparent);
 }
 
 .player-results-outcome.is-loss {
   color: var(--color-error-text);
+  background: color-mix(in srgb, var(--color-error) 16%, transparent);
 }
 
-.player-results-outcome.is-draw {
-  color: var(--color-muted);
+.player-results-rating {
+  font-variant-numeric: tabular-nums;
 }
 
+/* The replay as a chip with the play mark: a control on every row, not a
+   link in running text. */
 .player-results-replay {
-  padding: 0;
-  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px 2px 7px;
+  color: var(--color-text);
   font: inherit;
-  text-decoration: underline;
-  background: transparent;
-  border: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
   cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.player-results-replay svg {
+  color: var(--color-muted);
 }
 
 .player-results-replay:hover,
 .player-results-replay:focus-visible {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border-strong);
+}
+
+.player-results-replay:hover svg {
   color: var(--color-text);
 }
 
@@ -2623,7 +2488,6 @@ img.player-results-map-thumb {
    keyboard user tabbing down fifty replay links with only a colour change,
    one the hover state shares, to say which one they were on. */
 .player-results-replay:focus-visible {
-  border-radius: var(--radius-sm);
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -2639,6 +2503,20 @@ img.player-results-map-thumb {
 /* Statistics: Performance and Activity (issue 748), switched above the cards. */
 .player-stats-views {
   justify-self: start;
+}
+
+.player-stats-views button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-stats-views button svg {
+  color: var(--color-subtle);
+}
+
+.player-stats-views button.is-active svg {
+  color: var(--color-text);
 }
 
 /* The overview's time played: a number that opens Activity, or the ask to
@@ -2861,24 +2739,341 @@ img.player-results-map-thumb {
 }
 
 /* Milestones: the count, the day, and how long after registering. */
+/* Milestones as a timeline: a dot per milestone on one rule, the count over
+   the day and the days since registering. */
 .player-activity-milestones {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: var(--space-3);
-  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  row-gap: var(--space-4);
+  margin: var(--space-1) 0 0;
   padding: 0;
   list-style: none;
 }
 
 .player-activity-milestones li {
+  position: relative;
   display: grid;
+  align-content: start;
   gap: 2px;
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-sm);
+  padding: 22px var(--space-3) 0 0;
+  font-size: 12px;
+}
+
+/* The rule from this dot to the next one's. */
+.player-activity-milestones li::after {
+  position: absolute;
+  top: 5px;
+  right: 0;
+  left: 14px;
+  height: 2px;
+  content: "";
+  background: var(--color-border-strong);
+  border-radius: 1px;
+}
+
+.player-activity-milestones li:last-child::after {
+  display: none;
+}
+
+.player-activity-milestones li::before {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  box-sizing: border-box;
+  content: "";
+  background: var(--color-chart-1);
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-chart-1);
+}
+
+.player-activity-milestones strong {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
 }
 
 .player-activity-milestone-count {
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* ── History tabs: shared shapes ──────────────────────────────────────── */
+/* Results, Maps and Statistics in the Overview's language (`StatParts.tsx`):
+   figure tiles like the queue tiles, cards under an eyebrow heading, tables
+   that run to the card's edges under the client's list head. */
+
+/* The figures a tab opens on, `--stat-columns` to a row. */
+.player-stat-tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--stat-columns, 3), minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.player-stat-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-3) var(--space-4) 14px;
+}
+
+.player-stat-tile dt {
+  overflow: hidden;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.player-stat-tile dd {
+  margin: 0;
+}
+
+.player-stat-value {
+  overflow: hidden;
+  font-size: 24px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-stat-value.is-empty {
+  color: var(--color-subtle);
+}
+
+.player-stat-bar {
+  padding-top: 4px;
+}
+
+.player-stat-detail {
+  overflow: hidden;
   color: var(--color-muted);
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Five to a row is too many for a narrow card: as many as fit instead. */
+@media (max-width: 900px) {
+  .player-stat-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+
+/* A table or chart under its eyebrow heading: the Overview card's shape. */
+.player-tab-card {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 10px;
+  padding: 14px var(--space-4) var(--space-4);
+}
+
+.player-tab-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 28px;
+}
+
+.player-tab-card-head h3 {
+  min-width: 0;
+}
+
+.player-tab-card-actions {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.player-tab-card-empty {
+  margin: 0;
+  padding: var(--space-4) 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* "Show more" under a table, centred where the reader reaches the rows' end. */
+.player-tab-card-foot {
+  display: flex;
+  justify-content: center;
+}
+
+/* A segmented control in a card's head, a size down from the settings one. */
+.player-tab-segmented button {
+  min-height: 26px;
+  padding: 0 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+/* The table runs to the card's sides under the list head, and to its foot
+   when nothing follows it. Not clipped by the card: the Results filter panel
+   opens from the head over the rows, and a short list would cut it off. */
+.player-tab-table {
+  min-width: 0;
+  margin: 0 calc(-1 * var(--space-4));
+  overflow-x: auto;
+}
+
+.player-tab-table:last-child {
+  margin-bottom: calc(-1 * var(--space-4));
+}
+
+.player-tab-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.player-tab-table th,
+.player-tab-table td {
+  padding: 8px var(--space-3);
+  font-size: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+/* The list head's own size, said again: this sheet loads after it. */
+.player-tab-table th {
+  padding-block: 7px;
+  font-size: 11px;
+  border-top: 1px solid var(--color-border);
+}
+
+/* A sorting button inside the list head reads as the head does: a button
+   does not inherit the case or the tracking on its own. */
+.player-tab-table th button {
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.player-tab-table th:first-child,
+.player-tab-table td:first-child {
+  padding-left: var(--space-4);
+}
+
+.player-tab-table th:last-child,
+.player-tab-table td:last-child {
+  padding-right: var(--space-4);
+}
+
+.player-tab-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.player-tab-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.player-tab-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 55%, transparent);
+}
+
+/* The last row ends on the card's own edge, so it needs no rule of its own,
+   and its hover keeps the card's rounded corners. */
+.player-tab-table:last-child tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.player-tab-table:last-child tbody tr:last-child td:first-child {
+  border-bottom-left-radius: var(--radius-lg);
+}
+
+.player-tab-table:last-child tbody tr:last-child td:last-child {
+  border-bottom-right-radius: var(--radius-lg);
+}
+
+/* A record as one bar: wins, draws, losses. Softened, because the bar is the
+   shape and the numbers beside it are the reading. */
+.player-record-bar {
+  display: flex;
+  height: 6px;
+  min-width: 24px;
+  gap: 2px;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.player-record-bar.is-empty {
+  background: var(--color-surface-raised);
+}
+
+.player-record-bar > span {
+  min-width: 2px;
+  flex-basis: 0;
+}
+
+.player-record-bar > .is-win {
+  background: color-mix(in srgb, var(--color-ok) 70%, var(--color-surface));
+}
+
+.player-record-bar > .is-draw {
+  background: var(--color-border-strong);
+}
+
+.player-record-bar > .is-loss {
+  background: color-mix(in srgb, var(--color-error) 60%, var(--color-surface));
+}
+
+/* A rate over a short bar of the record it comes from, right-aligned with
+   the column. */
+.player-rate-cell {
+  display: inline-flex;
+  min-width: 64px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  text-align: right;
+}
+
+.player-rate-cell .player-record-bar {
+  height: 4px;
+}
+
+/* W / L / D with each number in its outcome's colour. */
+.player-record-text .is-win {
+  color: var(--color-ok-text);
+}
+
+.player-record-text .is-loss {
+  color: var(--color-error-text);
+}
+
+.player-record-text .is-draw {
+  color: var(--color-muted);
+}
+
+/* A rating change: a gain green, a loss red. */
+.player-signed {
+  font-variant-numeric: tabular-nums;
+}
+
+.player-signed.is-up {
+  color: var(--color-ok-text);
+}
+
+.player-signed.is-down {
+  color: var(--color-error-text);
+}
+
+/* The Results card: the record and the filters in the head, its bar under
+   them, then the games. */
+.player-results-card > .player-record-bar {
+  height: 6px;
 }
