@@ -70,7 +70,7 @@ const ALIASES: Partial<Record<UnitStat | WeaponStat, readonly string[]>> = {
   omniRadius: ["omniRange"],
   dps: ["combinedDps", "overchargeDps", "harmonicDepthChargeDps", "dpsWith4T3Pgens"],
   damage: ["additionalDamage", "damagePerVolley", "flakDamage", "bolterDamage", "mainProjectileDamage", "childProjectileDamage", "damagePerShot", "initialDamage", "torpedoDamage", "gatlingGunDamage", "bombDamage", "crashDamage", "deathWeaponDamage", "overchargeDamage", "phasonBeamGeneratorDamage", "gatlingPlasmaCannonDamage", "heavySinnUntheCannonDamage", "oblivionCannonDamage", "gaussCannonDamage"],
-  damageRadius: ["aoe", "aaDamageRadius", "areaOfEffect", "aaAoe", "damageRadiusAoe", "crashAoe", "crashDamageRadius", "crashAreaOfEffect", "deathWeaponAoe", "deathWeaponDamageRadius", "deathWeaponAreaOfEffect"],
+  damageRadius: ["aoe", "aaDamageRadius", "aaWeaponDamageRadius", "aaWeaponsDamageRadius", "areaOfEffect", "aaAoe", "damageRadiusAoe", "crashAoe", "crashDamageRadius", "crashAreaOfEffect", "deathWeaponAoe", "deathWeaponDamageRadius", "deathWeaponAreaOfEffect"],
   range: ["maxRadius", "aaMaxRadius", "flakRange", "bolterRange", "boltersRange", "maximumFiringRange", "harmonicDepthChargeMaxRadius", "maxRange", "aaRange", "eyeWeaponRange", "leftArmRange", "rightArmRange"],
   minRange: ["minimumRange", "minimalRange", "minimumFiringRange", "minRadius"],
   rateOfFire: ["fireRate", "rof", "antiTorpedoRateOfFire", "torpedoDefenseRateOfFire", "harmonicDepthChargeRateOfFire", "oblivionCannonRateOfFire"],

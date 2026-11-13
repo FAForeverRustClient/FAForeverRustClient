@@ -1,3 +1,3 @@
-- Patch notes now show recognized buffs in green and nerfs in red, with unchanged or ambiguous values neutral.
+- Patch notes color recognized buffs green and nerfs red, including anti-air splash changes; unchanged or ambiguous values stay neutral.
 - Patch notes and Unit History use the same rules to distinguish buffs from nerfs.
 - Patch notes use a slightly wider text column.

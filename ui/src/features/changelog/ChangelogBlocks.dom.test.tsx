@@ -40,6 +40,9 @@ it("colors nested balance changes by effect and preserves the published text", (
 it.each([
   ["Charge cost", "0 E", "72000 E (3750 E/s average)", "nerf"],
   ["Aim Speed", "360 deg/s", "8 deg/s", "nerf"],
+  ["AA weapon’s damage radius", "0", "0.3", "buff"],
+  ["AA weapon’s damage radius", "0.3", "0", "nerf"],
+  ["AA weapon's damage radius", "0", "0.3", "buff"],
   ["Stun Duration against T1/T2 mobile units", "1.5s per shot (2.3s per volley) (70% stun uptime)", "0.4s per shot (1.2s per volley) (36% stun uptime)", "nerf"],
   ["Fixed spread radius", "70", "63 (approximately +23% dmg/area)", "buff"],
   ["Damage (DPS)", "125 (312.5)", "118 (295)", "nerf"],
