@@ -39,7 +39,12 @@ pub(crate) async fn delta(
     include: &str,
     since: &str,
 ) -> Result<Vec<JsonApiDoc>, String> {
-    let filter = delta_filter(since)?;
+    // The cached answer to the same delta could be an hour old, and a mod
+    // hidden since would stay in the index until the weekly crawl.
+    let filter = super::jsonapi::within_cache_window(
+        Some(delta_filter(since)?),
+        std::time::SystemTime::now(),
+    );
     let docs = fetch_all_pages_with_progress(
         http,
         token,

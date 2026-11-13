@@ -599,9 +599,13 @@ impl ModsPort for ModsClient {
             .map_err(|e| format!("invalid API base: {e}"))?;
         {
             let mut pairs = url.query_pairs_mut();
-            if let Some(filter) = query.build_filter() {
-                pairs.append_pair("filter", &filter);
-            }
+            pairs.append_pair(
+                "filter",
+                &crate::infra::jsonapi::within_cache_window(
+                    query.build_filter(),
+                    std::time::SystemTime::now(),
+                ),
+            );
             pairs
                 .append_pair("sort", &query.sort_param())
                 .append_pair("page[size]", &query.page_size.to_string())
