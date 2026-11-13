@@ -1,0 +1,1 @@
+- No visible changes: the lobby connection reads and writes its messages through one typed module.
