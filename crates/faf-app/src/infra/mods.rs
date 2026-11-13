@@ -226,6 +226,26 @@ async fn remove_installed_mod(dir: &std::path::Path, folder_name: &str) -> Resul
     Ok(())
 }
 
+/// The installed mod in the folder `archive` would unpack into, if that
+/// folder already holds one.
+///
+/// `None` when the folder is free. A folder that exists but holds no readable
+/// `mod_info.lua` is not a mod to replace, and is left to the install to
+/// refuse, as it always has.
+async fn mod_in_target_folder(dir: &Path, archive: &[u8]) -> Result<Option<InstalledMod>, String> {
+    let root = archive_root_name(archive)?;
+    let target = safe_mod_target(dir, &root)?;
+    if !target.exists() {
+        return Ok(None);
+    }
+    // Matched case-insensitively: Windows hands back whichever spelling the
+    // folder was created with, which need not be the archive's.
+    Ok(list_installed_dir(dir)
+        .await?
+        .into_iter()
+        .find(|installed| installed.folder_name.eq_ignore_ascii_case(&root)))
+}
+
 /// Put the downloaded version of `uid` in place of the one in `folder_name`,
 /// switching it on again if the one it replaces was on.
 ///
@@ -647,12 +667,36 @@ impl ModsPort for ModsClient {
             () = called_off.cancelled() => return Ok(None),
         };
         progress(VaultInstallStep::Unpacking);
+        let dir = mods_dir();
+
+        // The folder this version unpacks into may already hold another
+        // version of the same mod: one a lobby installed, or one the vault
+        // card did not recognise as this mod's because its name changed
+        // between versions. Installing then refused with "<folder> is
+        // already installed" while the card kept offering "Install", and
+        // there was no way to get the version the player asked for short of
+        // deleting the folder by hand (issue 738). The archive names the
+        // folder, so whatever is in it is this mod, and the install becomes
+        // the update the Update button would have made: staged, swapped, and
+        // switched on again if the old one was on.
+        if let Some(occupant) = mod_in_target_folder(&dir, &bytes).await? {
+            if occupant.uid == uid {
+                return list_installed_dir(&dir).await.map(Some);
+            }
+            if called_off.is_cancelled() {
+                return Ok(None);
+            }
+            return tokio::spawn(replace_installed_mod(uid, occupant.folder_name, bytes))
+                .await
+                .map_err(|e| format!("mod install task failed: {e}"))?
+                .map(Some);
+        }
+
         // Asked before the rename, so an install called off while it unpacks
         // on the blocking pool leaves the mods folder as it was. Its answer
         // is waited for, since only it knows whether the call-off was in
         // time; the listing after a rename is not raced against it, which
         // used to report a mod already in place as called off.
-        let dir = mods_dir();
         let call_off = CallOff::default();
         let armed = call_off.arm();
         let extracting = extract_mod_archive_into(&dir, &uid, bytes, Some(call_off.clone()));
@@ -2079,6 +2123,54 @@ mod tests {
             "{error}"
         );
         assert_eq!(std::fs::read_dir(dest.path()).unwrap().count(), 0);
+    }
+
+    /// Issue 738: installing a version whose folder holds another version
+    /// of the mod finds that version, so the install can replace it rather
+    /// than refuse with "already installed".
+    #[tokio::test]
+    async fn the_version_in_an_install_s_folder_is_found() {
+        use std::io::Write as _;
+
+        let archive = |root: &str| {
+            let mut archive = std::io::Cursor::new(Vec::new());
+            {
+                let mut writer = zip::ZipWriter::new(&mut archive);
+                writer
+                    .start_file(
+                        format!("{root}/mod_info.lua"),
+                        zip::write::SimpleFileOptions::default(),
+                    )
+                    .unwrap();
+                writer.write_all(SAMPLE_MOD_INFO.as_bytes()).unwrap();
+                writer.finish().unwrap();
+            }
+            archive.into_inner()
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let installed = dir.path().join("total_mayhem");
+        std::fs::create_dir_all(&installed).unwrap();
+        std::fs::write(installed.join("mod_info.lua"), SAMPLE_MOD_INFO).unwrap();
+
+        let occupant = mod_in_target_folder(dir.path(), &archive("total_mayhem"))
+            .await
+            .unwrap()
+            .expect("the installed version is in the way");
+        assert_eq!(occupant.folder_name, "total_mayhem");
+        assert_eq!(occupant.uid, "dcd9a5e5-5444-4266-a016-ccbbff528268");
+
+        // A free folder installs as it always did.
+        assert!(mod_in_target_folder(dir.path(), &archive("other_mod"))
+            .await
+            .unwrap()
+            .is_none());
+
+        // A folder without a mod in it is not something to replace.
+        std::fs::create_dir_all(dir.path().join("not_a_mod")).unwrap();
+        assert!(mod_in_target_folder(dir.path(), &archive("not_a_mod"))
+            .await
+            .unwrap()
+            .is_none());
     }
     use serde_json::json;
 
