@@ -76,6 +76,11 @@ interface Props {
   serverVetoes: PlayerVeto[];
   playerRating: number | null;
   onClose: () => void;
+  /**
+   * Host a custom game on a pool map (issue 749): trying a new pool map
+   * against a friend used to mean finding it again in the host dialog.
+   */
+  onHostMap?: (folderName: string) => void;
 }
 
 export function MatchmakerMapPoolModal({
@@ -86,6 +91,7 @@ export function MatchmakerMapPoolModal({
   serverVetoes,
   playerRating,
   onClose,
+  onHostMap,
 }: Props) {
   // Vetoes are placed in a mode of their own (#407), as in the Java client's
   // map list (`vetoModeEnabled`): a card clicked to look at the map used to
@@ -325,6 +331,11 @@ ${cardTitle}`}
           map={{ folderName: preview.folderName, displayName: preview.displayName }}
           meta={`${formatMapSize(preview.width, preview.height)} · ${t("maps.view.playerCount", { count: preview.maxPlayers })}`}
           onClose={() => setPreview(null)}
+          action={onHostMap && (
+            <Button variant="primary" onClick={() => onHostMap(preview.folderName)}>
+              {t("lobby.mapPool.hostOnMap")}
+            </Button>
+          )}
         >
           <GameMapImage
             mapName={preview.folderName}

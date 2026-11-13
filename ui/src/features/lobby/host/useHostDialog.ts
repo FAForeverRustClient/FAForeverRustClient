@@ -13,6 +13,9 @@ export function useHostDialog() {
   // the leaderboard is showing", which is the case when the toolbar button is
   // used rather than a specific mission.
   const [coopMissionToHost, setCoopMissionToHost] = useState<CoopMission | null>(null);
+  // The map a matchmaker pool asked to host on (issue 749), in place of the
+  // one the dialog remembers.
+  const [mapToHost, setMapToHost] = useState<string | null>(null);
   // A title another tab prepared, e.g. the tournament tab offering to host a
   // bracket match. It lives in the lobby slice because it has to cross a tab
   // boundary; opening the dialog when one arrives is the whole handling.
@@ -24,8 +27,16 @@ export function useHostDialog() {
   /** Opens the host dialog, on `mission` when co-op asked for a particular one. */
   const openHostDialog = (mission?: CoopMission) => {
     setCoopMissionToHost(mission ?? null);
+    setMapToHost(null);
     setHostOpen(true);
   };
+
+  /** Opens the custom game host dialog with `folderName` chosen. */
+  const openHostDialogOnMap = useCallback((folderName: string) => {
+    setCoopMissionToHost(null);
+    setMapToHost(folderName);
+    setHostOpen(true);
+  }, []);
 
   // Stable, because the host dialogs are `memo`'d and this is their only
   // prop that is not a store value. A fresh closure per render would hand them
@@ -34,11 +45,12 @@ export function useHostDialog() {
   const closeHostDialog = useCallback(() => {
     setHostOpen(false);
     setCoopMissionToHost(null);
+    setMapToHost(null);
     // Otherwise the dialog reopens the next time this tab is visited.
     if (hostPrefill !== null) {
       ipc.send({ kind: "Lobby", command: { type: "clearHostPrefill" } });
     }
   }, [hostPrefill]);
 
-  return { hostOpen, coopMissionToHost, hostPrefill, openHostDialog, closeHostDialog };
+  return { hostOpen, coopMissionToHost, mapToHost, hostPrefill, openHostDialog, openHostDialogOnMap, closeHostDialog };
 }

@@ -3745,6 +3745,28 @@ export type GamePreferences = {
 	 *  `ForceAffinity = "true"`. On by default, as in both reference clients.
 	 */
 	forceAffinity?: boolean,
+	/**
+	 *  Play games on the rebuilt engine instead of the original
+	 *  `ForgedAlliance.exe`: faf-re (github.com/Draiget/faf-re), the engine
+	 *  rebuilt from source as `main_x64.exe`.
+	 *
+	 *  It takes the same command line and speaks the same GPGNet protocol, so
+	 *  everything else about a launch stays as it is. The FAF install is still
+	 *  prepared as usual and the game is started with that install's
+	 *  `init_<mod>.lua`, so the rebuilt engine plays exactly the files the
+	 *  original would. Live games and offline games only: replays stay on the
+	 *  replay install, which has to match the engine version they were
+	 *  recorded on.
+	 *
+	 *  Off by default. On without [`Self::rebuilt_engine_exe`] the launch
+	 *  is refused, rather than quietly starting the original instead.
+	 */
+	rebuiltEngine?: boolean,
+	/**
+	 *  The rebuilt engine's executable, `main_x64.exe` from a faf-re build.
+	 *  Chosen in a file dialog of the client, like every program it starts.
+	 */
+	rebuiltEngineExe?: string,
 };
 
 /**
@@ -3771,6 +3793,8 @@ export type GamePreferencesPatch = {
 	companions?: CompanionProgram[],
 	autoUpdateMapAndMods?: boolean,
 	forceAffinity?: boolean,
+	rebuiltEngine?: boolean,
+	rebuiltEngineExe?: string,
 };
 
 export type GeneralPreferences = {
@@ -7756,6 +7780,38 @@ export type PlayerAchievement = {
 
 export type PlayerAchievementState = "locked" | "unlocked";
 
+export type PlayerActivity = {
+	/**
+	 *  Every month from the first game's to the last game's, oldest first,
+	 *  months without a game included, so a break shows as one.
+	 */
+	months: PlayerActivityMonth[],
+	/**
+	 *  Minutes played by the hour of the week the game started in, UTC:
+	 *  Monday 00:00 to 00:59 first, Sunday 23:00 last, [`WEEK_HOURS`] in all.
+	 *  UTC because the domain has no clock or time zone; the view turns it
+	 *  into the reader's local week.
+	 */
+	weekMinutes: number[],
+	/**  Games and minutes per faction played, most minutes first. */
+	factions: PlayerFactionTime[],
+	/**  When each of [`MILESTONES`] was reached, as far as the scan reaches. */
+	milestones: PlayerMilestone[],
+};
+
+/**  One calendar month (UTC) of games. */
+export type PlayerActivityMonth = {
+	/**  `YYYY-MM`. */
+	period: string,
+	games: number,
+	minutes: number,
+	/**
+	 *  The minutes per queue (leaderboard name), most first; queues without
+	 *  a minute are left out.
+	 */
+	queues: PlayerQueueMinutes[],
+};
+
 export type PlayerAvatar = {
 	url: string,
 	tooltip: string,
@@ -7979,6 +8035,13 @@ export type PlayerFactionStatus =
 	reason: string,
 } };
 
+export type PlayerFactionTime = {
+	/**  The game's faction id. */
+	faction: number,
+	games: number,
+	minutes: number,
+};
+
 /**
  *  One game of a player's results list (#344), newest first.
  *
@@ -8177,6 +8240,12 @@ export type PlayerMapTrend = {
 	ratingDeltaHundredths: number,
 };
 
+/**  The `games`-th game of the history, and when it started (ISO). */
+export type PlayerMilestone = {
+	games: number,
+	reached: string,
+};
+
 export type PlayerNameRecord = {
 	name: string,
 	changeTime: string,
@@ -8239,6 +8308,11 @@ export type PlayerProfile = {
 	avatarUrl: string,
 	/**  The avatar's hover text (its name), as the reference clients show it. */
 	avatarTooltip: string,
+};
+
+export type PlayerQueueMinutes = {
+	queue: string,
+	minutes: number,
 };
 
 /**
@@ -8316,6 +8390,13 @@ export type PlayerReport = {
 	 *  read. A game without both ends counts as zero minutes, as it does there.
 	 */
 	averageMinutesTenths: number,
+	/**
+	 *  Every minute of every game the scan read, start to end: the time
+	 *  played on FAF (issue 748). A game without both ends adds nothing.
+	 */
+	playedMinutes?: number,
+	/**  When, how long and in which queue: the tab's Activity part. */
+	activity?: PlayerActivity,
 	/**  The longest unbroken runs of ranked wins and of ranked losses. */
 	maxWinStreak: PlayerStreak,
 	maxLossStreak: PlayerStreak,

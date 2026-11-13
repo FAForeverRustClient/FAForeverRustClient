@@ -66,6 +66,37 @@ where
 
 pub(crate) type ResourceIndex<'a> = HashMap<(String, String), &'a JsonApiResource>;
 
+/// How long a vault search may be answered from the FAF API's own cache.
+const VAULT_CACHE_WINDOW_SECS: u64 = 5 * 60;
+
+/// `filter` with a clause that changes every [`VAULT_CACHE_WINDOW_SECS`],
+/// so the FAF API's response cache serves a vault search for at most that
+/// long (issue 747).
+///
+/// faf-java-api caches every `GET /data/...` answer for a map, mod or one of
+/// their versions for 60 minutes (`CacheConfig`), keyed by the path and the
+/// query parameters alone. This client asks the same question every time the
+/// Mods tab opens, so a mod its author hid was still listed an hour later,
+/// across restarts, while the Java client, asking with other parameters, no
+/// longer showed it. The clause `id=gt=-<window>` is true of every record,
+/// since ids start at 1: it changes the key and nothing else. The window is
+/// the wall clock's, the same for every client, so within it everybody still
+/// shares one cached answer and the server is asked no more than once per
+/// window for each question.
+pub(crate) fn within_cache_window(filter: Option<String>, now: std::time::SystemTime) -> String {
+    let window = now
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() / VAULT_CACHE_WINDOW_SECS)
+        .unwrap_or_default();
+    let fresh = format!("id=gt=-{window}");
+    match filter {
+        // Grouped: `;` binds tighter than `,`, and a filter of alternatives
+        // must stay one operand.
+        Some(filter) if !filter.is_empty() => format!("({filter});{fresh}"),
+        _ => fresh,
+    }
+}
+
 /// How many pages a search has, from whichever of the two the server reported.
 ///
 /// `page[totals]` is what asks for these, and the API does not always answer
@@ -800,6 +831,31 @@ mod paging_tests {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_vault_search_changes_its_cache_key_every_five_minutes() {
+        use std::time::{Duration, UNIX_EPOCH};
+        let at = |seconds: u64| UNIX_EPOCH + Duration::from_secs(seconds);
+        let filter = || Some("latestVersion.hidden=='false',displayName=='*x*'".to_string());
+
+        // Grouped, so the alternatives stay one operand of the AND.
+        assert_eq!(
+            within_cache_window(filter(), at(600)),
+            "(latestVersion.hidden=='false',displayName=='*x*');id=gt=-2"
+        );
+        // The same key for everybody within a window, a new one after it.
+        assert_eq!(
+            within_cache_window(filter(), at(600)),
+            within_cache_window(filter(), at(899))
+        );
+        assert_ne!(
+            within_cache_window(filter(), at(899)),
+            within_cache_window(filter(), at(900))
+        );
+        // No filter of its own: the clause alone, never an empty `filter=`.
+        assert_eq!(within_cache_window(None, at(0)), "id=gt=-0");
+        assert_eq!(within_cache_window(Some(String::new()), at(0)), "id=gt=-0");
+    }
 
     #[test]
     fn a_single_resource_document_parses_as_a_one_item_list() {

@@ -26,11 +26,15 @@ use crate::ports::ChatUpdate;
 
 /// Capabilities worth asking for. Anything the server does not offer is
 /// dropped from the request rather than risking a `NAK`.
-pub(crate) const WANTED_CAPS: [&str; 9] = [
+pub(crate) const WANTED_CAPS: [&str; 10] = [
     "sasl",
     "server-time",
     "message-tags",
     "multi-prefix",
+    // FAF's Ergo keeps players "always on": one who disconnects stays in
+    // every channel, marked away, and no PART or QUIT is sent for them. The
+    // AWAY lines this asks for are the only sign they left (issue 743).
+    "away-notify",
     // History arrives inside a `chathistory` batch only when this is on
     // (Ergo leaves the framing out otherwise), and the batch is how backfill
     // is told apart from live traffic.
@@ -210,6 +214,15 @@ pub(crate) struct SessionState {
     pub rosters: HashMap<String, BTreeMap<String, String>>,
     /// Names accumulated from `353` replies, flushed to `rosters` on `366`.
     pub pending_names: HashMap<String, BTreeMap<String, String>>,
+    /// Nicks the server reports as away, lowercased.
+    ///
+    /// On FAF's chat server that means disconnected: an always-on account
+    /// stays in its channels after its last connection closes and is marked
+    /// away instead of parting (issue 743). They stay in [`Self::rosters`],
+    /// which is the server's view, and are left out of every roster handed
+    /// to the client, which shows who is there. No FAF client sets away by
+    /// hand, so nobody connected is hidden by this.
+    pub away: BTreeSet<String>,
     /// Capabilities the server granted.
     pub caps: BTreeSet<String>,
     /// Capabilities the server advertised, accumulated across `CAP LS` lines.
@@ -260,6 +273,7 @@ impl SessionState {
             nick,
             rosters: HashMap::new(),
             pending_names: HashMap::new(),
+            away: BTreeSet::new(),
             caps: BTreeSet::new(),
             offered_caps: BTreeSet::new(),
             history_asked: BTreeSet::new(),
@@ -276,6 +290,57 @@ impl SessionState {
 
     pub fn is_me(&self, nick: &str) -> bool {
         nick.eq_ignore_ascii_case(&self.nick)
+    }
+
+    fn is_away(&self, nick: &str) -> bool {
+        self.away.contains(&nick.to_ascii_lowercase())
+    }
+
+    /// A channel's members as the client shows them: everyone but the away.
+    fn visible_users(&self, channel: &str) -> Vec<ChatUser> {
+        self.rosters
+            .get(channel)
+            .map(|roster| {
+                roster
+                    .iter()
+                    .filter(|(name, _)| !self.is_away(name))
+                    .map(|(name, elevation)| ChatUser::new(name, elevation))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Mark `nick` away or back, and say so in every channel it is in: it
+    /// leaves the list when it goes, quietly, and comes back with its
+    /// elevation. Nothing is emitted when nothing changed.
+    fn set_away(&mut self, nick: &str, away: bool) -> Vec<Effect> {
+        let key = nick.to_ascii_lowercase();
+        let changed = if away {
+            self.away.insert(key)
+        } else {
+            self.away.remove(&key)
+        };
+        if !changed || self.is_me(nick) {
+            return Vec::new();
+        }
+        self.channels_with(nick)
+            .into_iter()
+            .map(|channel| {
+                let update = if away {
+                    ChatUpdate::UserLeft {
+                        channel,
+                        user: nick.to_string(),
+                    }
+                } else {
+                    let elevation = self.rosters[&channel][nick].clone();
+                    ChatUpdate::UserJoined {
+                        channel,
+                        user: ChatUser::new(nick, &elevation),
+                    }
+                };
+                Effect::Emit(update)
+            })
+            .collect()
     }
 
     /// Every channel a nick is currently in: needed by `QUIT` and `NICK`,
@@ -731,14 +796,53 @@ fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionConte
                 return effects;
             };
             let roster = state.pending_names.remove(channel).unwrap_or_default();
+            state.rosters.insert(channel.clone(), roster);
             effects.push(Effect::Emit(ChatUpdate::Users {
                 channel: channel.clone(),
-                users: roster
-                    .iter()
-                    .map(|(name, elevation)| ChatUser::new(name, elevation))
-                    .collect(),
+                users: state.visible_users(channel),
             }));
-            state.rosters.insert(channel.clone(), roster);
+            // NAMES does not say who is away, and the players who
+            // disconnected before we joined never send AWAY again. WHO does
+            // (`H` here, `G` gone), and is only worth asking while AWAY lines
+            // keep the answer current.
+            if channel.starts_with('#') && state.caps.contains("away-notify") {
+                effects.push(Effect::Send(irc::format_line("WHO", &[channel])));
+            }
+        }
+        // RPL_WHOREPLY: `<me> <channel> <user> <host> <server> <nick> <flags>
+        // :<hops> <realname>`. Recorded only: the roster is sent once the
+        // list has ended, rather than one change per member.
+        "352" => {
+            let (Some(nick), Some(flags)) = (line.params.get(5), line.params.get(6)) else {
+                return effects;
+            };
+            let key = nick.to_ascii_lowercase();
+            if flags.starts_with('G') {
+                state.away.insert(key);
+            } else if flags.starts_with('H') {
+                state.away.remove(&key);
+            }
+        }
+        // RPL_ENDOFWHO: the channel's list again, without those found away.
+        "315" => {
+            let Some(channel) = line.params.get(1) else {
+                return effects;
+            };
+            if state.rosters.contains_key(channel) {
+                effects.push(Effect::Emit(ChatUpdate::Users {
+                    channel: channel.clone(),
+                    users: state.visible_users(channel),
+                }));
+            }
+        }
+        // away-notify: with a reason the user went away, without one they
+        // are back. On FAF's server that is a disconnect and a reconnect.
+        "AWAY" => {
+            let Some(nick) = line.prefix_nick() else {
+                return effects;
+            };
+            let away = line.params.first().is_some_and(|reason| !reason.is_empty());
+            effects.extend(state.set_away(nick, away));
         }
         // RPL_TOPIC on join, and RPL_NOTOPIC.
         "332" | "331" => {
@@ -782,6 +886,8 @@ fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionConte
                 // Backfill the conversation so the tab doesn't open empty.
                 effects.extend(request_history(channel, state));
             } else {
+                // Whoever joins is connected; an AWAY follows if not.
+                state.away.remove(&nick.to_ascii_lowercase());
                 state
                     .rosters
                     .entry(channel.clone())
@@ -860,6 +966,7 @@ fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionConte
             } else {
                 format!("quit: {reason}")
             };
+            state.away.remove(&nick.to_ascii_lowercase());
             for channel in state.channels_with(nick) {
                 if let Some(roster) = state.rosters.get_mut(&channel) {
                     roster.remove(nick);
@@ -888,6 +995,9 @@ fn decide_line(line: &irc::IrcLine, state: &mut SessionState, ctx: &SessionConte
                 if let Some(elevation) = roster.remove(old) {
                     roster.insert(new.clone(), elevation);
                 }
+            }
+            if state.away.remove(&old.to_ascii_lowercase()) {
+                state.away.insert(new.to_ascii_lowercase());
             }
             effects.push(Effect::Emit(ChatUpdate::UserRenamed {
                 old_name: old.to_string(),
@@ -1368,6 +1478,74 @@ mod tests {
         assert_eq!(bob.elevation, "@", "the prefix becomes elevation");
         assert!(state.pending_names.is_empty(), "flushed");
         assert_eq!(state.rosters["#aeolus"].len(), 3);
+    }
+
+    fn names(update: &ChatUpdate) -> Vec<&str> {
+        let ChatUpdate::Users { users, .. } = update else {
+            panic!("expected a roster, got {update:?}");
+        };
+        users.iter().map(|user| user.name.as_str()).collect()
+    }
+
+    /// Issue 743: FAF's chat server keeps a disconnected player in the
+    /// channel, marked away. WHO finds those already gone when we join.
+    #[test]
+    fn players_away_when_we_join_are_left_out_of_the_list() {
+        let mut state = registered();
+        state.caps.insert("away-notify".into());
+        run(&mut state, ":srv 353 Ada = #aeolus :@Bob Cid Dee");
+        let end = run(&mut state, ":srv 366 Ada #aeolus :End of /NAMES");
+        assert_eq!(sent(&end), vec!["WHO #aeolus"]);
+
+        assert!(emitted(&run(
+            &mut state,
+            ":srv 352 Ada #aeolus u h srv Bob H@ :0 Bob"
+        ))
+        .is_empty());
+        run(&mut state, ":srv 352 Ada #aeolus u h srv Cid G :0 Cid");
+        run(&mut state, ":srv 352 Ada #aeolus u h srv Dee H :0 Dee");
+        let done = run(&mut state, ":srv 315 Ada #aeolus :End of WHO list");
+        assert_eq!(names(emitted(&done)[0]), vec!["Bob", "Dee"]);
+        // The server's view is kept whole, for when Cid comes back.
+        assert_eq!(state.rosters["#aeolus"].len(), 3);
+    }
+
+    #[test]
+    fn going_away_leaves_the_list_and_coming_back_returns_to_it() {
+        let mut state = registered();
+        state.caps.insert("away-notify".into());
+        run(&mut state, ":srv 353 Ada = #aeolus :@Bob Cid");
+        run(&mut state, ":srv 366 Ada #aeolus :End of /NAMES");
+
+        let gone = run(&mut state, ":Bob!u@h AWAY :User is currently disconnected");
+        assert_eq!(
+            emitted(&gone),
+            vec![&ChatUpdate::UserLeft {
+                channel: "#aeolus".into(),
+                user: "Bob".into(),
+            }]
+        );
+        // Quietly: a disconnect is not a line in the conversation.
+        assert!(!gone.iter().any(|e| matches!(e, Effect::Message { .. })));
+        // Said twice, changed once.
+        assert!(emitted(&run(&mut state, ":Bob!u@h AWAY :still gone")).is_empty());
+
+        let back = run(&mut state, ":Bob!u@h AWAY");
+        assert_eq!(
+            emitted(&back),
+            vec![&ChatUpdate::UserJoined {
+                channel: "#aeolus".into(),
+                user: ChatUser::new("Bob", "@"),
+            }]
+        );
+    }
+
+    #[test]
+    fn without_away_notify_no_who_is_sent() {
+        let mut state = registered();
+        run(&mut state, ":srv 353 Ada = #aeolus :Bob");
+        let end = run(&mut state, ":srv 366 Ada #aeolus :End of /NAMES");
+        assert!(sent(&end).is_empty());
     }
 
     #[test]

@@ -82,6 +82,7 @@ pub mod galactic_war;
 pub mod game;
 pub mod game_cache;
 pub mod game_logs;
+pub mod game_prefs_backup;
 pub mod game_updater;
 pub(crate) mod gpgnet_proxy;
 pub mod guides;
@@ -482,6 +483,8 @@ pub fn client_folder(kind: &str) -> Result<std::path::PathBuf, String> {
         }
         // A file, not a directory: the shell reveals it in its parent.
         "gamePrefs" => mods::game_prefs_path(),
+        // The weekly copies of it (issue 750).
+        "gamePrefsBackups" => game_prefs_backup::backup_dir()?,
         other => return Err(format!("unknown folder '{other}'")),
     };
     Ok(path)

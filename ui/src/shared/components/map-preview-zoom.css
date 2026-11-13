@@ -124,6 +124,13 @@
   }
 }
 
+/* The start of the row: the zoom, the caller's icons and Copy image. */
+.map-preview-leading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .map-preview-actions {
   display: flex;
   align-items: center;
@@ -233,54 +240,6 @@
   border-left: 1px solid var(--color-border);
 }
 
-/* The gestures (scroll, drag, double-click), opened by the info button in a
-   small bubble over it. */
-.map-preview-help-wrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.map-preview-help {
-  display: inline-grid;
-  width: 26px;
-  height: 26px;
-  place-items: center;
-  padding: 0;
-  color: var(--color-subtle);
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.map-preview-help:hover,
-.map-preview-help.is-open {
-  color: var(--color-text);
-  background: var(--color-surface-hover);
-}
-
-.map-preview-help:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
-.map-preview-help-popover {
-  position: absolute;
-  bottom: calc(100% + var(--space-2));
-  left: 0;
-  z-index: 2;
-  width: max-content;
-  max-width: 280px;
-  padding: var(--space-2) var(--space-3);
-  color: var(--color-text);
-  font-size: 12px;
-  line-height: 1.45;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-popover);
-}
-
 /* The title with the button that copies the map's full name beside it. */
 .map-preview-title-row {
   display: flex;
@@ -328,7 +287,6 @@
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
-
 
 /* The chrome around an enlarged preview, shared by every tab that opens one.
    The Play tab's game preview set these proportions and they are the ones

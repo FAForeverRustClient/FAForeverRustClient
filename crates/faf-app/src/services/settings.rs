@@ -1107,13 +1107,15 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
-    let (borderless_window, force_affinity, companions) = out.with_state(|state| {
+    let (borderless_window, force_affinity, companions, rebuilt_engine) = out.with_state(|state| {
         (
             state.settings.game.borderless_window,
             state.settings.game.force_affinity,
             state.settings.game.companions.clone(),
+            state.settings.game.rebuilt_engine().map(str::to_owned),
         )
     });
+    ctx.ports.process.set_rebuilt_engine(rebuilt_engine);
     // Written into `fa_path.lua` by every install pass, replays included.
     ctx.ports.updater.set_force_affinity(force_affinity);
     ctx.ports.process.set_additional_arguments(arguments);
