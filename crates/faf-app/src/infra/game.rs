@@ -1031,6 +1031,7 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
     let (java_prefs, python_ini, roots) = linux_reference_config_paths(
         directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()),
         std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
     );
     discover_from_reference_configs(java_prefs.as_deref(), python_ini.as_deref(), None, &roots)
 }
@@ -1047,15 +1048,17 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
 /// `~/.config/ForgedAllianceForever`.
 ///
 /// There is no per-machine equivalent of `%PROGRAMDATA%\FAForever`, because
-/// nothing on Linux installs a game for every user. `~/.faforever` takes its
-/// place as the root to look under when no reference client is installed at
-/// all, which is where the Java client puts an install it downloaded itself.
+/// nothing on Linux installs a game for every user. `~/.faforever`, where the
+/// Java client puts an install it downloaded itself, and the XDG data root of
+/// [`linux_faf_root_from`] take its place as the roots to look under when no
+/// reference client has one recorded.
 ///
 /// Split out from the discovery above so it can be tested on the machine this
 /// is written on, which is not the machine it describes.
 fn linux_reference_config_paths(
     home: Option<PathBuf>,
     xdg_config_home: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
 ) -> (Option<PathBuf>, Option<PathBuf>, Vec<PathBuf>) {
     let config_home = xdg_config_home.or_else(|| home.as_ref().map(|home| home.join(".config")));
 
@@ -1063,10 +1066,62 @@ fn linux_reference_config_paths(
         .as_deref()
         .map(crate::infra::faf_content::posix_java_client_prefs);
     let python_ini = config_home.map(|root| root.join("ForgedAllianceForever/FA Lobby.ini"));
+    // Both places this client may have put an install by itself: the Java
+    // client's root, and the XDG data root it uses when that one is absent
+    // (issue 752).
     let roots = home
-        .map(|home| vec![home.join(".faforever")])
+        .map(|home| {
+            let xdg = xdg_faf_root(&home, xdg_data_home);
+            vec![home.join(".faforever"), xdg]
+        })
         .unwrap_or_default();
     (java_prefs, python_ini, roots)
+}
+
+/// The FAF data root below the XDG data directory: `$XDG_DATA_HOME/faforever`,
+/// or `~/.local/share/faforever` when the variable is unset or not absolute
+/// (the specification says to ignore a relative one).
+fn xdg_faf_root(home: &Path, xdg_data_home: Option<PathBuf>) -> PathBuf {
+    xdg_data_home
+        .filter(|dir| dir.is_absolute())
+        .unwrap_or_else(|| home.join(".local").join("share"))
+        .join("faforever")
+}
+
+/// Where the FAF install and the replays go on Linux when nothing says
+/// otherwise (issue 752).
+///
+/// `~/.faforever` is the Java client's root, not an XDG directory. When it
+/// exists it is kept, because that is what lets both clients share one
+/// install and one replay folder. When it does not, nothing is gained by
+/// creating a dot folder in the home directory: the install and the replays
+/// are data the player keeps, so they go below `$XDG_DATA_HOME`. The client's
+/// own settings, data and caches already follow XDG through
+/// [`crate::infra::project_dirs`].
+///
+/// `legacy_exists` is asked about `~/.faforever`, so the choice can be tested
+/// on any machine.
+pub(crate) fn linux_faf_root_from(
+    home: &Path,
+    xdg_data_home: Option<PathBuf>,
+    legacy_exists: impl Fn(&Path) -> bool,
+) -> PathBuf {
+    let legacy = home.join(".faforever");
+    if legacy_exists(&legacy) {
+        legacy
+    } else {
+        xdg_faf_root(home, xdg_data_home)
+    }
+}
+
+/// [`linux_faf_root_from`] for this machine. `None` without a home directory.
+pub(crate) fn linux_faf_root() -> Option<PathBuf> {
+    let dirs = directories::BaseDirs::new()?;
+    Some(linux_faf_root_from(
+        dirs.home_dir(),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        |path| path.is_dir(),
+    ))
 }
 
 fn discover_from_reference_configs(
@@ -1280,7 +1335,8 @@ fn managed_executable_is_pending(path: &str) -> bool {
 ///
 /// The same roots the reference clients use, which is what makes an install
 /// made here visible to them and theirs visible to us:
-/// `%PROGRAMDATA%\FAForever` on Windows, `~/.faforever` on Linux. Nothing is
+/// `%PROGRAMDATA%\FAForever` on Windows, `~/.faforever` on Linux when the
+/// Java client made it and `$XDG_DATA_HOME/faforever` otherwise. Nothing is
 /// created here; these are the paths the updater is pointed at, and it creates
 /// what it needs when the first game or replay is prepared.
 fn default_managed_install_paths() -> DiscoveredInstallPaths {
@@ -1289,7 +1345,7 @@ fn default_managed_install_paths() -> DiscoveredInstallPaths {
             .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
             .map(|base| PathBuf::from(base).join("FAForever"))
     } else {
-        directories::BaseDirs::new().map(|dirs| dirs.home_dir().join(".faforever"))
+        linux_faf_root()
     };
     let Some(root) = root else {
         return DiscoveredInstallPaths::default();
@@ -1576,7 +1632,7 @@ mod tests {
     #[test]
     fn linux_discovery_looks_where_each_reference_client_actually_writes() {
         let (java, python, roots) =
-            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None);
+            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None, None);
         assert_eq!(
             java.unwrap(),
             PathBuf::from("/home/player/.faforever/client.prefs")
@@ -1586,8 +1642,41 @@ mod tests {
             PathBuf::from("/home/player/.config/ForgedAllianceForever/FA Lobby.ini")
         );
         // No `%PROGRAMDATA%` equivalent: nothing here installs a game for
-        // every user, so the fallback root is the Java client's own.
-        assert_eq!(roots, vec![PathBuf::from("/home/player/.faforever")]);
+        // every user, so the roots are the Java client's own and the XDG one
+        // this client uses without it.
+        assert_eq!(
+            roots,
+            vec![
+                PathBuf::from("/home/player/.faforever"),
+                PathBuf::from("/home/player/.local/share/faforever"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_new_linux_install_goes_below_the_xdg_data_directory() {
+        let home = Path::new("/home/player");
+        // Issue 752: no Java client, so no dot folder in the home directory.
+        assert_eq!(
+            linux_faf_root_from(home, None, |_| false),
+            PathBuf::from("/home/player/.local/share/faforever")
+        );
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("/data")), |_| false),
+            PathBuf::from("/data/faforever")
+        );
+        // A relative XDG_DATA_HOME is invalid and ignored, as the
+        // specification asks.
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("data")), |_| false),
+            PathBuf::from("/home/player/.local/share/faforever")
+        );
+        // The Java client's root, once it exists, is shared rather than
+        // duplicated.
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("/data")), |_| true),
+            PathBuf::from("/home/player/.faforever")
+        );
     }
 
     #[test]
@@ -1596,6 +1685,7 @@ mod tests {
         let (java, python, _) = linux_reference_config_paths(
             Some(PathBuf::from("/home/player")),
             Some(PathBuf::from("/conf")),
+            None,
         );
         assert_eq!(
             java.unwrap(),
