@@ -3,8 +3,11 @@
 Which commands may overlap, what happens to the one that arrives while another
 runs, and what calling work off guarantees. The table in
 `crates/faf-app/src/runtime/command_policy.rs` is the source of truth; this page
-says the same thing in prose and names the test that pins each row. Test paths
-are under `crates/faf-app/tests/`.
+says the same thing in prose and names the test that pins each row. A test
+named `file::test` is in `crates/faf-app/tests/it/file.rs`, a module of the one
+integration test binary: `cargo test -p faf-app --test it -- file::test` runs it.
+`updater_cancellation` is the exception, a test binary of its own beside that
+folder (`--test updater_cancellation`).
 
 ## Lanes
 

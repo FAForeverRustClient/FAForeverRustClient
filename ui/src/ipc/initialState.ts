@@ -947,7 +947,9 @@ export const INITIAL_STATE: AppState = {
       "borderlessWindow": false,
       "companions": [],
       "autoUpdateMapAndMods": false,
-      "forceAffinity": true
+      "forceAffinity": true,
+      "rebuiltEngine": false,
+      "rebuiltEngineExe": ""
     },
     "discord": {
       "enabled": true,

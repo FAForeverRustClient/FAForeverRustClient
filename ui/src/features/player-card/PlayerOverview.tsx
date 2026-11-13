@@ -14,7 +14,9 @@ import { formatDate } from "../../shared/format/dates";
 import { plainError } from "../../shared/plainError";
 import { placementLabel, seasonLabel } from "../../shared/leagueNames";
 import { leaderboardLabel } from "../../shared/playerRatings";
-import { factionRecords } from "./PlayerStatistics";
+import { factionRecords, openStatisticsOn } from "./PlayerStatistics";
+import { playedHours } from "./playerActivity";
+import { requestFullHistory, wholeHistoryAskedFor } from "./usePlayerHistory";
 import { RecoverableImage } from "../../shared/components/RecoverableImage";
 
 function displayDate(value: string): string {
@@ -277,6 +279,35 @@ function FactionSummary({ profile, onOpenStatistics }: {
 }
 
 /** A card's heading, with an optional count after it and an action at its end. */
+/**
+ * The time played, once the whole history is in (issue 748).
+ *
+ * Counting it reads every game the player ever played, seventy-odd pages for
+ * a long history, so opening a profile does not start that: the reader asks
+ * for it here, or has already by loading the whole history in Statistics.
+ * The number then opens the Activity part with everything behind it.
+ */
+function TimePlayed({ playerId, onOpenActivity }: { playerId: number; onOpenActivity: () => void }) {
+  const stats = useAppStore((state) => state.state.playerCard.mapStats);
+  const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);
+  const whole = wholeHistoryAskedFor(playerId);
+  if (whole && stats?.playerId === playerId && status === "ready") {
+    return (
+      <button type="button" className="player-overview-fact-link" onClick={onOpenActivity}>
+        {t("playerCard.stats.hours", { hours: playedHours(stats.report?.playedMinutes ?? 0) })}
+      </button>
+    );
+  }
+  if (whole && status === "loading") {
+    return <span className="muted">{t("playerCard.overview.counting")}</span>;
+  }
+  return (
+    <button type="button" className="player-overview-fact-link" onClick={() => requestFullHistory(playerId)}>
+      {t("playerCard.overview.countTime")}
+    </button>
+  );
+}
+
 function CardHead({ children, count, action }: { children: string; count?: number; action?: ReactNode }) {
   return (
     <header className="player-overview-card-head">
@@ -500,7 +531,7 @@ export function PlayerOverview({ profile, note, isMe = false, onOpenHistory, onO
         <section className="player-overview-card surface-panel is-facts">
           <CardHead>{t("playerCard.overview.accountEyebrow")}</CardHead>
           <FactsStrip
-            columns={3}
+            columns={4}
             groups={[{
               facts: [
                 { id: "id", label: t("playerCard.overview.playerId"), value: profile.playerId },
@@ -510,6 +541,14 @@ export function PlayerOverview({ profile, note, isMe = false, onOpenHistory, onO
                   label: t("playerCard.overview.client"),
                   value: <span title={profile.userAgent || undefined}>{formatUserAgent(profile.userAgent)}</span>,
                   unknown: !profile.userAgent.trim(),
+                },
+                {
+                  id: "timePlayed",
+                  label: t("playerCard.stats.timePlayed"),
+                  value: <TimePlayed playerId={profile.playerId} onOpenActivity={() => {
+                    openStatisticsOn("activity");
+                    onOpenTab("statistics");
+                  }} />,
                 },
               ],
             }]}

@@ -38,6 +38,20 @@ function requestScan(playerId: number) {
   ipc.send({ kind: "PlayerCard", command: { type: "loadMapStats", payload: full ? { playerId, full } : { playerId } } });
 }
 
+/**
+ * Ask for `playerId`'s whole history without a tab of its own open: the
+ * overview's time played, which means nothing over part of the games.
+ */
+export function requestFullHistory(playerId: number) {
+  fullFor = playerId;
+  requestScan(playerId);
+}
+
+/** Whether `playerId`'s whole history is what was asked for. */
+export function wholeHistoryAskedFor(playerId: number): boolean {
+  return fullFor === playerId;
+}
+
 export function usePlayerHistory(playerId: number) {
   const stats = useAppStore((state) => state.state.playerCard.mapStats);
   const status = useAppStore((state) => state.state.playerCard.mapStatsStatus);

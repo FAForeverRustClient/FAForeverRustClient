@@ -1,0 +1,751 @@
+//! Launch preparation: patching the featured mod and downloading the map
+//! before a live game.
+//!
+//! Drives the whole path the way it really runs: log in, connect, join, and let
+//! the fake lobby answer with a `game_launch`. Live launch is enabled through a
+//! test double for [`ProcessPort`] so the launcher actually runs, and the
+//! updater port is swapped for one that reports whatever the test needs.
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+use async_trait::async_trait;
+use faf_app::infra::{fake_ports, FakeAuth, FakeLobby};
+use faf_app::ports::{
+    ConnectivitySession, GameLaunchParams, GamePreparation, GameUpdaterPort, IceParams, IcePort,
+    InstallPresence, PreparationPhase, PreparationStep, ProcessPort, UpdateProgress,
+};
+use faf_app::{App, Ports};
+use faf_domain::state::{
+    AuthCommand, HostGameConfig, IceAdapter, JoinState, LobbyCommand, LobbyEvent, NotificationKind,
+    Player,
+};
+use faf_domain::AppEvent;
+use tokio::sync::mpsc;
+
+use crate::support;
+
+/// A process port that claims live launch is available but does nothing. Lets
+/// the launcher run end to end without an FA install.
+#[derive(Default)]
+struct LaunchableProcess {
+    launched: Arc<Mutex<bool>>,
+    install_dir: Option<PathBuf>,
+    /// Fires the "the game exited" signal after this long. `None` keeps the
+    /// game running, which is what most of these tests want.
+    exits_after: Option<Duration>,
+}
+
+#[async_trait]
+impl ProcessPort for LaunchableProcess {
+    fn supports_live_launch(&self) -> bool {
+        true
+    }
+    async fn launch_game(&self, _params: GameLaunchParams) -> Result<(), String> {
+        *self.launched.lock().unwrap() = true;
+        Ok(())
+    }
+    async fn launch_offline(&self, _featured_mod: String, _map: String) -> Result<(), String> {
+        Ok(())
+    }
+    async fn launch_replay(&self, _args: Vec<String>) -> Result<(), String> {
+        Ok(())
+    }
+    fn kill(&self) {}
+    async fn wait_for_exit(&self) {
+        match self.exits_after {
+            Some(delay) => tokio::time::sleep(delay).await,
+            None => std::future::pending::<()>().await,
+        }
+    }
+    fn set_paths(&self, _game_path: String, _replay_game_path: String) {}
+    fn set_additional_arguments(&self, _arguments: Vec<String>) {}
+    fn game_install_dir(&self) -> Option<PathBuf> {
+        self.install_dir.clone()
+    }
+
+    fn replay_install_dir(&self) -> Option<PathBuf> {
+        None
+    }
+    fn installs_present(&self) -> InstallPresence {
+        InstallPresence::default()
+    }
+}
+
+/// An updater that replays a scripted sequence and records what it was asked
+/// to prepare.
+struct ScriptedUpdater {
+    steps: Vec<String>,
+    outcome: Result<(), String>,
+    seen: Arc<Mutex<Vec<GamePreparation>>>,
+}
+
+#[async_trait]
+impl GameUpdaterPort for ScriptedUpdater {
+    async fn prepare(&self, request: GamePreparation) -> mpsc::Receiver<UpdateProgress> {
+        self.seen.lock().unwrap().push(request);
+        let (tx, rx) = mpsc::channel(16);
+        for step in &self.steps {
+            tx.send(UpdateProgress::Step(PreparationStep::indeterminate(
+                PreparationPhase::Verifying,
+                step.clone(),
+            )))
+            .await
+            .unwrap();
+        }
+        tx.send(UpdateProgress::Finished(self.outcome.clone()))
+            .await
+            .unwrap();
+        rx
+    }
+}
+
+struct Harness {
+    app: App,
+    prepared: Arc<Mutex<Vec<GamePreparation>>>,
+    launched: Arc<Mutex<bool>>,
+}
+
+fn harness(steps: &[&str], outcome: Result<(), String>) -> Harness {
+    harness_with_install(steps, outcome, Some(PathBuf::from("C:/fake-fa-install")))
+}
+
+fn harness_with_install(
+    steps: &[&str],
+    outcome: Result<(), String>,
+    install_dir: Option<PathBuf>,
+) -> Harness {
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir,
+            exits_after: None,
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: steps.iter().map(|s| s.to_string()).collect(),
+            outcome,
+            seen: prepared.clone(),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    Harness {
+        app,
+        prepared,
+        launched,
+    }
+}
+
+/// Log in, connect, join game 1, and collect lobby events until the launch
+/// settles one way or the other.
+async fn join_and_collect(h: &Harness) -> Vec<LobbyEvent> {
+    let mut events = h.app.subscribe();
+    h.app
+        .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Connected))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the fake lobby never connected");
+    h.app
+        .dispatch(
+            LobbyCommand::Join {
+                id: 1,
+                password: None,
+                replace_mods: false,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+
+    let mut seen = Vec::new();
+    let collect = async {
+        while let Ok(event) = events.recv().await {
+            if let AppEvent::Lobby(lobby) = event {
+                let terminal = matches!(
+                    lobby,
+                    LobbyEvent::InGame
+                        | LobbyEvent::JoinFailed { .. }
+                        | LobbyEvent::LaunchFailed { .. }
+                );
+                seen.push(lobby);
+                if terminal {
+                    break;
+                }
+            }
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(10), collect)
+        .await
+        .expect("the launch never settled");
+    seen
+}
+
+/// An updater that emits its steps slowly enough for a test to cancel between
+/// two of them, which is the only interesting moment for cancellation.
+struct SlowUpdater {
+    steps: usize,
+    gap: Duration,
+}
+
+#[async_trait]
+impl GameUpdaterPort for SlowUpdater {
+    async fn prepare(&self, _request: GamePreparation) -> mpsc::Receiver<UpdateProgress> {
+        let (tx, rx) = mpsc::channel(1);
+        let (steps, gap) = (self.steps, self.gap);
+        // Spawned, unlike `ScriptedUpdater`: the point is that the steps arrive
+        // over time rather than all being buffered before the caller looks.
+        tokio::spawn(async move {
+            for index in 0..steps {
+                tokio::time::sleep(gap).await;
+                let step = PreparationStep::indeterminate(
+                    PreparationPhase::Downloading,
+                    format!("file {index}"),
+                );
+                if tx.send(UpdateProgress::Step(step)).await.is_err() {
+                    return;
+                }
+            }
+            let _ = tx.send(UpdateProgress::Finished(Ok(()))).await;
+        });
+        rx
+    }
+}
+
+#[tokio::test]
+async fn cancelling_a_join_stops_the_progress_dialog_coming_back() {
+    // The reported bug. Cancel stopped the game from starting, but the updater
+    // carried on through its remaining steps and each one put the join back
+    // into `Preparing`, so the dialog reopened over and over.
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir: Some(PathBuf::from("C:/faf")),
+            exits_after: None,
+        }),
+        updater: Arc::new(SlowUpdater {
+            steps: 12,
+            gap: Duration::from_millis(40),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    let h = Harness {
+        app,
+        prepared,
+        launched,
+    };
+
+    let mut events = h.app.subscribe();
+    h.app
+        .dispatch_and_wait(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    h.app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Connected))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("the fake lobby never connected");
+    h.app
+        .dispatch(
+            LobbyCommand::Join {
+                id: 1,
+                password: None,
+                replace_mods: false,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+
+    // Let it get going, so the cancel lands between two steps rather than
+    // before the updater has been asked for anything.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Preparing { .. }))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("preparation never started");
+
+    h.app
+        .dispatch(LobbyCommand::CancelJoin.into())
+        .await
+        .unwrap();
+
+    // Collect for longer than the updater's remaining steps would take, so a
+    // `Preparing` that slipped through has every chance to show up.
+    let mut after_cancel = Vec::new();
+    let mut cancelled = false;
+    let _ = tokio::time::timeout(Duration::from_millis(900), async {
+        while let Ok(event) = events.recv().await {
+            if let AppEvent::Lobby(lobby) = event {
+                if matches!(lobby, LobbyEvent::JoinCancelled) {
+                    cancelled = true;
+                    continue;
+                }
+                if cancelled {
+                    after_cancel.push(lobby);
+                }
+            }
+        }
+    })
+    .await;
+
+    assert!(cancelled, "the cancel was not acknowledged");
+    let reopened: Vec<_> = after_cancel
+        .iter()
+        .filter(|event| matches!(event, LobbyEvent::Preparing { .. }))
+        .collect();
+    assert!(
+        reopened.is_empty(),
+        "preparation kept narrating after the cancel, which reopens the dialog: {reopened:?}"
+    );
+    assert!(
+        !*h.launched.lock().unwrap(),
+        "a cancelled join must not start the game"
+    );
+}
+
+#[tokio::test]
+async fn a_game_that_exits_releases_the_join_so_another_can_be_attempted() {
+    // The reported failure: after a join that did not work out, the client
+    // stayed `InGame` forever because nothing watched the process, so the Play
+    // tab refused a second attempt.
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir: Some(PathBuf::from("C:/faf")),
+            exits_after: Some(Duration::from_millis(50)),
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: Vec::new(),
+            outcome: Ok(()),
+            seen: prepared.clone(),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    let h = Harness {
+        app,
+        prepared,
+        launched,
+    };
+
+    let events = join_and_collect(&h).await;
+    assert!(events.contains(&LobbyEvent::InGame), "the game started");
+    assert_eq!(h.app.snapshot().lobby.join, JoinState::InGame);
+
+    // The watcher fires once the process ends.
+    for _ in 0..100 {
+        if h.app.snapshot().lobby.join == JoinState::Idle {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!(
+        "still stuck at {:?} after the game exited",
+        h.app.snapshot().lobby.join
+    );
+}
+
+#[tokio::test]
+async fn a_missing_install_fails_before_any_download_or_join() {
+    let h = harness_with_install(&["must not run"], Ok(()), None);
+    let events = join_and_collect(&h).await;
+
+    assert!(h.prepared.lock().unwrap().is_empty());
+    assert!(!*h.launched.lock().unwrap());
+    assert!(matches!(
+        events.last(),
+        Some(LobbyEvent::LaunchFailed { reason })
+            if reason.contains("ForgedAlliance.exe") && reason.contains("Settings")
+    ));
+}
+
+#[tokio::test]
+async fn the_install_is_prepared_before_the_game_starts() {
+    let h = harness(
+        &["Updating faf 3775: units.nx2 (1/2)", "Downloading map…"],
+        Ok(()),
+    );
+    let events = join_and_collect(&h).await;
+
+    let prepared = h.prepared.lock().unwrap().clone();
+    assert_eq!(prepared.len(), 1, "one preparation before the join request");
+    assert_eq!(prepared[0].featured_mod, "faf");
+
+    let join_phases: Vec<bool> = events
+        .iter()
+        .filter_map(|event| match event {
+            LobbyEvent::Joining { prepared, .. } => Some(*prepared),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        join_phases,
+        [false, true],
+        "the authoritative join state must expose when preparation completes"
+    );
+
+    // Progress reaches the UI as its own launch phase, in order, and the game
+    // only starts afterwards.
+    let steps: Vec<&str> = events
+        .iter()
+        .filter_map(|e| match e {
+            LobbyEvent::Preparing { detail, .. } => Some(detail.as_str()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        steps,
+        ["Updating faf 3775: units.nx2 (1/2)", "Downloading map…"]
+    );
+
+    let last = events.last().expect("at least one event");
+    assert!(matches!(last, LobbyEvent::InGame), "got {last:?}");
+    assert!(*h.launched.lock().unwrap(), "the game should have started");
+    assert_eq!(h.app.snapshot().lobby.join, JoinState::InGame);
+}
+
+#[tokio::test]
+async fn a_failed_patch_fails_the_launch_instead_of_starting_an_outdated_game() {
+    let h = harness(
+        &["Updating faf…"],
+        Err("could not update faf: 503 Service Unavailable".into()),
+    );
+    let events = join_and_collect(&h).await;
+
+    match events.last() {
+        Some(LobbyEvent::LaunchFailed { reason }) => {
+            assert!(reason.contains("503"), "the cause should survive: {reason}");
+        }
+        other => panic!("expected LaunchFailed, got {other:?}"),
+    }
+    assert!(
+        !*h.launched.lock().unwrap(),
+        "the game must not start on an install we could not update"
+    );
+    assert!(matches!(
+        h.app.snapshot().lobby.join,
+        JoinState::LaunchFailed { .. }
+    ));
+    let snapshot = h.app.snapshot();
+    assert!(snapshot.notifications.items.iter().any(|notification| {
+        notification.kind == NotificationKind::Error
+            && notification.title == "Game launch failed"
+            && notification.body.contains("503")
+    }));
+}
+
+#[tokio::test]
+async fn a_base_game_map_is_still_handed_to_the_updater() {
+    // The fake lobby launches on `Theta Passage`. Deciding that a base map needs no
+    // download belongs to the updater (which knows the vault's naming rules),
+    // not to the launcher: so the launcher must pass it through rather than
+    // filtering it out and silently skipping real vault maps too.
+    let h = harness(&[], Ok(()));
+    join_and_collect(&h).await;
+
+    let prepared = h.prepared.lock().unwrap().clone();
+    assert_eq!(prepared[0].map_folder.as_deref(), Some("Theta Passage"));
+}
+
+/// Hosting, with a lobby port whose requests the test can inspect.
+fn host_harness(outcome: Result<(), String>) -> (App, FakeLobby, Arc<Mutex<Vec<GamePreparation>>>) {
+    let prepared = Arc::new(Mutex::new(Vec::new()));
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess {
+            launched: Arc::new(Mutex::new(false)),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: Vec::new(),
+            outcome,
+            seen: prepared.clone(),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    (app, lobby, prepared)
+}
+
+#[tokio::test]
+async fn cancelling_while_a_host_prepares_sends_no_host_request() {
+    // A co-op mission is hosted, not joined, and its preparation is the
+    // longest download the client makes. Cancel closed the dialog, but the
+    // host request still went out once the files were in, and the server's
+    // launch order started the game anyway.
+    let lobby = FakeLobby::default();
+    let launched = Arc::new(Mutex::new(false));
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        process: Arc::new(LaunchableProcess {
+            launched: launched.clone(),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(SlowUpdater {
+            steps: 12,
+            gap: Duration::from_millis(40),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+    let mut events = app.subscribe();
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if matches!(
+                events.recv().await,
+                Ok(AppEvent::Lobby(LobbyEvent::Preparing { .. }))
+            ) {
+                break;
+            }
+        }
+    })
+    .await
+    .expect("preparation never started");
+
+    app.dispatch(LobbyCommand::CancelJoin.into()).await.unwrap();
+
+    // Longer than the updater's remaining steps, so a request sent after
+    // them has every chance to arrive.
+    tokio::time::sleep(Duration::from_millis(900)).await;
+    assert!(
+        lobby.hosted_configs().is_empty(),
+        "a cancelled host must not ask the server for a lobby"
+    );
+    assert!(
+        !*launched.lock().unwrap(),
+        "a cancelled host must not start the game"
+    );
+}
+
+/// An adapter selector set to Go, which is all the host path asks of it.
+struct GoHostingIce;
+
+#[async_trait]
+impl IcePort for GoHostingIce {
+    async fn start(&self, _params: IceParams) -> Result<ConnectivitySession, String> {
+        Err("not started in this test".into())
+    }
+    fn stop(&self) {}
+    fn hosting_adapter(&self) -> IceAdapter {
+        IceAdapter::Go
+    }
+}
+
+#[tokio::test]
+async fn hosting_on_go_marks_the_title_for_dynamic_joiners() {
+    // Nothing the server sends names the host's adapter, and the two cannot
+    // connect to each other: the title is how a Dynamic joiner knows.
+    let lobby = FakeLobby::default();
+    let ports = Ports {
+        auth: Arc::new(FakeAuth {
+            player: Player::new(7, "Ada"),
+            delay: Duration::ZERO,
+            fail_with: None,
+        }),
+        lobby: Arc::new(lobby.clone()),
+        ice: Arc::new(GoHostingIce),
+        process: Arc::new(LaunchableProcess {
+            launched: Arc::new(Mutex::new(false)),
+            install_dir: Some(PathBuf::from("C:/fake-fa-install")),
+            exits_after: None,
+        }),
+        updater: Arc::new(ScriptedUpdater {
+            steps: Vec::new(),
+            outcome: Ok(()),
+            seen: Arc::new(Mutex::new(Vec::new())),
+        }),
+        ..fake_ports()
+    };
+    let app = support::start(ports);
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        wait_for(|| !lobby.hosted_configs().is_empty()).await,
+        "the host request never reached the lobby"
+    );
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game [go-adapter]");
+    assert_eq!(
+        app.snapshot().settings.browsing.host_game.title,
+        "Friday game",
+        "the remembered form keeps the title as it was typed"
+    );
+}
+
+#[tokio::test]
+async fn hosting_on_java_leaves_the_title_alone() {
+    let (app, lobby, _prepared) = host_harness(Ok(()));
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    assert!(wait_for(|| !lobby.hosted_configs().is_empty()).await);
+    assert_eq!(lobby.hosted_configs()[0].title, "Friday game");
+}
+
+fn host_config(map: &str) -> HostGameConfig {
+    HostGameConfig {
+        title: "Friday game".into(),
+        mod_name: "faf".into(),
+        visibility: "public".into(),
+        map: map.into(),
+        password: None,
+        enforce_rating_range: false,
+        rating_min: None,
+        rating_max: None,
+    }
+}
+
+async fn wait_for<F: Fn() -> bool>(condition: F) -> bool {
+    // Three seconds is what two hundred ten-millisecond sleeps came to on
+    // Windows, whose timer rounds each one up.
+    support::happens(Duration::from_secs(3), condition).await
+}
+
+#[tokio::test]
+async fn hosting_downloads_the_map_the_host_chose() {
+    // The reported failure: hosting never downloaded the map. The server's
+    // `game_launch` names a map only for the matchmaker - a host already told
+    // the server which map to use, so the reply carries no `mapname` - and the
+    // launch path reads exactly that field. Nothing else asked for the map, so
+    // the host arrived in a lobby whose scenario was not on disk.
+    let (app, lobby, prepared) = host_harness(Ok(()));
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    assert!(
+        wait_for(|| !lobby.hosted_configs().is_empty()).await,
+        "the host request never reached the lobby"
+    );
+    let requests = prepared.lock().unwrap().clone();
+    assert_eq!(requests.len(), 1, "the map was prepared exactly once");
+    assert_eq!(
+        requests[0].map_folder.as_deref(),
+        Some("adaptive_gadostb.v0002")
+    );
+    assert_eq!(requests[0].featured_mod, "faf");
+}
+
+#[tokio::test]
+async fn a_map_that_cannot_be_downloaded_stops_the_host_request() {
+    // Better a clear failure than a lobby other players can join and nobody,
+    // including its host, can load.
+    let (app, lobby, prepared) = host_harness(Err("map archive is not on the CDN".into()));
+    let mut events = app.subscribe();
+
+    app.dispatch(
+        LobbyCommand::Host {
+            config: host_config("adaptive_gadostb.v0002"),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let failed = tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            if let Ok(AppEvent::Lobby(LobbyEvent::LaunchFailed { reason })) = events.recv().await {
+                return reason;
+            }
+        }
+    })
+    .await
+    .expect("the host attempt never settled");
+
+    assert!(failed.contains("map archive is not on the CDN"));
+    assert!(!prepared.lock().unwrap().is_empty());
+    assert!(
+        lobby.hosted_configs().is_empty(),
+        "no lobby should exist for a map that could not be fetched"
+    );
+}

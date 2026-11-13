@@ -4,7 +4,7 @@
 //! The check is a sequence of questions, each a method here, and the service
 //! decides what the answers mean. Everything that touches a socket, a process
 //! or a file is behind this trait, so the service is tested with a scripted
-//! port and no network: see `tests/connectivity_check.rs`.
+//! port and no network: see `tests/it/connectivity_check.rs`.
 //!
 //! The running adapter's own view of its peers is not here. That is a
 //! question for the adapter that is running, so it is [`super::IcePort`]'s

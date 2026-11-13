@@ -54,6 +54,13 @@ export const FOLDER_GROUPS: readonly FolderGroup[] = [
       { id: "vault", label: "settings.folders.vault", icon: "folder", target: { kind: "client", folder: "vault" } },
       { id: "gameCache", label: "settings.folders.gameCache", icon: "drive", target: { kind: "client", folder: "gameCache" } },
       { id: "gamePrefs", label: "settings.folders.gamePrefs", icon: "settings", target: { kind: "client", folder: "gamePrefs" } },
+      // The weekly copies the client keeps of it (issue 750).
+      {
+        id: "gamePrefsBackups",
+        label: "settings.folders.gamePrefsBackups",
+        icon: "settings",
+        target: { kind: "client", folder: "gamePrefsBackups" },
+      },
     ],
   },
   {

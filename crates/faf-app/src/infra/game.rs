@@ -64,6 +64,10 @@ pub struct GameConfig {
     /// The Wine prefix to run in (`WINEPREFIX`), from Settings, Paths. Empty
     /// leaves the child's environment as this process found it.
     pub wine_prefix: String,
+    /// The rebuilt engine (faf-re) live and offline games are played on
+    /// instead of [`Self::game_path`], from Settings, Game. `None` plays the
+    /// original; `Some("")` is switched on without an executable.
+    pub rebuilt_engine: Option<String>,
 }
 
 impl GameConfig {
@@ -74,8 +78,71 @@ impl GameConfig {
             additional_arguments: Vec::new(),
             launch_wrapper: std::env::var("FAF_LAUNCH_WRAPPER").unwrap_or_default(),
             wine_prefix: String::new(),
+            rebuilt_engine: None,
         }
     }
+}
+
+/// What a live or offline game is started as: the executable, the `/init`
+/// argument naming its init script, and the word errors use for it.
+#[derive(Debug, PartialEq)]
+struct PlayTarget {
+    exe: String,
+    init: String,
+    what: &'static str,
+}
+
+/// Which executable plays the game, and how it is told where its init script
+/// is.
+///
+/// The original runs in the install's `bin`, beside `init_<mod>.lua`, so the
+/// bare file name finds it. The rebuilt engine (faf-re) runs in its own
+/// folder, because it loads its own hook scripts (`fafengine\`) and DLLs from
+/// beside its executable, so it gets the script of that same install as an
+/// absolute path. It sets `InitFileDir` to the script's folder just as the
+/// original does, so every path FAF's init script works out from there is the
+/// same either way: the same gamedata, the same `fa_path.lua`, the same mods.
+///
+/// `init_path` turns the script's path into the one the game sees, which is
+/// a different spelling under Wine.
+fn play_target(
+    game_path: &str,
+    rebuilt_engine: Option<&str>,
+    featured_mod: &str,
+    init_path: impl FnOnce(&Path) -> String,
+) -> Result<PlayTarget, String> {
+    let init_name = format!("init_{featured_mod}.lua");
+    let Some(engine) = rebuilt_engine else {
+        return Ok(PlayTarget {
+            exe: game_path.to_owned(),
+            init: init_name,
+            what: "game",
+        });
+    };
+    if engine.is_empty() {
+        return Err(
+            "the rebuilt engine (faf-re) is switched on but no executable is chosen: pick its main_x64.exe in Settings → Game, or switch it off"
+                .into(),
+        );
+    }
+    // The install is still the one the client prepares: its init script is
+    // what the rebuilt engine plays with.
+    let bin = Path::new(game_path)
+        .parent()
+        .filter(|_| !game_path.is_empty())
+        .ok_or("no game install configured: set it in Settings → Paths")?;
+    let init = bin.join(&init_name);
+    if !init.is_file() {
+        return Err(format!(
+            "{} is missing, so the rebuilt engine has nothing to start with: the game install has not been prepared for {featured_mod}",
+            init.display()
+        ));
+    }
+    Ok(PlayTarget {
+        exe: engine.to_owned(),
+        init: init_path(&init),
+        what: "rebuilt engine (faf-re)",
+    })
 }
 
 /// A running Forged Alliance, and which executable it is running.
@@ -294,6 +361,21 @@ impl GameProcess {
         tracing::warn!("the previous Forged Alliance process has not exited; launching anyway");
     }
 
+    /// The executable and init argument of the next live or offline game:
+    /// the install's own, or the rebuilt engine's. See [`play_target`].
+    fn play_target(&self, featured_mod: &str) -> Result<PlayTarget, String> {
+        let (game_path, rebuilt_engine) = {
+            let config = self.config.lock().unwrap();
+            (config.game_path.clone(), config.rebuilt_engine.clone())
+        };
+        play_target(
+            &game_path,
+            rebuilt_engine.as_deref(),
+            featured_mod,
+            |init| self.game_argument_path(init),
+        )
+    }
+
     fn spawn(
         &self,
         slot: Slot,
@@ -323,7 +405,12 @@ impl GameProcess {
                 "the configured {what} install no longer exists: {game_path}"
             ));
         }
-        if is_original_game_executable(&exe) {
+        // The rebuilt engine is not an install of its own: it plays the FAF
+        // install's files from wherever it was built, so where it sits says
+        // nothing about which game it would load.
+        let rebuilt_engine =
+            self.config.lock().unwrap().rebuilt_engine.as_deref() == Some(game_path);
+        if !rebuilt_engine && is_original_game_executable(&exe) {
             return Err(format!(
                 "the configured {what} path is the original Steam/retail game, not a FAF-managed executable: select the ForgedAlliance.exe under FAForever\\bin"
             ));
@@ -616,7 +703,9 @@ impl ProcessPort for GameProcess {
 
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         require_init_name(&params.featured_mod)?;
-        let path = self.config.lock().unwrap().game_path.clone();
+        let target = self.play_target(&params.featured_mod)?;
+        // Before the game can rewrite it on exit (issue 750).
+        crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
 
         // Started before the game, so the port in `/savereplay` is already
@@ -640,16 +729,17 @@ impl ProcessPort for GameProcess {
             .as_ref()
             .map(|recorder| recorder.savereplay_url(params.game_id, &params.player_login));
 
-        allow_second_instance(&path).await;
+        allow_second_instance(&target.exe).await;
         let result = self.spawn(
             Slot::Game,
-            &path,
+            &target.exe,
             &build_arguments(
                 &params,
+                &target.init,
                 &self.game_argument_path(&log_path),
                 savereplay.as_deref(),
             ),
-            "game",
+            target.what,
         );
 
         // Held for the game's lifetime: dropping the recorder aborts its
@@ -672,14 +762,15 @@ impl ProcessPort for GameProcess {
         map: String,
     ) -> Result<Option<PathBuf>, String> {
         require_init_name(&featured_mod)?;
-        let path = self.config.lock().unwrap().game_path.clone();
+        let target = self.play_target(&featured_mod)?;
+        crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
-        allow_second_instance(&path).await;
+        allow_second_instance(&target.exe).await;
         self.spawn(
             Slot::Game,
-            &path,
-            &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
-            "game",
+            &target.exe,
+            &offline_arguments(&target.init, &map, &self.game_argument_path(&log_path)),
+            target.what,
         )?;
         // The path this side of any Wine translation: the client reads it, the
         // game only writes it.
@@ -721,6 +812,10 @@ impl ProcessPort for GameProcess {
         let mut config = self.config.lock().unwrap();
         config.game_path = game_path;
         config.replay_game_path = replay_game_path;
+    }
+
+    fn set_rebuilt_engine(&self, exe: Option<String>) {
+        self.config.lock().unwrap().rebuilt_engine = exe;
     }
 
     fn set_additional_arguments(&self, arguments: Vec<String>) {
@@ -939,6 +1034,7 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
     let (java_prefs, python_ini, roots) = linux_reference_config_paths(
         directories::BaseDirs::new().map(|dirs| dirs.home_dir().to_path_buf()),
         std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
     );
     discover_from_reference_configs(java_prefs.as_deref(), python_ini.as_deref(), None, &roots)
 }
@@ -955,15 +1051,17 @@ fn discover_reference_install_paths() -> DiscoveredInstallPaths {
 /// `~/.config/ForgedAllianceForever`.
 ///
 /// There is no per-machine equivalent of `%PROGRAMDATA%\FAForever`, because
-/// nothing on Linux installs a game for every user. `~/.faforever` takes its
-/// place as the root to look under when no reference client is installed at
-/// all, which is where the Java client puts an install it downloaded itself.
+/// nothing on Linux installs a game for every user. `~/.faforever`, where the
+/// Java client puts an install it downloaded itself, and the XDG data root of
+/// [`linux_faf_root_from`] take its place as the roots to look under when no
+/// reference client has one recorded.
 ///
 /// Split out from the discovery above so it can be tested on the machine this
 /// is written on, which is not the machine it describes.
 fn linux_reference_config_paths(
     home: Option<PathBuf>,
     xdg_config_home: Option<PathBuf>,
+    xdg_data_home: Option<PathBuf>,
 ) -> (Option<PathBuf>, Option<PathBuf>, Vec<PathBuf>) {
     let config_home = xdg_config_home.or_else(|| home.as_ref().map(|home| home.join(".config")));
 
@@ -971,10 +1069,65 @@ fn linux_reference_config_paths(
         .as_deref()
         .map(crate::infra::faf_content::posix_java_client_prefs);
     let python_ini = config_home.map(|root| root.join("ForgedAllianceForever/FA Lobby.ini"));
+    // Both places this client may have put an install by itself: the Java
+    // client's root, and the XDG data root it uses when that one is absent
+    // (issue 752).
     let roots = home
-        .map(|home| vec![home.join(".faforever")])
+        .map(|home| {
+            let xdg = xdg_faf_root(&home, xdg_data_home);
+            vec![home.join(".faforever"), xdg]
+        })
         .unwrap_or_default();
     (java_prefs, python_ini, roots)
+}
+
+/// The FAF data root below the XDG data directory: `$XDG_DATA_HOME/faforever`,
+/// or `~/.local/share/faforever` when the variable is unset or not absolute
+/// (the specification says to ignore a relative one).
+fn xdg_faf_root(home: &Path, xdg_data_home: Option<PathBuf>) -> PathBuf {
+    // `has_root` rather than `is_absolute`: the same on Linux, which is the
+    // only place this runs, and the same in the tests on Windows, where a
+    // path without a drive letter is never absolute.
+    xdg_data_home
+        .filter(|dir| dir.has_root())
+        .unwrap_or_else(|| home.join(".local").join("share"))
+        .join("faforever")
+}
+
+/// Where the FAF install and the replays go on Linux when nothing says
+/// otherwise (issue 752).
+///
+/// `~/.faforever` is the Java client's root, not an XDG directory. When it
+/// exists it is kept, because that is what lets both clients share one
+/// install and one replay folder. When it does not, nothing is gained by
+/// creating a dot folder in the home directory: the install and the replays
+/// are data the player keeps, so they go below `$XDG_DATA_HOME`. The client's
+/// own settings, data and caches already follow XDG through
+/// [`crate::infra::project_dirs`].
+///
+/// `legacy_exists` is asked about `~/.faforever`, so the choice can be tested
+/// on any machine.
+pub(crate) fn linux_faf_root_from(
+    home: &Path,
+    xdg_data_home: Option<PathBuf>,
+    legacy_exists: impl Fn(&Path) -> bool,
+) -> PathBuf {
+    let legacy = home.join(".faforever");
+    if legacy_exists(&legacy) {
+        legacy
+    } else {
+        xdg_faf_root(home, xdg_data_home)
+    }
+}
+
+/// [`linux_faf_root_from`] for this machine. `None` without a home directory.
+pub(crate) fn linux_faf_root() -> Option<PathBuf> {
+    let dirs = directories::BaseDirs::new()?;
+    Some(linux_faf_root_from(
+        dirs.home_dir(),
+        std::env::var_os("XDG_DATA_HOME").map(PathBuf::from),
+        |path| path.is_dir(),
+    ))
 }
 
 fn discover_from_reference_configs(
@@ -1188,7 +1341,8 @@ fn managed_executable_is_pending(path: &str) -> bool {
 ///
 /// The same roots the reference clients use, which is what makes an install
 /// made here visible to them and theirs visible to us:
-/// `%PROGRAMDATA%\FAForever` on Windows, `~/.faforever` on Linux. Nothing is
+/// `%PROGRAMDATA%\FAForever` on Windows, `~/.faforever` on Linux when the
+/// Java client made it and `$XDG_DATA_HOME/faforever` otherwise. Nothing is
 /// created here; these are the paths the updater is pointed at, and it creates
 /// what it needs when the first game or replay is prepared.
 fn default_managed_install_paths() -> DiscoveredInstallPaths {
@@ -1197,7 +1351,7 @@ fn default_managed_install_paths() -> DiscoveredInstallPaths {
             .or_else(|| std::env::var_os("ALLUSERSPROFILE"))
             .map(|base| PathBuf::from(base).join("FAForever"))
     } else {
-        directories::BaseDirs::new().map(|dirs| dirs.home_dir().join(".faforever"))
+        linux_faf_root()
     };
     let Some(root) = root else {
         return DiscoveredInstallPaths::default();
@@ -1278,15 +1432,17 @@ fn require_init_name(featured_mod: &str) -> Result<(), String> {
 /// Mirrors `fa/play.py:build_argument_list`. `savereplay` is the address of the
 /// local [`crate::infra::replay_recorder::ReplayRecorder`]; without it FA writes
 /// no replay for a networked game at all, which is why played games used to
-/// leave nothing in the local library.
+/// leave nothing in the local library. `init` is the init script argument
+/// from [`play_target`].
 fn build_arguments(
     params: &GameLaunchParams,
+    init: &str,
     log_path: &str,
     savereplay: Option<&str>,
 ) -> Vec<String> {
     let mut args = params.args.clone();
     args.push("/init".into());
-    args.push(format!("init_{}.lua", params.featured_mod));
+    args.push(init.to_string());
     args.push("/nobugreport".into());
     if let Some(url) = savereplay {
         args.push("/savereplay".into());
@@ -1306,13 +1462,10 @@ fn build_arguments(
 /// load. Deliberately no `/gpgnet`: there is no adapter and no lobby.
 ///
 /// An empty `map` leaves `/map` out, which opens the game's own menu rather
-/// than a scenario: the "Play offline" on the login screen (#397).
-fn offline_arguments(featured_mod: &str, map: &str, log_path: &str) -> Vec<String> {
-    let mut arguments = vec![
-        "/init".into(),
-        format!("init_{featured_mod}.lua"),
-        "/nobugreport".into(),
-    ];
+/// than a scenario: the "Play offline" on the login screen (#397). `init` is
+/// the init script argument from [`play_target`].
+fn offline_arguments(init: &str, map: &str, log_path: &str) -> Vec<String> {
+    let mut arguments = vec!["/init".into(), init.to_string(), "/nobugreport".into()];
     if !map.is_empty() {
         arguments.extend(["/map".into(), map.into()]);
     }
@@ -1365,6 +1518,67 @@ impl ProcessPort for FakeGame {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn untranslated(path: &Path) -> String {
+        path.display().to_string()
+    }
+
+    #[test]
+    fn the_original_game_finds_its_init_script_beside_itself() {
+        let target = play_target("C:/FAF/bin/ForgedAlliance.exe", None, "faf", untranslated);
+        assert_eq!(
+            target,
+            Ok(PlayTarget {
+                exe: "C:/FAF/bin/ForgedAlliance.exe".into(),
+                init: "init_faf.lua".into(),
+                what: "game",
+            })
+        );
+    }
+
+    #[test]
+    fn the_rebuilt_engine_plays_the_install_s_init_script() {
+        let temp = tempfile::tempdir().unwrap();
+        let bin = temp.path().join("bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::write(bin.join("init_faf.lua"), "").unwrap();
+        let game = bin.join("ForgedAlliance.exe").display().to_string();
+
+        let target =
+            play_target(&game, Some("D:/faf-re/main_x64.exe"), "faf", untranslated).unwrap();
+
+        assert_eq!(target.exe, "D:/faf-re/main_x64.exe");
+        assert_eq!(target.init, bin.join("init_faf.lua").display().to_string());
+        assert!(Path::new(&target.init).is_absolute());
+        // The path the game sees, which under Wine is spelled differently.
+        let wine = play_target(&game, Some("D:/faf-re/main_x64.exe"), "faf", |_| {
+            "Z:\\init_faf.lua".into()
+        });
+        assert_eq!(wine.unwrap().init, "Z:\\init_faf.lua");
+    }
+
+    #[test]
+    fn the_rebuilt_engine_is_refused_without_what_it_needs() {
+        let temp = tempfile::tempdir().unwrap();
+        let game = temp
+            .path()
+            .join("bin")
+            .join("ForgedAlliance.exe")
+            .display()
+            .to_string();
+        // Switched on with no executable: never the original in its place.
+        assert!(play_target(&game, Some(""), "faf", untranslated)
+            .unwrap_err()
+            .contains("no executable is chosen"));
+        // No install to take the init script from.
+        assert!(play_target("", Some("D:/faf-re/main_x64.exe"), "faf", untranslated).is_err());
+        // An install not yet prepared for this featured mod.
+        assert!(
+            play_target(&game, Some("D:/faf-re/main_x64.exe"), "coop", untranslated)
+                .unwrap_err()
+                .contains("init_coop.lua")
+        );
+    }
 
     #[test]
     fn a_wrapper_is_split_into_a_program_and_its_arguments() {
@@ -1424,7 +1638,7 @@ mod tests {
     #[test]
     fn linux_discovery_looks_where_each_reference_client_actually_writes() {
         let (java, python, roots) =
-            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None);
+            linux_reference_config_paths(Some(PathBuf::from("/home/player")), None, None);
         assert_eq!(
             java.unwrap(),
             PathBuf::from("/home/player/.faforever/client.prefs")
@@ -1434,8 +1648,41 @@ mod tests {
             PathBuf::from("/home/player/.config/ForgedAllianceForever/FA Lobby.ini")
         );
         // No `%PROGRAMDATA%` equivalent: nothing here installs a game for
-        // every user, so the fallback root is the Java client's own.
-        assert_eq!(roots, vec![PathBuf::from("/home/player/.faforever")]);
+        // every user, so the roots are the Java client's own and the XDG one
+        // this client uses without it.
+        assert_eq!(
+            roots,
+            vec![
+                PathBuf::from("/home/player/.faforever"),
+                PathBuf::from("/home/player/.local/share/faforever"),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_new_linux_install_goes_below_the_xdg_data_directory() {
+        let home = Path::new("/home/player");
+        // Issue 752: no Java client, so no dot folder in the home directory.
+        assert_eq!(
+            linux_faf_root_from(home, None, |_| false),
+            PathBuf::from("/home/player/.local/share/faforever")
+        );
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("/data")), |_| false),
+            PathBuf::from("/data/faforever")
+        );
+        // A relative XDG_DATA_HOME is invalid and ignored, as the
+        // specification asks.
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("data")), |_| false),
+            PathBuf::from("/home/player/.local/share/faforever")
+        );
+        // The Java client's root, once it exists, is shared rather than
+        // duplicated.
+        assert_eq!(
+            linux_faf_root_from(home, Some(PathBuf::from("/data")), |_| true),
+            PathBuf::from("/home/player/.faforever")
+        );
     }
 
     #[test]
@@ -1444,6 +1691,7 @@ mod tests {
         let (java, python, _) = linux_reference_config_paths(
             Some(PathBuf::from("/home/player")),
             Some(PathBuf::from("/conf")),
+            None,
         );
         assert_eq!(
             java.unwrap(),
@@ -1470,11 +1718,11 @@ mod tests {
 
     #[test]
     fn an_offline_launch_without_a_map_opens_the_game_menu() {
-        let menu = offline_arguments("faf", "", "game.log");
+        let menu = offline_arguments("init_faf.lua", "", "game.log");
         assert!(!menu.iter().any(|argument| argument == "/map"));
         assert_eq!(&menu[..2], ["/init", "init_faf.lua"]);
 
-        let tutorial = offline_arguments("tutorials", "SCMP_001", "game.log");
+        let tutorial = offline_arguments("init_tutorials.lua", "SCMP_001", "game.log");
         let at = tutorial
             .iter()
             .position(|argument| argument == "/map")
@@ -1501,7 +1749,7 @@ mod tests {
 
     #[test]
     fn builds_fa_command_line_in_order() {
-        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
+        let args = build_arguments(&params(), "init_faf.lua", "diagnostics/game-99.log", None);
         assert_eq!(
             &args[..7],
             vec![
@@ -1524,7 +1772,12 @@ mod tests {
         // replay for a networked game at all: without it a played game leaves
         // nothing on disk, which is the bug this fixes.
         let url = "gpgnet://127.0.0.1:5000/99/me.SCFAreplay";
-        let args = build_arguments(&params(), "diagnostics/game-99.log", Some(url));
+        let args = build_arguments(
+            &params(),
+            "init_faf.lua",
+            "diagnostics/game-99.log",
+            Some(url),
+        );
         let save = args.iter().position(|a| a == "/savereplay").unwrap();
         assert_eq!(args[save + 1], url);
         assert!(save < args.iter().position(|a| a == "/gpgnet").unwrap());
@@ -1534,7 +1787,7 @@ mod tests {
     fn no_recorder_means_no_savereplay_flag() {
         // A recorder that could not bind must not leave FA streaming at a dead
         // port: the game is still perfectly playable without a replay.
-        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
+        let args = build_arguments(&params(), "init_faf.lua", "diagnostics/game-99.log", None);
         assert!(!args.iter().any(|a| a == "/savereplay"));
     }
 

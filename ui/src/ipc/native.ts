@@ -60,7 +60,14 @@ const UNIT_ICON_SCHEME = "unit-icon";
 export type LogKind = "game" | "client" | "ice";
 
 /** Mirrors the arms of `faf_app::infra::client_folder`. */
-export type ClientFolder = "maps" | "mods" | "replays" | "vault" | "gameCache" | "gamePrefs";
+export type ClientFolder =
+  | "maps"
+  | "mods"
+  | "replays"
+  | "vault"
+  | "gameCache"
+  | "gamePrefs"
+  | "gamePrefsBackups";
 
 export const native = {
   /** Read a fixed enhancement asset through the same bounded icon cache. */

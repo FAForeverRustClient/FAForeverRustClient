@@ -158,6 +158,13 @@ const LOCAL_REPLAY_READ_CONCURRENCY: usize = 4;
 /// its settings name as `data.baseDataDirectory`. So the folder used is the
 /// first of those that already holds replays, then the first that exists,
 /// and the Python client's when there is none yet (issue 564).
+///
+/// Except on Linux, where a new folder is not made in the home directory at
+/// all: the first candidate there is `replays` below
+/// [`crate::infra::game::linux_faf_root`], which is the Java client's
+/// `~/.faforever` when that exists and `$XDG_DATA_HOME/faforever` otherwise
+/// (issue 752). `~/FAForever` stays a candidate, so replays this client saved
+/// there before are still found.
 pub(crate) fn local_replays_dir() -> PathBuf {
     if let Some(dir) = crate::infra::paths::replays_dir() {
         return dir;
@@ -172,7 +179,11 @@ pub(crate) fn local_replays_dir() -> PathBuf {
     } else {
         std::env::var("HOME").unwrap_or_default()
     };
-    let mut candidates = vec![PathBuf::from(&base).join("FAForever").join("replays")];
+    let mut candidates = Vec::new();
+    if !cfg!(windows) {
+        candidates.extend(crate::infra::game::linux_faf_root().map(|root| root.join("replays")));
+    }
+    candidates.push(PathBuf::from(&base).join("FAForever").join("replays"));
     if let Some(java) = crate::infra::faf_content::java_client_prefs_dir("/data/baseDataDirectory")
     {
         candidates.push(java.join("replays"));

@@ -3465,6 +3465,12 @@
                   ],
                   "rankedGames": 3,
                   "report": {
+                    "activity": {
+                      "factions": [],
+                      "milestones": [],
+                      "months": [],
+                      "weekMinutes": []
+                    },
                     "averageMinutesTenths": 0,
                     "bestDays": [],
                     "bestMonths": [],
@@ -3483,6 +3489,7 @@
                     },
                     "months": [],
                     "opponents": [],
+                    "playedMinutes": 0,
                     "ratedGames": 3,
                     "recentDecided": 3,
                     "recentFrom": "",
@@ -3556,6 +3563,12 @@
               ],
               "rankedGames": 3,
               "report": {
+                "activity": {
+                  "factions": [],
+                  "milestones": [],
+                  "months": [],
+                  "weekMinutes": []
+                },
                 "averageMinutesTenths": 0,
                 "bestDays": [],
                 "bestMonths": [],
@@ -3574,6 +3587,7 @@
                 },
                 "months": [],
                 "opponents": [],
+                "playedMinutes": 0,
                 "ratedGames": 3,
                 "recentDecided": 3,
                 "recentFrom": "",
@@ -6529,6 +6543,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -69520,6 +69536,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -69839,6 +69857,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -70168,6 +70188,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -70501,6 +70523,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -70826,6 +70850,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -71162,6 +71188,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -71512,6 +71540,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -71854,6 +71884,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -72206,6 +72238,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -72637,6 +72671,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -73075,6 +73111,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -73859,6 +73897,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -74421,6 +74461,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -91939,6 +91981,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -92281,6 +92325,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -92658,6 +92704,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -93055,6 +93103,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -93238,6 +93288,8 @@
                   "launchWrapper": "gamemoderun",
                   "mapGeneratorInstances": 0,
                   "pipeLiveReplay": false,
+                  "rebuiltEngine": false,
+                  "rebuiltEngineExe": "",
                   "showJoinProgress": true,
                   "showReplayProgress": true,
                   "steamPresence": false
@@ -93419,6 +93471,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -93567,6 +93621,8 @@
                 "launchWrapper": "gamemoderun",
                 "mapGeneratorInstances": 0,
                 "pipeLiveReplay": false,
+                "rebuiltEngine": false,
+                "rebuiltEngineExe": "",
                 "showJoinProgress": true,
                 "showReplayProgress": true,
                 "steamPresence": false
@@ -93761,6 +93817,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -94091,6 +94149,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -94448,6 +94508,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -94798,6 +94860,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -95137,6 +95201,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -95478,6 +95544,8 @@
               "launchWrapper": "gamemoderun",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -95795,6 +95863,8 @@
                     "launchWrapper": "",
                     "mapGeneratorInstances": 0,
                     "pipeLiveReplay": false,
+                    "rebuiltEngine": false,
+                    "rebuiltEngineExe": "",
                     "showJoinProgress": true,
                     "showReplayProgress": true,
                     "steamPresence": false
@@ -96101,6 +96171,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false
@@ -96405,6 +96477,8 @@
                   "launchWrapper": "",
                   "mapGeneratorInstances": 0,
                   "pipeLiveReplay": false,
+                  "rebuiltEngine": false,
+                  "rebuiltEngineExe": "",
                   "showJoinProgress": true,
                   "showReplayProgress": true,
                   "steamPresence": false
@@ -138687,6 +138761,8 @@
         "launchWrapper": "",
         "mapGeneratorInstances": 0,
         "pipeLiveReplay": false,
+        "rebuiltEngine": false,
+        "rebuiltEngineExe": "",
         "showJoinProgress": true,
         "showReplayProgress": true,
         "steamPresence": false
