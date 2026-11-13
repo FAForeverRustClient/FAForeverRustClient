@@ -45,6 +45,10 @@ pub struct PlayerReport {
     /// The average game length in tenths of a minute, over every game the scan
     /// read. A game without both ends counts as zero minutes, as it does there.
     pub average_minutes_tenths: i32,
+    /// Every minute of every game the scan read, start to end: the time
+    /// played on FAF (issue 748). A game without both ends adds nothing.
+    #[serde(default)]
+    pub played_minutes: i32,
     /// The longest unbroken runs of ranked wins and of ranked losses.
     pub max_win_streak: PlayerStreak,
     pub max_loss_streak: PlayerStreak,
@@ -216,6 +220,7 @@ pub fn build_player_report(games: &[PlayedGame]) -> PlayerReport {
             .sum();
         report.average_minutes_tenths =
             ((minutes as f64 / games.len() as f64) * 10.0).round() as i32;
+        report.played_minutes = i32::try_from(minutes).unwrap_or(i32::MAX);
     }
 
     let stats_games: Vec<&PlayedGame> = games
@@ -582,6 +587,7 @@ mod tests {
         assert_eq!(report.max_loss_streak.size, 1);
         assert_eq!((report.recent_wins, report.recent_decided), (3, 5));
         assert_eq!(report.average_minutes_tenths, 200);
+        assert_eq!(report.played_minutes, 6 * 20);
     }
 
     #[test]

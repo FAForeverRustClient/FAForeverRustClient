@@ -76,6 +76,7 @@ const EMPTY_REPORT: PlayerReport = {
   recentWins: 0,
   recentDecided: 0,
   averageMinutesTenths: 0,
+  playedMinutes: 0,
   maxWinStreak: NO_STREAK,
   maxLossStreak: NO_STREAK,
   worstLossStreak: 0,
@@ -93,6 +94,15 @@ const EMPTY_REPORT: PlayerReport = {
   opponents: [],
   factions: [],
 };
+
+/**
+ * Minutes as hours: one decimal below ten hours, where a tenth is still six
+ * minutes worth telling apart, whole hours above.
+ */
+export function playedHours(minutes: number): string {
+  const hours = minutes / 60;
+  return hours < 10 ? formatDecimal(Math.round(hours * 10) / 10) : formatNumber(Math.round(hours));
+}
 
 /** Wins out of wins and losses, in percent; `null` with neither. */
 export function decidedRate(wins: number, losses: number): number | null {
@@ -243,6 +253,12 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
     {
       label: t("playerCard.stats.averageDuration"),
       value: t("playerCard.stats.minutes", { minutes: formatDecimal(report.averageMinutesTenths / 10) }),
+    },
+    // Issue 748: the games' own start and end, summed. Over the games the
+    // scan read, which the note under the cards spells out.
+    {
+      label: t("playerCard.stats.timePlayed"),
+      value: t("playerCard.stats.hours", { hours: playedHours(report.playedMinutes ?? 0) }),
     },
     {
       label: t("playerCard.stats.maxWinStreak"),

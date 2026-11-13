@@ -2497,6 +2497,8 @@ export const en = {
   "playerCard.stats.recentWinRate": "Last 25 rated games",
   "playerCard.stats.averageDuration": "Average duration",
   "playerCard.stats.minutes": "{minutes} min",
+  "playerCard.stats.timePlayed": "Time played",
+  "playerCard.stats.hours": "{hours} h",
   "playerCard.stats.maxWinStreak": "Longest win streak",
   "playerCard.stats.maxLossStreak": "Longest loss streak",
   "playerCard.stats.winStreak": { one: "{count} win", other: "{count} wins" },

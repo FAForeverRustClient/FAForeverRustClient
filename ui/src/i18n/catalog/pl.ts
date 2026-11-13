@@ -1053,6 +1053,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "playerCard.stats.recentWinRate": "Ostatnie 25 gier rankingowych",
   "playerCard.stats.averageDuration": "Średni czas",
   "playerCard.stats.minutes": "{minutes} min",
+  "playerCard.stats.timePlayed": "Czas gry",
+  "playerCard.stats.hours": "{hours} godz.",
   "playerCard.stats.maxWinStreak": "Najdłuższa seria zwycięstw",
   "playerCard.stats.maxLossStreak": "Najdłuższa seria porażek",
   "playerCard.stats.winStreak": { one: "{count} zwycięstwo", few: "{count} zwycięstwa", many: "{count} zwycięstw", other: "{count} zwycięstwa" },

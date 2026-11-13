@@ -2143,6 +2143,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "playerCard.stats.recentWinRate": "Letzte 25 gewertete Spiele",
   "playerCard.stats.averageDuration": "Durchschnittliche Dauer",
   "playerCard.stats.minutes": "{minutes} Min.",
+  "playerCard.stats.timePlayed": "Gespielte Zeit",
+  "playerCard.stats.hours": "{hours} Std.",
   "playerCard.stats.maxWinStreak": "Längste Siegesserie",
   "playerCard.stats.maxLossStreak": "Längste Niederlagenserie",
   "playerCard.stats.winStreak": { one: "{count} Sieg", other: "{count} Siege" },

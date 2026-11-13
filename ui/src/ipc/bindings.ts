@@ -8340,6 +8340,11 @@ export type PlayerReport = {
 	 *  read. A game without both ends counts as zero minutes, as it does there.
 	 */
 	averageMinutesTenths: number,
+	/**
+	 *  Every minute of every game the scan read, start to end: the time
+	 *  played on FAF (issue 748). A game without both ends adds nothing.
+	 */
+	playedMinutes?: number,
 	/**  The longest unbroken runs of ranked wins and of ranked losses. */
 	maxWinStreak: PlayerStreak,
 	maxLossStreak: PlayerStreak,
