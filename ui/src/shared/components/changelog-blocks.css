@@ -184,6 +184,25 @@ ol.changelog-list {
   color: var(--color-ok-text);
 }
 
+/* Added/removed categories in Unit History keep their diff colors above.
+   Numeric balance rows color the effect, rather than every replacement green. */
+.changelog-change > .changelog-old {
+  color: var(--color-muted);
+  text-decoration-color: currentColor;
+}
+
+.changelog-change > .changelog-new {
+  color: var(--color-text);
+}
+
+.changelog-change[data-verdict="buff"] > .changelog-new {
+  color: var(--color-ok-text);
+}
+
+.changelog-change[data-verdict="nerf"] > .changelog-new {
+  color: var(--color-error-text);
+}
+
 .changelog-change svg {
   flex: none;
   color: var(--color-subtle);

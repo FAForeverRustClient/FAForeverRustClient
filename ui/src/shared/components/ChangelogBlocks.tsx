@@ -16,6 +16,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
 import { ChangelogIllustration } from "./ChangelogIllustration";
 import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
+import { changelogVerdict } from "../balanceVerdict";
 import { ChangelogIcon } from "./ChangelogIcon";
 import "./changelog-blocks.css";
 
@@ -100,9 +101,9 @@ export function ChangelogListItems({ items, anchorId }: { items: ChangelogListIt
             {group.map((item, index) => (
               <li key={index} value={item.ordinal ?? undefined}>
                 {item.change ? (
-                  // A value change reads as a diff, the way the site styles it: the
-                  // strike and the arrow say which is which before the colour does.
-                  <span className="changelog-change">
+                  // Strike and arrow identify old/new. Only a known effect on
+                  // the unit gets a buff/nerf color; prose stays neutral.
+                  <span className="changelog-change" data-verdict={changelogVerdict(item.change) ?? undefined}>
                     <span className="changelog-change-label">{item.change.label}</span>
                     <span className="changelog-old">{item.change.old}</span>
                     <Icon name="arrowRight" size={12} />

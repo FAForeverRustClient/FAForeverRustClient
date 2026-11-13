@@ -19,6 +19,79 @@ vi.mock("../../shared/useUnitIcons", () => ({ useUnitIcons: () => ({ units: {}, 
 vi.mock("../../ipc/client");
 failOnConsoleError();
 
+it("colors nested balance changes by effect and preserves the published text", () => {
+  const items: ChangelogListItem[] = [
+    { spans: [], change: { label: "Mass cost", old: "230", new: "270" }, children: [] },
+    { spans: [{ type: "text", payload: "Weapon" }], change: null, children: [
+      { spans: [], change: { label: "Damage", old: "100", new: "120" }, children: [] },
+      { spans: [], change: { label: "UniformScale", old: "1", new: "2" }, children: [] },
+    ] },
+    { spans: [], change: { label: "Description", old: "Anti-Air Defense", new: "Anti-Air Turret" }, children: [] },
+  ];
+  const { container } = render(<ChangelogListItems items={items} />);
+  const rows = [...container.querySelectorAll(".changelog-change")];
+  expect(rows.map(row => row.getAttribute("data-verdict"))).toEqual(["nerf", "buff", null, null]);
+  expect(rows[0].querySelector(".changelog-old")?.textContent).toBe("230");
+  expect(rows[0].querySelector(".changelog-new")?.textContent).toBe("270");
+  expect(rows[3].querySelector(".changelog-new")?.textContent).toBe("Anti-Air Turret");
+  expect(container.querySelector("li > .changelog-list")).toBeTruthy();
+});
+
+it.each([
+  ["Charge cost", "0 E", "72000 E (3750 E/s average)", "nerf"],
+  ["Aim Speed", "360 deg/s", "8 deg/s", "nerf"],
+  ["Stun Duration against T1/T2 mobile units", "1.5s per shot (2.3s per volley) (70% stun uptime)", "0.4s per shot (1.2s per volley) (36% stun uptime)", "nerf"],
+  ["Fixed spread radius", "70", "63 (approximately +23% dmg/area)", "buff"],
+  ["Damage (DPS)", "125 (312.5)", "118 (295)", "nerf"],
+  ["Reload time", "4.0", "3.4 seconds (DPS 156 -> 184)", "buff"],
+  ["Damage (DPS)", "100 (200)", "120 (150)", null],
+  ["Torpedoes per volley", "4", "5", "buff"],
+  ["Torpedoes per volley", "5x2", "6x2", "buff"],
+  ["Torpedoes per volley", "6x2", "5x2", "nerf"],
+  ["Torpedoes per volley", "3x4", "6x2", null],
+  ["Torpedoes per volley", "5 × 2", "6 × 2", "buff"],
+  ["MuzzleSalvoSize", "1", "2", "buff"],
+  ["MuzzleSalvoSize", "2", "1", "nerf"],
+  ["Energy cost", "6000", "12000 (20 -> 30 energy per mass)", "nerf"],
+  ["TurretPitchRange", "45", "60", "buff"],
+  ["TurretPitchRange", "70", "60", "nerf"],
+  ["Personal shield", "0", "30 000", "buff"],
+  ["Personal shield", "30 000", "0", "nerf"],
+  ["Crash Damage", "5000", "7000", "buff"],
+  ["Crash Damage", "7000", "5000", "nerf"],
+  ["Crash Aoe", "8", "10", "buff"],
+  ["Crash Aoe", "4", "8", "buff"],
+  ["Crash Aoe", "10", "8", "nerf"],
+  ["Overspill modifier", "0.15", "0.3", "nerf"],
+  ["Overspill modifier", "0.3", "0.15", "buff"],
+  ["Damage Overspill", "15%", "25%", "nerf"],
+  ["Death weapon damage", "7500", "8000", "buff"],
+  ["Death weapon damage", "10000", "7000", "nerf"],
+  ["Death weapon aoe", "4", "7", "buff"],
+  ["Death weapon aoe", "8", "6", "nerf"],
+  ["Death weapon aoe", "7", "6", "nerf"],
+  ["Death weapon aoe", "4", "9", "buff"],
+  ["Unpacking Animation", "1-2s", "4s", "nerf"],
+  ["Unpacking Animation", "4s", "1-2s", "buff"],
+  ["Unpacking Animation", "1-3s", "2-4s", null],
+  ["MaxSteerForce", "4.6", "4.8", "buff"],
+  ["MaxSteerForce", "5", "4.6", "nerf"],
+  ["Sonar Stealth", "90", "70", "nerf"],
+  ["Radar Stealth", "45", "70", "buff"],
+  ["SizeY", "0.45", "0.65", "nerf"],
+  ["Collision Size Z", "2.3", "2.0", "buff"],
+  ["BreakOffDistance", "60", "50", "buff"],
+  ["BreakOffDistance", "50", "60", "nerf"],
+  ["Turret SlavedToBody", "True", "False", "buff"],
+  ["Turret SlavedToBody", "False", "True", "nerf"],
+])("colors %s without removing its explanation", (label, old, next, expected) => {
+  const { container } = render(<ChangelogListItems items={[
+    { spans: [], change: { label, old, new: next }, children: [] },
+  ]} />);
+  expect(container.querySelector(".changelog-change")?.getAttribute("data-verdict")).toBe(expected);
+  expect(container.querySelector(".changelog-new")?.textContent).toBe(next);
+});
+
 it("preserves numbered instructions, mixed nested lists and explicit number changes", () => {
   const item = (text: string, ordinal?: number | null, children: ChangelogListItem[] = []): ChangelogListItem => ({
     spans: [{ type: "text", payload: text }], change: null, ordinal, children,
