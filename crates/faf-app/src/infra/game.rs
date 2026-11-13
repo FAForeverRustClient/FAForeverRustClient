@@ -1085,8 +1085,11 @@ fn linux_reference_config_paths(
 /// or `~/.local/share/faforever` when the variable is unset or not absolute
 /// (the specification says to ignore a relative one).
 fn xdg_faf_root(home: &Path, xdg_data_home: Option<PathBuf>) -> PathBuf {
+    // `has_root` rather than `is_absolute`: the same on Linux, which is the
+    // only place this runs, and the same in the tests on Windows, where a
+    // path without a drive letter is never absolute.
     xdg_data_home
-        .filter(|dir| dir.is_absolute())
+        .filter(|dir| dir.has_root())
         .unwrap_or_else(|| home.join(".local").join("share"))
         .join("faforever")
 }

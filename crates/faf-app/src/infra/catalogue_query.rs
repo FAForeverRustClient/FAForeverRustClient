@@ -240,10 +240,15 @@ mod tests {
                 let query: std::collections::HashMap<_, _> =
                     url.query_pairs().into_owned().collect();
                 assert_eq!(url.path(), "/data/map");
-                assert_eq!(
-                    query["filter"],
+                // The delta itself, grouped, and the API cache window after it
+                // (issue 747).
+                let filter = &query["filter"];
+                let delta = format!(
+                    "({});id=gt=-",
                     delta_filter("2026-10-01T00:00:00Z").unwrap()
                 );
+                assert!(filter.starts_with(&delta), "{filter}");
+                assert!(filter[delta.len()..].parse::<u64>().is_ok(), "{filter}");
                 assert_eq!(query["include"], "latestVersion,author");
                 assert_eq!(query["sort"], "-updateTime,-id");
                 let page = query["page[number]"].parse::<i32>().unwrap();
