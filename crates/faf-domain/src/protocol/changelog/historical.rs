@@ -947,7 +947,7 @@ mod tests {
                 "3774",
                 include_str!("../fixtures/changelog-balance-3774.html"),
                 "Ythotha",
-                8,
+                54, // Eight struck-through changes and 46 plain numeric rows.
             ),
             (
                 "3775",
@@ -1002,9 +1002,32 @@ mod tests {
                 assert!(
                     values
                         .iter()
+                        .all(|value| !value.starts_with("Upgrade Path\t")),
+                    "a nonnumeric upgrade path is prose, not an extra stat change"
+                );
+                assert!(text.iter().any(|text| {
+                    text.contains("Upgrade Path: Stealth")
+                        && text.contains("Self-Repair")
+                        && text.contains("Cloak")
+                }));
+                assert!(
+                    values
+                        .iter()
                         .any(|value| value == "Rate of Fire (RoF)\t0.5\t0.25"),
                     "cruiser stats survive sibling sublists in malformed historical HTML"
                 );
+            }
+            if id == "3774" {
+                for expected in [
+                    "UEF HP\t22000\t16000",
+                    "Explosion Damage (only t3 Power Generator)\t8000\t5500",
+                    "BuildTime\t10\t20",
+                ] {
+                    assert!(
+                        values.iter().any(|value| value == expected),
+                        "plain numeric source row is retained: {expected}"
+                    );
+                }
             }
             if id == "3775" {
                 assert_eq!(

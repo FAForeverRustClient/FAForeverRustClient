@@ -16,6 +16,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ChangelogIllustration as Illustration } from "../historicalChangelogIcons";
 import { ChangelogIllustration } from "./ChangelogIllustration";
 import { changelogLinkTarget, openChangelogLink } from "../changelogLinks";
+import { changelogVerdict } from "../balanceVerdict";
 import { ChangelogIcon } from "./ChangelogIcon";
 import "./changelog-blocks.css";
 
@@ -80,7 +81,20 @@ function ChangelogProvenance({ sourceUrl, evidenceUrl, anchorId }: {
   );
 }
 
-export function ChangelogListItems({ items, anchorId }: { items: ChangelogListItem[]; anchorId?: string }) {
+function statCaption(item: ChangelogListItem): string | undefined {
+  if (item.change || !item.spans.length) return undefined;
+  let text = "";
+  for (const span of item.spans) {
+    if (span.type !== "text" && span.type !== "strong") return undefined;
+    text += span.payload;
+  }
+  text = text.trim();
+  return text.endsWith(":") ? text : undefined;
+}
+
+export function ChangelogListItems({ items, anchorId, statContext }: {
+  items: ChangelogListItem[]; anchorId?: string; statContext?: string;
+}) {
   // Adjacent child lists can mix bullets and numbered instructions. Retain
   // each item's published number, including explicit restarts and skipped values.
   const groups: ChangelogListItem[][] = [];
@@ -100,9 +114,9 @@ export function ChangelogListItems({ items, anchorId }: { items: ChangelogListIt
             {group.map((item, index) => (
               <li key={index} value={item.ordinal ?? undefined}>
                 {item.change ? (
-                  // A value change reads as a diff, the way the site styles it: the
-                  // strike and the arrow say which is which before the colour does.
-                  <span className="changelog-change">
+                  // Strike and arrow identify old/new. Only a known effect on
+                  // the unit gets a buff/nerf color; prose stays neutral.
+                  <span className="changelog-change" data-verdict={changelogVerdict(item.change, statContext) ?? undefined}>
                     <span className="changelog-change-label">{item.change.label}</span>
                     <span className="changelog-old">{item.change.old}</span>
                     <Icon name="arrowRight" size={12} />
@@ -111,7 +125,7 @@ export function ChangelogListItems({ items, anchorId }: { items: ChangelogListIt
                 ) : (
                   <ChangelogSpans spans={item.spans} />
                 )}
-                {item.children.length > 0 && <ChangelogListItems items={item.children} />}
+                {item.children.length > 0 && <ChangelogListItems items={item.children} statContext={statCaption(item)} />}
               </li>
             ))}
           </List>

@@ -542,7 +542,7 @@
    there is room for it, at the panel's right. */
 .changelog-note-layout {
   display: grid;
-  grid-template-columns: minmax(0, 80ch);
+  grid-template-columns: minmax(0, 86ch);
   justify-content: space-between;
   gap: 48px;
   padding: 24px 28px 48px;
@@ -600,7 +600,7 @@
 
 @container changelog-note (min-width: 900px) {
   .changelog-note-layout.has-toc {
-    grid-template-columns: minmax(0, 80ch) 220px;
+    grid-template-columns: minmax(0, 86ch) 220px;
   }
 
   .changelog-note-layout.has-toc .changelog-jump {
