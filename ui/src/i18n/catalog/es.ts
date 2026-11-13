@@ -2200,6 +2200,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.assignVetoes": "Asignar vetos",
   "lobby.mapPool.doneVetoing": "Listo",
   "lobby.mapPool.previewHint": "Pulsa para ver el mapa en grande",
+  "lobby.mapPool.hostOnMap": "Crear una partida en este mapa",
   "lobby.mapPool.removeVetoHint": "Haz clic para quitar el veto",
   "lobby.mapPool.vetoLimitReached": "Límite de vetos alcanzado ({limit}/{limit})",
   "lobby.mapPool.anyRating": "Cualquier puntuación",

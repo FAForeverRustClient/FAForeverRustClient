@@ -972,6 +972,7 @@ export const en = {
   "lobby.mapPool.assignVetoes": "Assign vetoes",
   "lobby.mapPool.doneVetoing": "Done",
   "lobby.mapPool.previewHint": "Click to see the map large",
+  "lobby.mapPool.hostOnMap": "Host a game on this map",
   "lobby.mapPool.removeVetoHint": "Click to lift the veto",
   "lobby.mapPool.vetoLimitReached": "Veto limit reached ({limit}/{limit})",
 

@@ -64,12 +64,15 @@ export function MatchmakingPanel({
   matchmaking,
   party,
   panelProps,
+  onHostMap,
 }: {
   queues: MatchmakerQueue[];
   matchmaking: MatchmakingState;
   party: PartyState;
   /** Makes this the panel of the Play tab's Matchmaking mode tab. */
   panelProps?: PlayModePanelProps;
+  /** Opens the custom game host dialog on a map of a queue's pool. */
+  onHostMap?: (folderName: string) => void;
 }) {
   useLocale();
   const maps = useAppStore((state) => state.state.maps);
@@ -467,6 +470,10 @@ export function MatchmakingPanel({
           serverVetoes={serverVetoes}
           playerRating={ratingForQueue(matchmakerProfile?.ratings ?? [], mapPoolQueue.queueName)?.rating ?? null}
           onClose={() => setMapPoolQueueName(null)}
+          onHostMap={onHostMap && ((folderName) => {
+            setMapPoolQueueName(null);
+            onHostMap(folderName);
+          })}
         />
       )}
 

@@ -2240,6 +2240,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.assignVetoes": "Przydziel weta",
   "lobby.mapPool.doneVetoing": "Gotowe",
   "lobby.mapPool.previewHint": "Kliknij, aby zobaczyć mapę w dużym rozmiarze",
+  "lobby.mapPool.hostOnMap": "Utwórz grę na tej mapie",
   "lobby.mapPool.removeVetoHint": "Kliknij, aby usunąć weto",
   "lobby.mapPool.vetoLimitReached": "Osiągnięto limit wet ({limit}/{limit})",
   "lobby.party.invite.title": "Zaproś gracza",

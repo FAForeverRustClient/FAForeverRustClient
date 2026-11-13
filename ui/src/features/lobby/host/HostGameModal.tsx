@@ -34,6 +34,8 @@ import "../../../design-system/section-tabs.css";
 interface Props {
   onClose: () => void;
   initialTitle?: string;
+  /** The map to open on, by folder, instead of the one hosted last. */
+  initialMap?: string;
 }
 
 interface FeaturedModOption {
@@ -65,7 +67,7 @@ const FEATURED_MODS: FeaturedModOption[] = [
  * The dialog still updates when its own data does: it subscribes to the store
  * itself, and those subscriptions are unaffected by `memo`.
  */
-export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle }: Props) {
+export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle, initialMap }: Props) {
   const { t } = useTranslation();
   // The fields this dialog reads, each its own subscription. The whole maps
   // slice redrew it for every install, preview and pool answer the Maps tab
@@ -89,7 +91,9 @@ export const HostGameModal = memo(function HostGameModal({ onClose, initialTitle
   } = settings;
   // What is hosted, on top of the admission fields.
   const [featuredMod, setFeaturedMod] = useState(remembered.featuredMod);
-  const [selectedMap, setSelectedMap] = useState(remembered.map);
+  // A map another view asked for comes first: the matchmaker's pool
+  // (issue 749). Otherwise the one hosted last.
+  const [selectedMap, setSelectedMap] = useState(initialMap || remembered.map);
 
   // The map catalogue, in three memos rather than one.
   //

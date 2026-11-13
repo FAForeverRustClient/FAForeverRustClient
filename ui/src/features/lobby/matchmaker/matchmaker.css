@@ -2135,3 +2135,10 @@
     overflow: visible;
   }
 }
+
+/* Under a pool map's large preview: host a custom game on it (issue 749). */
+.map-pool-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+}

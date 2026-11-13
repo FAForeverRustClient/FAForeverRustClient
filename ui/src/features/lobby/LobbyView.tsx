@@ -170,7 +170,8 @@ export function LobbyView() {
     updateGameBrowser,
   });
 
-  const { hostOpen, coopMissionToHost, hostPrefill, openHostDialog, closeHostDialog } = useHostDialog();
+  const { hostOpen, coopMissionToHost, mapToHost, hostPrefill, openHostDialog, openHostDialogOnMap, closeHostDialog } =
+    useHostDialog();
 
   // How many people are in Galactic War, kept current for as long as the Play
   // tab is the tab being looked at.
@@ -210,6 +211,7 @@ export function LobbyView() {
           matchmaking={lobby.matchmaking}
           party={lobby.party}
           panelProps={playModePanelProps("matchmaking")}
+          onHostMap={openHostDialogOnMap}
         />
       ) : inCoop ? (
         <CoopPanel
@@ -332,7 +334,11 @@ export function LobbyView() {
             onClose={closeHostDialog}
           />
         ) : (
-          <HostGameModal initialTitle={hostPrefill ?? undefined} onClose={closeHostDialog} />
+          <HostGameModal
+            initialTitle={hostPrefill ?? undefined}
+            initialMap={mapToHost ?? undefined}
+            onClose={closeHostDialog}
+          />
         ))}
       {passwordGame && (
         <PrivateGameDialog

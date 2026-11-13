@@ -2480,6 +2480,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "lobby.mapPool.assignVetoes": "Назначить вето",
   "lobby.mapPool.doneVetoing": "Готово",
   "lobby.mapPool.previewHint": "Нажмите, чтобы увидеть карту крупно",
+  "lobby.mapPool.hostOnMap": "Создать игру на этой карте",
   "lobby.mapPool.removeVetoHint": "Нажмите, чтобы снять вето",
   "lobby.mapPool.vetoLimitReached": "Лимит вето исчерпан ({limit}/{limit})",
   "lobby.mapPool.anyRating": "Любой рейтинг",
