@@ -1,0 +1,4 @@
+- The host dialog gives the map list room before the mods column, so map names are no longer cut short on smaller screens.
+- Installing a mod from the vault over another version of it updates it instead of failing with "already installed".
+- A map or mod its author hid disappears from the vault within minutes rather than an hour later.
+- Players who disconnected no longer show as online in chat.
