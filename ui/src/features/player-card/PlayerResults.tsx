@@ -199,9 +199,9 @@ export function PlayerResults({ playerId }: { playerId: number }) {
                     </span>
                   </td>
                   <td className="player-results-date">{game.playedAt ? formatDateTime(game.playedAt) : "–"}</td>
-                  <td><span className="surface-chip player-results-queue">{leaderboardLabel(game.queue)}</span></td>
+                  <td><span className="player-results-queue">{leaderboardLabel(game.queue)}</span></td>
                   <td>
-                    {/* A pill in the outcome's colour, the roster's word in it. */}
+                    {/* The Replays tab's result badge, the roster's word in it. */}
                     <span className={`player-results-outcome is-${game.outcome}`}>
                       {outcomeKey ? t(outcomeKey) : game.outcome}
                     </span>

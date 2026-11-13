@@ -1176,48 +1176,35 @@ button.player-avatar-tile:disabled {
   margin-top: var(--space-2);
 }
 
-/* An insight on the facts strip's tinted ground, its accent along the top:
-   green for what went well, red for what went badly, as a galactic war
-   faction card carries its colour (see `.gw-faction`). */
+/* An insight as a team panel in the Replays tab (`.replay-detail-team`): a
+   raised panel, its border and a faint wash in green for what went well and
+   red for what went badly. One with nothing in it stays neutral, as a draw
+   does there. The heading says which it is, so colour is not the only sign. */
 .player-stats-insight {
-  --insight-tone: var(--color-border-strong);
   display: grid;
   align-content: start;
   gap: var(--space-2);
   min-width: 0;
   padding: var(--space-3);
-  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--insight-tone) 75%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .player-stats-insight.is-good {
-  --insight-tone: var(--color-ok);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 4%, var(--color-surface-raised));
 }
 
 .player-stats-insight.is-bad {
-  --insight-tone: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 40%, transparent);
+  background: color-mix(in srgb, var(--color-error) 4%, var(--color-surface-raised));
 }
 
 .player-stats-insight h4 {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-}
-
-/* The tone's mark before the heading, so the accent is not colour alone at
-   the card's edge. */
-.player-stats-insight h4::before {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  content: "";
-  background: var(--insight-tone);
-  border-radius: 50%;
 }
 
 .player-stats-insight p {
@@ -2392,52 +2379,72 @@ img.player-results-map-thumb {
   font-variant-numeric: tabular-nums;
 }
 
+/* The queue as a small square-cornered tag, the counter chip's shape
+   (`.player-overview-count`). */
 .player-results-queue {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  color: var(--color-muted);
+  font-size: 11px;
   white-space: nowrap;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-sm) - 2px);
 }
 
-/* The outcome as a pill in its colour, on a wash of the same. */
+/* The outcome as the Replays tab's result badge (`.replay-team-outcome`):
+   square-cornered, its colour as text, border and a faint wash. Repeated
+   here rather than borrowed, since that sheet loads with the Replays tab. */
 .player-results-outcome {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px;
   color: var(--color-muted);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.05em;
+  line-height: 1;
   text-transform: uppercase;
-  background: var(--color-surface-raised);
-  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
 }
 
 .player-results-outcome.is-win {
   color: var(--color-ok-text);
-  background: color-mix(in srgb, var(--color-ok) 16%, transparent);
+  background: color-mix(in srgb, var(--color-ok) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 25%, transparent);
 }
 
 .player-results-outcome.is-loss {
   color: var(--color-error-text);
-  background: color-mix(in srgb, var(--color-error) 16%, transparent);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-error) 25%, transparent);
 }
 
 .player-results-rating {
   font-variant-numeric: tabular-nums;
 }
 
-/* The replay as a chip with the play mark: a control on every row, not a
-   link in running text. */
+/* The replay as a small button with the play mark: a control on every row,
+   not a link in running text. Square-cornered like the badge beside it. */
 .player-results-replay {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 2px 9px 2px 7px;
+  height: 22px;
+  box-sizing: border-box;
+  padding: 0 8px 0 6px;
   color: var(--color-text);
   font: inherit;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
 }

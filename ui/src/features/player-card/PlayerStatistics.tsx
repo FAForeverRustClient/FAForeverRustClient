@@ -424,7 +424,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
             to={report.recentTo}
             empty={t("playerCard.stats.mapsLosingEmpty")}
           />
-          <article className="player-stats-insight is-good">
+          <article className={insightClass("good", report.runbacks.length)}>
             <h4>{t("playerCard.stats.runbacks")}</h4>
             {report.runbacks.length === 0 ? (
               <p className="muted">{t("playerCard.stats.runbacksEmpty")}</p>
@@ -550,8 +550,17 @@ function RelationTable({ title, column, rows }: { title: string; column: string;
   );
 }
 
-/** Whether an insight lists what went well or what went badly: its accent. */
+/** Whether an insight lists what went well or what went badly: its colour. */
 type InsightTone = "good" | "bad";
+
+/**
+ * An insight's panel, coloured as a team is in the Replays tab: green for
+ * what went well, red for what went badly, and neutral with nothing in it,
+ * as a draw is there. "No rough day stands out yet" in red would read as one.
+ */
+function insightClass(tone: InsightTone, entries: number): string {
+  return entries > 0 ? `player-stats-insight is-${tone}` : "player-stats-insight";
+}
 
 /** Best or worst months or days: three, the rest on request. */
 function PeriodInsight({ tone, title, rows, label, empty, firstNote }: {
@@ -565,7 +574,7 @@ function PeriodInsight({ tone, title, rows, label, empty, firstNote }: {
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   return (
-    <article className={`player-stats-insight is-${tone}`}>
+    <article className={insightClass(tone, rows.length)}>
       <h4>{title}</h4>
       {rows.length === 0 ? (
         <p className="muted">{empty}</p>
@@ -606,7 +615,7 @@ function MapInsight({ tone, title, rows, from, to, empty }: {
 }) {
   const { t } = useTranslation();
   return (
-    <article className={`player-stats-insight is-${tone}`}>
+    <article className={insightClass(tone, rows.length)}>
       <h4>{title}</h4>
       {rows.length === 0 ? (
         <p className="muted">{empty}</p>
