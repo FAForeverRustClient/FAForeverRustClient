@@ -331,12 +331,10 @@ ${cardTitle}`}
           map={{ folderName: preview.folderName, displayName: preview.displayName }}
           meta={`${formatMapSize(preview.width, preview.height)} · ${t("maps.view.playerCount", { count: preview.maxPlayers })}`}
           onClose={() => setPreview(null)}
-          footer={onHostMap && (
-            <div className="map-pool-preview-actions">
-              <Button variant="primary" onClick={() => onHostMap(preview.folderName)}>
-                {t("lobby.mapPool.hostOnMap")}
-              </Button>
-            </div>
+          action={onHostMap && (
+            <Button variant="primary" onClick={() => onHostMap(preview.folderName)}>
+              {t("lobby.mapPool.hostOnMap")}
+            </Button>
           )}
         >
           <GameMapImage

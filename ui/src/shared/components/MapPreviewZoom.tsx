@@ -87,10 +87,13 @@ async function copyImageToClipboard(url: string): Promise<void> {
  * inside, including the copy, which reads the `currentSrc` the browser settled
  * on rather than a URL guessed up front.
  */
-export function ZoomableImage({ label, children, actions, overlay }: {
+export function ZoomableImage({ label, children, leading, actions, overlay }: {
   label: string;
   children: ReactNode;
-  /** Buttons of the caller's own, drawn just before Copy image. */
+  /** Buttons of the caller's own at the start of the row, after the zoom and
+   *  before Copy image: the favourite star, for one. */
+  leading?: ReactNode;
+  /** Buttons of the caller's own at the end of the row. */
   actions?: ReactNode;
   /** Laid over the picture's frame and not zoomed with it, such as the
    *  generate button in the corner that the small preview has too. */
@@ -102,9 +105,6 @@ export function ZoomableImage({ label, children, actions, overlay }: {
   const [copied, setCopied] = useState<"idle" | "image" | "link" | "failed">("idle");
   const [isDragging, setIsDragging] = useState(false);
   const [isWheeling, setIsWheeling] = useState(false);
-  // The gestures, opened by the info button. It used to say them only on
-  // hover, and a click on it did nothing.
-  const [helpOpen, setHelpOpen] = useState(false);
   const dragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
   const wheelTimeoutRef = useRef<number | null>(null);
 
@@ -285,13 +285,20 @@ export function ZoomableImage({ label, children, actions, overlay }: {
       </div>
       {overlay}
       </div>
-      {/* Under the picture, not on it: the zoom at the start of the row, and
-          at its end the caller's buttons and Copy image, as icons. One zoom
-          control, not three: reset is the stepper's last segment, the
-          percentage only says how far in the picture is, and the gestures are
-          on the info mark beside it. */}
+      {/* Under the picture, not on it: at the start of the row the zoom, the
+          caller's own icons (the favourite star) and Copy image; at its end
+          the caller's actions, side by side. One zoom control, not three:
+          reset is the stepper's last segment, and the percentage only says
+          how far in the picture is. The gestures are the stepper's tooltip;
+          the info mark that used to hold them is gone. */}
       <div className="map-preview-controls">
-        <div className="map-preview-zoom-buttons" role="group" aria-label={t("maps.preview.zoomGroup")}>
+        <div className="map-preview-leading">
+        <div
+          className="map-preview-zoom-buttons"
+          role="group"
+          aria-label={t("maps.preview.zoomGroup")}
+          title={t("maps.preview.zoomHint")}
+        >
           <div className="map-preview-stepper">
             <button
               type="button"
@@ -327,29 +334,11 @@ export function ZoomableImage({ label, children, actions, overlay }: {
               <Icon name="refresh" size={14} />
             </button>
           </div>
-          <span className="map-preview-help-wrap">
-            <button
-              type="button"
-              className={helpOpen ? "map-preview-help is-open" : "map-preview-help"}
-              aria-expanded={helpOpen}
-              aria-label={t("maps.preview.zoomHint")}
-              onClick={() => setHelpOpen((open) => !open)}
-              onBlur={() => setHelpOpen(false)}
-            >
-              <Icon name="info" size={15} />
-            </button>
-            {helpOpen && (
-              <span className="map-preview-help-popover" role="tooltip">
-                {t("maps.preview.zoomHint")}
-              </span>
-            )}
-          </span>
         </div>
-        <div className="map-preview-actions">
-          {actions}
-          {/* The copy icon the client uses everywhere else, in the corner under
-              the picture; what it did is said on its tooltip, and the icon
-              turns into a tick once the picture is on the clipboard. */}
+          {leading}
+          {/* The copy icon the client uses everywhere else; what it did is
+              said on its tooltip, and the icon turns into a tick once the
+              picture is on the clipboard. */}
           <button
             type="button"
             className="map-preview-icon-btn"
@@ -360,6 +349,7 @@ export function ZoomableImage({ label, children, actions, overlay }: {
             <Icon name={copied === "image" || copied === "link" ? "check" : "copy"} size={15} />
           </button>
         </div>
+        {actions && <div className="map-preview-actions">{actions}</div>}
       </div>
     </div>
   );
@@ -503,7 +493,7 @@ export function FavoriteMapStar({ favorite, label, onToggle }: {
  * smaller frame of its own, so a map looked different depending on which tab
  * it was opened from.
  */
-export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, vaultLink = true, footer }: {
+export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, vaultLink = true, action, footer }: {
   map: PreviewableMap;
   /// Whether to offer "Open in the map vault": not from the vault itself.
   vaultLink?: boolean;
@@ -515,6 +505,9 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
   children?: ReactNode;
   /// Where the map's zip is, so starring a map that is not on disk can fetch it.
   downloadUrl?: string;
+  /// What the tab offers to do with the map, beside "Open in the map vault":
+  /// the matchmaker pool's "Host a game on this map".
+  action?: ReactNode;
   /// Under the picture: a generated map's settings, for one.
   footer?: ReactNode;
   onClose: () => void;
@@ -535,16 +528,19 @@ export function MapPreviewDialog({ map, meta, onClose, children, downloadUrl, va
         </header>
         <ZoomableImage
           label={label}
-          actions={map.folderName ? (
+          leading={map.folderName ? (
+            <FavoriteMapStar
+              favorite={favorite}
+              label={label}
+              onToggle={() => toggleFavoriteMap(map.folderName, downloadUrl)}
+            />
+          ) : undefined}
+          actions={(map.folderName && vaultLink && !isGeneratedMap(map.folderName)) || action ? (
             <>
-              {vaultLink && !isGeneratedMap(map.folderName) && (
+              {map.folderName && vaultLink && !isGeneratedMap(map.folderName) && (
                 <OpenMapInVaultButton name={label} folderName={map.folderName} onNavigate={onClose} />
               )}
-              <FavoriteMapStar
-                favorite={favorite}
-                label={label}
-                onToggle={() => toggleFavoriteMap(map.folderName, downloadUrl)}
-              />
+              {action}
             </>
           ) : undefined}
         >
