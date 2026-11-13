@@ -26,7 +26,8 @@ import { useAppStore } from "../../store/store";
 import { formatDecimal, formatNumber, getLocale, intlTag } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
+import { RecordBar, RecordText, Signed, StatTiles, TabCard, type StatTile } from "./StatParts";
 import { PlayerActivityView } from "./PlayerActivityView";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { usePlayerHistory } from "./usePlayerHistory";
@@ -129,6 +130,11 @@ export function signedRating(hundredths: number): string {
   return value > 0 ? `+${text}` : value < 0 ? `-${text}` : text;
 }
 
+/** A signed rating change in its colour: the tables' rating columns. */
+function signedCell(hundredths: number): ReactNode {
+  return <Signed value={hundredths}>{signedRating(hundredths)}</Signed>;
+}
+
 function percent(value: number | null): string {
   return value === null ? "–" : `${formatDecimal(value)}%`;
 }
@@ -194,10 +200,10 @@ function StatsTable<T>({ columns, rows, limit }: { columns: StatsColumn<T>[]; ro
         : { column, descending: firstDescending(columns[column], rows) },
     );
   return (
-    <div className="player-stats-table-wrap">
+    <div className="player-tab-table">
       <table className="player-stats-table">
         <thead>
-          <tr>
+          <tr className="list-head">
             {columns.map((column, index) => {
               const active = sort?.column === index;
               return (
@@ -250,12 +256,16 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
         ? monthLabel(first.slice(0, 7))
         : t("playerCard.stats.monthRange", { from: monthLabel(first.slice(0, 7)), to: monthLabel(last.slice(0, 7)) });
 
-  const cards: Array<{ label: string; value: string; detail?: string }> = [
+  const cards: StatTile[] = [
     { label: t("playerCard.stats.loadedGames"), value: formatNumber(stats.totalGames) },
     { label: t("playerCard.stats.rankedGames"), value: formatNumber(summary.rankedGames) },
     { label: t("playerCard.stats.unrankedGames"), value: formatNumber(summary.unrankedGames) },
     { label: t("playerCard.stats.draws"), value: formatNumber(summary.draws) },
-    { label: t("playerCard.stats.rankedRecord"), value: `${formatNumber(summary.wins)}–${formatNumber(summary.losses)}` },
+    {
+      label: t("playerCard.stats.rankedRecord"),
+      value: `${formatNumber(summary.wins)}–${formatNumber(summary.losses)}`,
+      record: { wins: summary.wins, losses: summary.losses, draws: summary.draws },
+    },
     { label: t("playerCard.stats.rankedWinRate"), value: percent(summary.winRate) },
     {
       label: t("playerCard.stats.recentWinRate"),
@@ -294,17 +304,21 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
             nextView = option;
           }}
         >
+          <Icon name={option === "performance" ? "leaderboard" : "activity"} size={14} />
           {t(option === "performance" ? "playerCard.stats.viewPerformance" : "playerCard.stats.viewActivity")}
         </button>
       ))}
     </div>
   );
 
+  // One bar over both parts: the switch at its start, the scope after it, so
+  // switching moves nothing above the figures.
+  const bar = <HistoryBar stats={stats} full={full} onLoadFull={loadFull}>{switcher}</HistoryBar>;
+
   if (view === "activity") {
     return (
       <div className="player-statistics">
-        {switcher}
-        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
+        {bar}
         <PlayerActivityView stats={stats} report={report} full={full} registeredAt={profile.registeredAt} />
       </div>
     );
@@ -312,21 +326,11 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
 
   return (
     <div className="player-statistics">
-      {switcher}
-      <dl className="player-account-details player-stats-cards surface">
-        {cards.map((card) => (
-          <div key={card.label}>
-            <dt>{card.label}</dt>
-            <dd className="player-maps-value">{card.value}</dd>
-            {card.detail && <dd className="player-maps-detail">{card.detail}</dd>}
-          </div>
-        ))}
-      </dl>
-      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
+      {bar}
+      <StatTiles columns={5} tiles={cards} />
 
       <div className="player-statistics-grid">
-        <section className="player-stats-chart surface-panel">
-          <h3>{t("playerCard.stats.ratingGainTitle")}</h3>
+        <TabCard title={t("playerCard.stats.ratingGainTitle")} className="player-stats-chart">
           <StatsTable
             rows={stats.queues ?? []}
             columns={[
@@ -334,18 +338,17 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
               { label: t("playerCard.stats.games"), sortValue: (queue) => queue.games, render: (queue) => formatNumber(queue.games) },
               recordColumn(t("playerCard.stats.recordColumn")),
               rateColumn(t("playerCard.stats.winRate")),
-              { label: t("playerCard.stats.total"), sortValue: (queue) => queue.ratingDeltaHundredths, render: (queue) => signedRating(queue.ratingDeltaHundredths) },
+              { label: t("playerCard.stats.total"), sortValue: (queue) => queue.ratingDeltaHundredths, render: (queue) => signedCell(queue.ratingDeltaHundredths) },
               {
                 label: t("playerCard.stats.average"),
                 sortValue: (queue) => queue.ratingDeltaHundredths / Math.max(queue.games, 1),
-                render: (queue) => signedRating(Math.round(queue.ratingDeltaHundredths / Math.max(queue.games, 1))),
+                render: (queue) => signedCell(Math.round(queue.ratingDeltaHundredths / Math.max(queue.games, 1))),
               },
             ]}
           />
-        </section>
+        </TabCard>
 
-        <section className="player-stats-chart surface-panel">
-          <h3>{t("playerCard.stats.monthlyTitle")}</h3>
+        <TabCard title={t("playerCard.stats.monthlyTitle")} className="player-stats-chart">
           <StatsTable
             rows={[...report.months].reverse()}
             columns={[
@@ -354,13 +357,12 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
               { label: t("playerCard.stats.games"), sortValue: (month) => month.games, render: (month) => formatNumber(month.games) },
               recordColumn(t("playerCard.stats.recordColumn")),
               rateColumn(t("playerCard.stats.winRate")),
-              { label: t("playerCard.stats.rating"), sortValue: (month) => month.ratingDeltaHundredths, render: (month) => signedRating(month.ratingDeltaHundredths) },
+              { label: t("playerCard.stats.rating"), sortValue: (month) => month.ratingDeltaHundredths, render: (month) => signedCell(month.ratingDeltaHundredths) },
             ]}
           />
-        </section>
+        </TabCard>
 
-        <section className="player-stats-chart surface-panel">
-          <h3>{t("playerCard.stats.factionsTitle")}</h3>
+        <TabCard title={t("playerCard.stats.factionsTitle")} className="player-stats-chart">
           <StatsTable
             rows={report.factions}
             columns={[
@@ -379,7 +381,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
               rateColumn(t("playerCard.stats.winRate")),
             ]}
           />
-        </section>
+        </TabCard>
       </div>
 
       <div className="player-statistics-grid is-pair">
@@ -387,25 +389,27 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
         <RelationTable title={t("playerCard.stats.opponentsTitle")} column={t("playerCard.stats.opponent")} rows={report.opponents} />
       </div>
 
-      <section className="player-stats-chart surface-panel">
-        <h3>{t("playerCard.stats.improvementTitle")}</h3>
+      <TabCard title={t("playerCard.stats.improvementTitle")} className="player-stats-chart">
         <div className="player-stats-insights">
           <PeriodInsight
+            tone="good"
             title={t("playerCard.stats.bestMonths")}
             rows={report.bestMonths}
             label={monthLabel}
             empty={t("playerCard.stats.bestMonthsEmpty")}
           />
           <PeriodInsight
+            tone="bad"
             title={t("playerCard.stats.worstMonths")}
             rows={report.worstMonths}
             label={monthLabel}
             empty={t("playerCard.stats.worstMonthsEmpty")}
             firstNote={report.worstLossStreak > 0 ? t("playerCard.stats.worstLossStreak", { count: report.worstLossStreak }) : undefined}
           />
-          <PeriodInsight title={t("playerCard.stats.bestDays")} rows={report.bestDays} label={dayLabel} empty={t("playerCard.stats.bestDaysEmpty")} />
-          <PeriodInsight title={t("playerCard.stats.worstDays")} rows={report.worstDays} label={dayLabel} empty={t("playerCard.stats.worstDaysEmpty")} />
+          <PeriodInsight tone="good" title={t("playerCard.stats.bestDays")} rows={report.bestDays} label={dayLabel} empty={t("playerCard.stats.bestDaysEmpty")} />
+          <PeriodInsight tone="bad" title={t("playerCard.stats.worstDays")} rows={report.worstDays} label={dayLabel} empty={t("playerCard.stats.worstDaysEmpty")} />
           <MapInsight
+            tone="good"
             title={t("playerCard.stats.mapsGaining")}
             rows={report.mapsGaining}
             from={report.recentFrom}
@@ -413,13 +417,14 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
             empty={t("playerCard.stats.mapsGainingEmpty")}
           />
           <MapInsight
+            tone="bad"
             title={t("playerCard.stats.mapsLosing")}
             rows={report.mapsLosing}
             from={report.recentFrom}
             to={report.recentTo}
             empty={t("playerCard.stats.mapsLosingEmpty")}
           />
-          <article className="player-stats-insight">
+          <article className={insightClass("good", report.runbacks.length)}>
             <h4>{t("playerCard.stats.runbacks")}</h4>
             {report.runbacks.length === 0 ? (
               <p className="muted">{t("playerCard.stats.runbacksEmpty")}</p>
@@ -444,7 +449,7 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
             )}
           </article>
         </div>
-      </section>
+      </TabCard>
     </div>
   );
 }
@@ -460,7 +465,7 @@ function recordColumn<T extends Record3>(label: string): StatsColumn<T> {
   return {
     label,
     sortValue: (row) => row.wins,
-    render: (row) => `${formatNumber(row.wins)}–${formatNumber(row.losses)}–${formatNumber(row.draws)}`,
+    render: (row) => <RecordText wins={row.wins} losses={row.losses} draws={row.draws} separator="–" format={formatNumber} />,
   };
 }
 
@@ -469,7 +474,12 @@ function rateColumn<T extends Record3>(label: string): StatsColumn<T> {
   return {
     label,
     sortValue: (row) => decidedRate(row.wins, row.losses) ?? -1,
-    render: (row) => percent(decidedRate(row.wins, row.losses)),
+    render: (row) => (
+      <span className="player-rate-cell">
+        {percent(decidedRate(row.wins, row.losses))}
+        <RecordBar wins={row.wins} losses={row.losses} draws={row.draws} />
+      </span>
+    ),
   };
 }
 
@@ -483,20 +493,25 @@ function RelationTable({ title, column, rows }: { title: string; column: string;
     return needle ? rows.filter((row) => row.login.toLocaleLowerCase().includes(needle)) : rows;
   }, [query, rows]);
   return (
-    <section className="player-stats-chart surface-panel">
-      <div className="player-stats-head">
-        <h3>{title}</h3>
-        <input
-          className="player-stats-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={t("playerCard.stats.search")}
-          aria-label={t("playerCard.stats.searchAria", { table: title })}
-        />
-      </div>
+    <TabCard
+      title={title}
+      count={formatNumber(rows.length)}
+      className="player-stats-chart"
+      actions={
+        <div className="search-field player-stats-search">
+          <Icon name="search" size={13} />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("playerCard.stats.search")}
+            aria-label={t("playerCard.stats.searchAria", { table: title })}
+          />
+        </div>
+      }
+    >
       {matching.length === 0 ? (
-        <p className="muted">{t("playerCard.stats.noRelations")}</p>
+        <p className="player-tab-card-empty muted">{t("playerCard.stats.noRelations")}</p>
       ) : (
         <StatsTable
           rows={matching}
@@ -518,23 +533,38 @@ function RelationTable({ title, column, rows }: { title: string; column: string;
               sortValue: (row) => row.wins / Math.max(row.games, 1),
               render: (row) => percent((row.wins / Math.max(row.games, 1)) * 100),
             },
-            { label: t("playerCard.stats.net"), sortValue: (row) => row.netHundredths, render: (row) => signedRating(row.netHundredths) },
-            { label: t("playerCard.stats.gained"), sortValue: (row) => row.gainedHundredths, render: (row) => signedRating(row.gainedHundredths) },
-            { label: t("playerCard.stats.lostRating"), sortValue: (row) => row.lostHundredths, render: (row) => signedRating(-row.lostHundredths) },
+            { label: t("playerCard.stats.net"), sortValue: (row) => row.netHundredths, render: (row) => signedCell(row.netHundredths) },
+            { label: t("playerCard.stats.gained"), sortValue: (row) => row.gainedHundredths, render: (row) => signedCell(row.gainedHundredths) },
+            { label: t("playerCard.stats.lostRating"), sortValue: (row) => row.lostHundredths, render: (row) => signedCell(-row.lostHundredths) },
           ]}
         />
       )}
       {matching.length > shown && (
-        <Button onClick={() => setShown((count) => count + 20)}>
-          {t("playerCard.stats.showMore", { count: Math.min(20, matching.length - shown) })}
-        </Button>
+        <div className="player-tab-card-foot">
+          <Button onClick={() => setShown((count) => count + 20)}>
+            {t("playerCard.stats.showMore", { count: Math.min(20, matching.length - shown) })}
+          </Button>
+        </div>
       )}
-    </section>
+    </TabCard>
   );
 }
 
+/** Whether an insight lists what went well or what went badly: its colour. */
+type InsightTone = "good" | "bad";
+
+/**
+ * An insight's panel, coloured as a team is in the Replays tab: green for
+ * what went well, red for what went badly, and neutral with nothing in it,
+ * as a draw is there. "No rough day stands out yet" in red would read as one.
+ */
+function insightClass(tone: InsightTone, entries: number): string {
+  return entries > 0 ? `player-stats-insight is-${tone}` : "player-stats-insight";
+}
+
 /** Best or worst months or days: three, the rest on request. */
-function PeriodInsight({ title, rows, label, empty, firstNote }: {
+function PeriodInsight({ tone, title, rows, label, empty, firstNote }: {
+  tone: InsightTone;
   title: string;
   rows: PlayerPeriodStat[];
   label: (period: string) => string;
@@ -544,7 +574,7 @@ function PeriodInsight({ title, rows, label, empty, firstNote }: {
   const { t } = useTranslation();
   const [all, setAll] = useState(false);
   return (
-    <article className="player-stats-insight">
+    <article className={insightClass(tone, rows.length)}>
       <h4>{title}</h4>
       {rows.length === 0 ? (
         <p className="muted">{empty}</p>
@@ -575,7 +605,8 @@ function PeriodInsight({ title, rows, label, empty, firstNote }: {
 }
 
 /** Maps gaining or losing rating in the recent games. */
-function MapInsight({ title, rows, from, to, empty }: {
+function MapInsight({ tone, title, rows, from, to, empty }: {
+  tone: InsightTone;
   title: string;
   rows: Array<{ map: string; games: number; ratingDeltaHundredths: number }>;
   from: string;
@@ -584,7 +615,7 @@ function MapInsight({ title, rows, from, to, empty }: {
 }) {
   const { t } = useTranslation();
   return (
-    <article className="player-stats-insight">
+    <article className={insightClass(tone, rows.length)}>
       <h4>{title}</h4>
       {rows.length === 0 ? (
         <p className="muted">{empty}</p>

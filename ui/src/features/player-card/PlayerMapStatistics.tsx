@@ -9,13 +9,14 @@ import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { MapThumbnail } from "../../shared/components/MapThumbnail";
 import { formatDateTime } from "../../shared/format/dates";
+import { RecordBar, RecordText, StatTiles, TabCard } from "./StatParts";
 
 /** Shared with the host dialog's generated-map preview. */
 const MAPGEN_ICON = "/assets/mapgen-placeholder.png";
@@ -38,11 +39,6 @@ interface Props {
 function winRate(wins: number, losses: number): number | null {
   const decided = wins + losses;
   return decided > 0 ? (wins / decided) * 100 : null;
-}
-
-/** The record cell: wins, losses, and the draws the rate leaves out. */
-function record(wins: number, losses: number, draws: number): string {
-  return `${formatNumber(wins)} / ${formatNumber(losses)} / ${formatNumber(draws)}`;
 }
 
 type SortColumn = "map" | "games" | "record" | "winRate" | "lastPlayed";
@@ -181,117 +177,135 @@ export function PlayerMapStatistics({ playerId }: Props) {
 
   return (
     <div className="player-maps-view">
+      <HistoryBar stats={stats} full={full} onLoadFull={loadFull} />
+
       {/* Three figures, each with the breakdown under it, rather than six
           equal ones: ranked and unranked are parts of the games total, and the
-          record is what the win rate is made of. Same divided grid as the
-          account and clan facts, so the card reads as one piece. */}
-      <dl className="player-account-details player-maps-summary surface">
-        <div>
-          <dt>{t("playerCard.maps.gamesTotal")}</dt>
-          <dd className="player-maps-value">{formatNumber(stats.totalGames)}</dd>
-          <dd className="player-maps-detail">
-            {t("playerCard.maps.gamesSplit", {
+          record is what the win rate is made of, drawn as its bar. The
+          Overview's tiles, so the card reads as one piece. */}
+      <StatTiles
+        columns={3}
+        tiles={[
+          {
+            label: t("playerCard.maps.gamesTotal"),
+            value: formatNumber(stats.totalGames),
+            detail: t("playerCard.maps.gamesSplit", {
               ranked: formatNumber(summary.rankedGames),
               unranked: formatNumber(summary.unrankedGames),
-            })}
-          </dd>
-        </div>
-        <div>
-          <dt>{t("playerCard.maps.winRate")}</dt>
-          <dd className="player-maps-value">
-            {summary.winRate === null ? "–" : `${formatDecimal(summary.winRate)}%`}
-          </dd>
-          <dd className="player-maps-detail">
-            {t("playerCard.maps.recordSplit", {
+            }),
+          },
+          {
+            label: t("playerCard.maps.winRate"),
+            value: summary.winRate === null ? "–" : `${formatDecimal(summary.winRate)}%`,
+            empty: summary.winRate === null,
+            record: { wins: summary.wins, losses: summary.losses, draws: summary.draws },
+            detail: t("playerCard.maps.recordSplit", {
               wins: formatNumber(summary.wins),
               losses: formatNumber(summary.losses),
               draws: formatNumber(summary.draws),
-            })}
-          </dd>
-        </div>
-        <div>
-          <dt>{t("playerCard.maps.distinctMaps")}</dt>
-          <dd className="player-maps-value">{formatNumber(stats.maps.length)}</dd>
-          <dd className="player-maps-detail" title={mostPlayed ? label(mostPlayed) : undefined}>
-            {mostPlayed ? t("playerCard.maps.mostPlayed", { map: label(mostPlayed) }) : t("common.notAvailable")}
-          </dd>
-        </div>
-      </dl>
+            }),
+          },
+          {
+            label: t("playerCard.maps.distinctMaps"),
+            value: formatNumber(stats.maps.length),
+            detail: mostPlayed ? t("playerCard.maps.mostPlayed", { map: label(mostPlayed) }) : t("common.notAvailable"),
+            detailTitle: mostPlayed ? label(mostPlayed) : undefined,
+          },
+        ]}
+      />
 
-      {/* Said plainly rather than hidden: the numbers cover a prefix of the
-          history, and a reader comparing them to the profile deserves to know. */}
-      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
-
-      {/* Same reason, as one note. The record covers only the games FAF
-          scored, so a player whose history is mostly unranked lobbies sees a
-          small W/L beside a large game count, and is owed the arithmetic. And
-          when the leaderboards count more ranked games than the history
-          endpoint returned, those sit in the draws column without anybody
-          having drawn them; faftracker does this silently. Two sentences
-          rather than one message, because each count can appear alone. */}
-      {recordNote && <p className="player-maps-note muted">{recordNote}</p>}
-
-      <div className="search-field player-maps-search">
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t("playerCard.maps.searchPlaceholder")}
-          aria-label={t("playerCard.maps.searchAria")}
-        />
-      </div>
-
-      <table className="surface-panel player-maps-table">
-        <thead>
-          <tr>
-            {header("map", t("playerCard.maps.map"))}
-            {header("games", t("playerCard.maps.games"))}
-            {header("record", t("playerCard.maps.record"))}
-            {header("winRate", t("playerCard.maps.winRate"))}
-            {header("lastPlayed", t("playerCard.maps.lastPlayed"))}
-          </tr>
-        </thead>
-        <tbody>
-          {maps.map((entry) => {
-            const rate = winRate(entry.wins, entry.losses);
-            return (
-              <tr key={entry.generated ? "@generated" : entry.map}>
-                <td className="player-maps-name">
-                  <span className="player-maps-map">
-                    {/* The generated row has no map name to look art up by, so
-                        it carries the generator's own mark rather than the
-                        blank placeholder an empty name would produce. */}
-                    {entry.generated ? (
-                      <img
-                        className="player-maps-thumb"
-                        src={MAPGEN_ICON}
-                        alt=""
-                        loading="lazy"
-                        draggable={false}
-                      />
-                    ) : (
-                      <MapThumbnail
-                        mapName={entry.map}
-                        vault={vault}
-                        className="player-maps-thumb"
-                        placeholderClassName="player-maps-thumb player-maps-thumb-empty"
-                      />
-                    )}
-                    <span className="player-maps-map-name" title={label(entry)}>
-                      {label(entry)}
-                    </span>
-                  </span>
-                </td>
-                <td>{formatNumber(entry.games)}</td>
-                <td>{record(entry.wins, entry.losses, entry.draws)}</td>
-                <td>{rate === null ? "–" : `${formatDecimal(rate)}%`}</td>
-                <td>{entry.lastPlayed ? formatDateTime(entry.lastPlayed) : "–"}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {maps.length === 0 && <p className="muted">{t("playerCard.maps.noMatch")}</p>}
+      {/* The record note, at the foot of the map record. The record covers
+          only the games FAF scored, so a player whose history is mostly
+          unranked lobbies sees a small W/L beside a large game count, and is
+          owed the arithmetic. And when the leaderboards count more ranked
+          games than the history endpoint returned, those sit in the draws
+          column without anybody having drawn them; faftracker does this
+          silently. Two sentences rather than one message, because each count
+          can appear alone. */}
+      <TabCard
+        title={t("playerCard.tab.maps")}
+        footnote={recordNote || undefined}
+        count={formatNumber(maps.length)}
+        actions={
+          <div className="search-field player-maps-search">
+            <Icon name="search" size={14} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t("playerCard.maps.searchPlaceholder")}
+              aria-label={t("playerCard.maps.searchAria")}
+            />
+          </div>
+        }
+      >
+        {maps.length === 0 ? (
+          <p className="player-tab-card-empty muted">{t("playerCard.maps.noMatch")}</p>
+        ) : (
+          <div className="player-tab-table">
+            <table className="player-maps-table">
+              <thead>
+                <tr className="list-head">
+                  {header("map", t("playerCard.maps.map"))}
+                  {header("games", t("playerCard.maps.games"))}
+                  {header("record", t("playerCard.maps.record"))}
+                  {header("winRate", t("playerCard.maps.winRate"))}
+                  {header("lastPlayed", t("playerCard.maps.lastPlayed"))}
+                </tr>
+              </thead>
+              <tbody>
+                {maps.map((entry) => {
+                  const rate = winRate(entry.wins, entry.losses);
+                  return (
+                    <tr key={entry.generated ? "@generated" : entry.map}>
+                      <td className="player-maps-name">
+                        <span className="player-maps-map">
+                          {/* The generated row has no map name to look art up by, so
+                              it carries the generator's own mark rather than the
+                              blank placeholder an empty name would produce. */}
+                          {entry.generated ? (
+                            <img
+                              className="player-maps-thumb"
+                              src={MAPGEN_ICON}
+                              alt=""
+                              loading="lazy"
+                              draggable={false}
+                            />
+                          ) : (
+                            <MapThumbnail
+                              mapName={entry.map}
+                              vault={vault}
+                              className="player-maps-thumb"
+                              placeholderClassName="player-maps-thumb player-maps-thumb-empty"
+                            />
+                          )}
+                          <span className="player-maps-map-name" title={label(entry)}>
+                            {label(entry)}
+                          </span>
+                        </span>
+                      </td>
+                      <td>{formatNumber(entry.games)}</td>
+                      <td>
+                        <RecordText wins={entry.wins} losses={entry.losses} draws={entry.draws} separator=" / " format={formatNumber} />
+                      </td>
+                      <td>
+                        {/* The rate over the record's bar, so a column of rates
+                            can be read by shape as well as by number. */}
+                        <span className="player-rate-cell">
+                          <span className={rate === null ? "muted" : undefined}>
+                            {rate === null ? "–" : `${formatDecimal(rate)}%`}
+                          </span>
+                          <RecordBar wins={entry.wins} losses={entry.losses} draws={entry.draws} />
+                        </span>
+                      </td>
+                      <td className="muted">{entry.lastPlayed ? formatDateTime(entry.lastPlayed) : "–"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </TabCard>
     </div>
   );
 }

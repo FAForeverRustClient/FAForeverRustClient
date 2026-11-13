@@ -1,0 +1,3 @@
+- The Results, Maps and Statistics tabs of the player profile now match the Overview: figures as tiles, tables in cards.
+- How much of a player's history is shown, and Load full history, sit in one bar at the top of those tabs.
+- In those tabs, wins and losses show as a bar, results as the Replays tab's badges, and rating gains green and losses red.

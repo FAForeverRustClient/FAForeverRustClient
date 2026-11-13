@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "../../design-system/Button";
+import { Icon } from "../../design-system/Icon";
 import { ipc } from "../../ipc/client";
 import { formatDecimal, formatNumber } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -21,8 +22,9 @@ import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
 import { ResultFiltersMenu } from "./ResultFiltersMenu";
+import { CardFootnote, RecordBar, Signed } from "./StatParts";
 import { filterResults, NO_RESULT_FILTERS, type ResultFilters } from "./resultFilters";
 
 /** Rows added per press of "Show more". A long history is thousands. */
@@ -109,133 +111,141 @@ export function PlayerResults({ playerId }: { playerId: number }) {
 
   return (
     <div className="player-results-view">
-      <div className="player-results-head">
+      <HistoryBar stats={stats} full={full} onLoadFull={loadFull} />
+
+      {/* One card: the record of what is listed and the filters across from
+          it in the head, where the Chat tab keeps its roster's (#646), the
+          record's shape as a bar under them, and the games below. */}
+      <section className="player-tab-card surface-panel player-results-card">
+        <div className="player-results-toolbar">
+          {/* The rows on screen, not the whole history: the Maps tab already
+              gives the record over everything, and this follows "Show more". */}
+          <p className="player-results-summary" aria-live="polite">
+            <span className="muted">{t("playerCard.results.shownSummary", { count: rows.length })}</span>{" "}
+            {t("playerCard.maps.recordSplit", {
+              wins: formatNumber(record.wins),
+              losses: formatNumber(record.losses),
+              draws: formatNumber(record.draws),
+            })}
+            {rate !== null && (
+              <>
+                <span className="muted"> · {t("playerCard.maps.winRate")}</span> <strong>{formatDecimal(rate)}%</strong>
+              </>
+            )}
+          </p>
+          <ResultFiltersMenu
+            filters={filters}
+            queues={queueOptions}
+            onChange={(next) => {
+              setFilters(next);
+              setShown(PAGE);
+            }}
+          />
+        </div>
+        <RecordBar {...record} />
+
+        {games.length === 0 && (
+          <p className="player-tab-card-empty muted">{t("playerCard.results.filter.empty")}</p>
+        )}
+
+        {/* The map leads, picture first, as on the Maps tab: it is what tells
+            one game from another, and the table gives its first column the
+            room the others leave. With the date first, the date was the column
+            that took it, and stood a long way from the rest of its row. */}
+        {games.length > 0 && (
+        <div className="player-tab-table">
+        <table className="player-maps-table player-results-table">
+          <thead>
+            <tr className="list-head">
+              <th>{t("playerCard.maps.map")}</th>
+              <th>{t("playerCard.results.date")}</th>
+              <th>{t("playerCard.results.queue")}</th>
+              <th>{t("playerCard.results.result")}</th>
+              <th>{t("playerCard.results.rating")}</th>
+              <th>{t("playerCard.results.replay")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((game) => {
+              const map = game.generated ? t("playerCard.maps.generated") : game.map;
+              const outcomeKey = OUTCOME_KEYS[game.outcome as keyof typeof OUTCOME_KEYS];
+              return (
+                <tr key={game.gameId}>
+                  <td className="player-results-map" title={map}>
+                    {/* The small map picture chat shows beside a game, from the
+                        map version's folder. A generated map has no folder (the
+                        API names no version for one), so it gets the picture
+                        every generated map shows before it is rendered. */}
+                    <span className="player-results-map-cell">
+                      {game.generated ? (
+                        <img
+                          className="player-results-map-thumb"
+                          src={GENERATED_MAP_PLACEHOLDER_URL}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                        />
+                      ) : (
+                        <MapThumbnail
+                          mapName={game.mapFolder}
+                          vault={vault}
+                          className="player-results-map-thumb"
+                          placeholderClassName="player-results-map-thumb player-results-map-thumb-empty"
+                          iconSize={14}
+                          preferCanonicalPreview
+                        />
+                      )}
+                      <span className="player-results-map-name">{map}</span>
+                    </span>
+                  </td>
+                  <td className="player-results-date">{game.playedAt ? formatDateTime(game.playedAt) : "–"}</td>
+                  <td><span className="player-results-queue">{leaderboardLabel(game.queue)}</span></td>
+                  <td>
+                    {/* The Replays tab's result badge, the roster's word in it. */}
+                    <span className={`player-results-outcome is-${game.outcome}`}>
+                      {outcomeKey ? t(outcomeKey) : game.outcome}
+                    </span>
+                  </td>
+                  <td className={game.ratingChangeHundredths === null ? "muted" : "player-results-rating"}>
+                    {game.ratingChangeHundredths === null
+                      ? t("playerCard.results.noRating")
+                      : (
+                        <Signed value={game.ratingChangeHundredths}>{ratingChange(game.ratingChangeHundredths)}</Signed>
+                      )}
+                  </td>
+                  <td>
+                    <button type="button" className="player-results-replay" onClick={() => openReplay(game.gameId)}>
+                      <Icon name="play" size={11} />
+                      #{game.gameId}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        </div>
+        )}
+
+        {/* Below the table, not above it (issue 362): the reader reaches the
+            end of the rows and the next page is where they already are,
+            instead of having scrolled the button off the top of the tab. */}
+        {shown < games.length && (
+          <div className="player-tab-card-foot">
+            <Button onClick={() => setShown((count) => count + PAGE)}>
+              {t("playerCard.results.showMore", {
+                shown: formatNumber(Math.min(shown, games.length)),
+                total: formatNumber(games.length),
+              })}
+            </Button>
+          </div>
+        )}
+
         {/* Said, the way the tracker says it: the list is the games whose
             outcome is known, and the rest of the history is not missing by
-            accident. */}
-        <p className="player-maps-note muted">
-          {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
-        </p>
-        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
-      </div>
-
-      {/* The record of what is listed, and the filters across from it at
-          the top right of the table, where the Chat tab keeps its roster's
-          (#646). */}
-      <div className="player-results-toolbar">
-        {/* The rows on screen, not the whole history: the Maps tab already
-            gives the record over everything, and this follows "Show more". */}
-        <p className="player-results-summary" aria-live="polite">
-          <span className="muted">{t("playerCard.results.shownSummary", { count: rows.length })}</span>{" "}
-          {t("playerCard.maps.recordSplit", {
-            wins: formatNumber(record.wins),
-            losses: formatNumber(record.losses),
-            draws: formatNumber(record.draws),
-          })}
-          {rate !== null && (
-            <>
-              <span className="muted"> · {t("playerCard.maps.winRate")}</span> <strong>{formatDecimal(rate)}%</strong>
-            </>
-          )}
-        </p>
-        <ResultFiltersMenu
-          filters={filters}
-          queues={queueOptions}
-          onChange={(next) => {
-            setFilters(next);
-            setShown(PAGE);
-          }}
-        />
-      </div>
-
-      {games.length === 0 && (
-        <div className="player-card-empty muted">{t("playerCard.results.filter.empty")}</div>
-      )}
-
-      {/* The map leads, picture first, as on the Maps tab: it is what tells
-          one game from another, and the table gives its first column the
-          room the others leave. With the date first, the date was the column
-          that took it, and stood a long way from the rest of its row. */}
-      {games.length > 0 && (
-      <table className="surface-panel player-maps-table player-results-table">
-        <thead>
-          <tr>
-            <th>{t("playerCard.maps.map")}</th>
-            <th>{t("playerCard.results.date")}</th>
-            <th>{t("playerCard.results.queue")}</th>
-            <th>{t("playerCard.results.result")}</th>
-            <th>{t("playerCard.results.rating")}</th>
-            <th>{t("playerCard.results.replay")}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((game) => {
-            const map = game.generated ? t("playerCard.maps.generated") : game.map;
-            const outcomeKey = OUTCOME_KEYS[game.outcome as keyof typeof OUTCOME_KEYS];
-            return (
-              <tr key={game.gameId}>
-                <td className="player-results-map" title={map}>
-                  {/* The small map picture chat shows beside a game, from the
-                      map version's folder. A generated map has no folder (the
-                      API names no version for one), so it gets the picture
-                      every generated map shows before it is rendered. */}
-                  <span className="player-results-map-cell">
-                    {game.generated ? (
-                      <img
-                        className="player-results-map-thumb"
-                        src={GENERATED_MAP_PLACEHOLDER_URL}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    ) : (
-                      <MapThumbnail
-                        mapName={game.mapFolder}
-                        vault={vault}
-                        className="player-results-map-thumb"
-                        placeholderClassName="player-results-map-thumb player-results-map-thumb-empty"
-                        iconSize={12}
-                        preferCanonicalPreview
-                      />
-                    )}
-                    <span className="player-results-map-name">{map}</span>
-                  </span>
-                </td>
-                <td>{game.playedAt ? formatDateTime(game.playedAt) : "–"}</td>
-                <td>{leaderboardLabel(game.queue)}</td>
-                <td className={`player-results-outcome is-${game.outcome}`}>
-                  {outcomeKey ? t(outcomeKey) : game.outcome}
-                </td>
-                <td className={game.ratingChangeHundredths === null ? "muted" : undefined}>
-                  {game.ratingChangeHundredths === null
-                    ? t("playerCard.results.noRating")
-                    : ratingChange(game.ratingChangeHundredths)}
-                </td>
-                <td>
-                  <button type="button" className="player-results-replay" onClick={() => openReplay(game.gameId)}>
-                    #{game.gameId}
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      )}
-
-      {/* Below the table, not above it (issue 362): the reader reaches the end
-          of the rows and the next page is where they already are, instead of
-          having scrolled the button off the top of the tab. */}
-      {shown < games.length && (
-        <div className="player-results-more">
-          <Button onClick={() => setShown((count) => count + PAGE)}>
-            {t("playerCard.results.showMore", {
-              shown: formatNumber(Math.min(shown, games.length)),
-              total: formatNumber(games.length),
-            })}
-          </Button>
-        </div>
-      )}
+            accident. At the foot of the list it is about. */}
+        <CardFootnote>{t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}</CardFootnote>
+      </section>
     </div>
   );
 }
