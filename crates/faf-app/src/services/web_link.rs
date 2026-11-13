@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use faf_domain::protocol::web_link::{self, Inbound, Outbound, RemoteCommand};
-use faf_domain::state::{AppState, MatchmakingState, NotificationKind};
+use faf_domain::state::{AppState, JoinState, MatchmakingState, NotificationKind};
 use faf_domain::AppEvent;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::sync::broadcast::Receiver;
@@ -212,6 +212,11 @@ async fn serve(
     let mut dirty = true;
     let mut matchmaking: MatchmakingState =
         sink.with_state(|state| state.lobby.matchmaking.clone());
+    let mut join: JoinState = sink.with_state(|state| state.lobby.join.clone());
+    // A search or join the web client started is under way: if it stops at a
+    // decision only the player at the PC can make, or fails, their phone is
+    // told. Nothing is said about what the player started at the PC.
+    let mut remote = false;
     let mut tick = tokio::time::interval(PUBLISH_EVERY);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
@@ -233,7 +238,10 @@ async fn serve(
                     let result = answer(ctx, sink, &command, &mut last);
                     dirty = true;
                     let (ok, error) = match result {
-                        Ok(()) => (true, None),
+                        Ok(started) => {
+                            remote |= started;
+                            (true, None)
+                        }
                         Err(error) => (false, Some(error)),
                     };
                     if !send(&session, Outbound::Result { id, ok, error }).await {
@@ -260,18 +268,36 @@ async fn serve(
                     return Ended::Dropped;
                 }
                 dirty = true;
-                let now = sink.with_state(|state| state.lobby.matchmaking.clone());
+                let (now, now_join) =
+                    sink.with_state(|state| (state.lobby.matchmaking.clone(), state.lobby.join.clone()));
                 if let Some(queue) = web_link::match_found(&matchmaking, &now) {
                     // At once, and whether or not a browser is open: this is
                     // what reaches the phone.
-                    if !publish(&session, sink, &mut last).await
-                        || !send(&session, Outbound::Event { event: "matchFound".into(), queue: Some(queue) }).await
-                    {
+                    let event = sink.with_state(|state| web_link::match_found_event(queue, state));
+                    if !publish(&session, sink, &mut last).await || !send(&session, event).await {
                         return Ended::Dropped;
                     }
                     dirty = false;
                 }
+                if remote {
+                    if let Some(reason) = web_link::attention(&join, &now_join) {
+                        if !publish(&session, sink, &mut last).await
+                            || !send(&session, web_link::attention_event(reason)).await
+                        {
+                            return Ended::Dropped;
+                        }
+                        dirty = false;
+                        remote = false;
+                    }
+                    let search_ended = matchmaking.is_looking()
+                        && matches!(now, MatchmakingState::Idle | MatchmakingState::Cancelled { .. });
+                    if matches!(now_join, JoinState::InGame) || (search_ended && matches!(now_join, JoinState::Idle)) {
+                        // The game is running, or the search ended without one.
+                        remote = false;
+                    }
+                }
                 matchmaking = now;
+                join = now_join;
             }
             _ = tick.tick() => {
                 if dirty && browsers > 0 {
@@ -287,13 +313,13 @@ async fn serve(
 
 /// Check a browser's request and start it. The lobby commands run on their own
 /// tasks: a search spends a while getting the maps ready, and the link keeps
-/// answering meanwhile.
+/// answering meanwhile. `Ok(true)` when a search or a join was started.
 fn answer(
     ctx: &Arc<ServiceCtx>,
     sink: &EventSink,
     command: &serde_json::Value,
     last: &mut Published,
-) -> Result<(), String> {
+) -> Result<bool, String> {
     let Some(command) = RemoteCommand::parse(command) else {
         return Err("Not something the web client may ask for.".into());
     };
@@ -301,7 +327,7 @@ fn answer(
     match &command {
         RemoteCommand::Refresh => {
             *last = Published::default();
-            return Ok(());
+            return Ok(false);
         }
         RemoteCommand::StartSearch { queues } => {
             // "1 vs 1, 2 vs 2", as the Play tab names the queues.
@@ -314,7 +340,7 @@ fn answer(
                             .matchmaker_queues
                             .iter()
                             .find(|queue| &queue.queue_name == name)
-                            .map(|queue| format!("{0} vs {0}", queue.team_size))
+                            .map(|queue| web_link::queue_title(queue.team_size))
                             .unwrap_or_else(|| name.clone())
                     })
                     .collect::<Vec<_>>()
@@ -368,10 +394,14 @@ fn answer(
         RemoteCommand::Refresh => "refresh",
     };
     tracing::info!(action, "web link request");
+    let started = matches!(
+        command,
+        RemoteCommand::StartSearch { .. } | RemoteCommand::JoinGame { .. }
+    );
     for planned in planned {
         let ctx = ctx.clone();
         let sink = sink.clone();
         tokio::spawn(async move { crate::runtime::run_command(planned, &ctx, &sink).await });
     }
-    Ok(())
+    Ok(started)
 }

@@ -387,12 +387,92 @@ async fn a_match_found_is_sent_even_with_no_browser_open() {
         queue_name: "ladder1v1".into(),
     }))
     .await;
-    let queue = expect(&mut end, |message| match message {
-        Outbound::Event { event, queue } if event == "matchFound" => Some(queue),
+    let (queue, title) = expect(&mut end, |message| match message {
+        Outbound::Event {
+            event,
+            queue,
+            title,
+            ..
+        } if event == "matchFound" => Some((queue, title)),
         _ => None,
     })
     .await;
     assert_eq!(queue.as_deref(), Some("ladder1v1"));
+    // Named the way the Play tab names it, so the phone does not have to know.
+    assert_eq!(title.as_deref(), Some("1 vs 1"));
+}
+
+#[tokio::test]
+async fn a_join_from_the_web_that_stops_short_tells_the_phone() {
+    let h = Harness::start(1).await;
+    h.set_enabled(true).await;
+    let mut end = h.connection().await;
+
+    // A join started at the PC that fails is the player's own business: they
+    // are sitting in front of it.
+    h.app
+        .dispatch(
+            LobbyCommand::Join {
+                id: 11,
+                password: None,
+                replace_mods: false,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
+    for _ in 0..200 {
+        if !h.lobby.joins.lock().unwrap().is_empty() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    h.push(LobbyUpdate::JoinFailed {
+        id: 11,
+        reason: "Refused at the desk".into(),
+    })
+    .await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // The same from the web client: the phone hears why.
+    let (ok, error) = result(
+        &mut end,
+        "j1",
+        json!({"action": "joinGame", "gameId": 12, "password": "wrong"}),
+    )
+    .await;
+    assert!(ok, "{error:?}");
+    for _ in 0..200 {
+        if h.lobby.joins.lock().unwrap().len() == 2 {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    h.push(LobbyUpdate::JoinFailed {
+        id: 12,
+        reason: "Bad password".into(),
+    })
+    .await;
+    // The state goes first, so a browser that is open shows the failure by
+    // the time the notification arrives.
+    let mut shown = None;
+    let reason = expect(&mut end, |message| match message {
+        Outbound::State { state } => {
+            shown = state.game;
+            None
+        }
+        Outbound::Event { event, reason, .. } if event == "attention" => Some(reason),
+        _ => None,
+    })
+    .await
+    .unwrap_or_default();
+    assert!(
+        reason.contains("Bad password"),
+        "the first attention is the web join's, not the desk's: {reason}"
+    );
+    let game = shown.expect("the failed join is shown");
+    assert_eq!(game.status, "failed");
+    assert!(game.problem.unwrap_or_default().contains("Bad password"));
 }
 
 #[tokio::test]

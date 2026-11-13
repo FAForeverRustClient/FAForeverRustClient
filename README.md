@@ -86,6 +86,8 @@ Env toggles for local dev:
 - `FAF_LOG`: optional `tracing` filter for client diagnostics (for example
   `faf_app=debug,faforever_rust_client_lib=info,warn`); the default records client info and all warnings
 - `FAF_USER_API_BASE` / `FAF_API_BASE` / `FAF_HYDRA_BASE` / `FAF_LOBBY_URL`: endpoint overrides (e.g. staging)
+- `FAF_WEB_LINK_URL`: where the web link connects (`docs/web-link.md`), such as a local web client's
+  `ws://localhost:8098/api/link`. Defaults to `wss://webclient.faforever.com/api/link`.
 
 Packaged and development builds write daily `faforever-client.*.log` files to
 the operating system's application log directory. At most seven files are

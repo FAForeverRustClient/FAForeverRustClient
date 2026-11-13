@@ -18,7 +18,7 @@ pub struct WebLinkSession {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WebLinkError {
-    /// No access token: not signed in yet, or signed out.
+    /// No ID token: not signed in yet, or signed out.
     NotSignedIn,
     /// The server answered the hello with a refusal.
     Refused { code: String, message: String },
@@ -38,7 +38,7 @@ impl std::fmt::Display for WebLinkError {
 
 #[async_trait]
 pub trait WebLinkPort: Send + Sync {
-    /// Connect, say hello with the current access token, and wait for the
+    /// Connect, say hello with the current ID token, and wait for the
     /// server's welcome.
     async fn connect(&self) -> Result<WebLinkSession, WebLinkError>;
 }

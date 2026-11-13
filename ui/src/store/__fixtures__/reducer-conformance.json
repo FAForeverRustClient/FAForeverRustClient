@@ -73504,6 +73504,8 @@
               "launchWrapper": "",
               "mapGeneratorInstances": 0,
               "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
               "showJoinProgress": true,
               "showReplayProgress": true,
               "steamPresence": false

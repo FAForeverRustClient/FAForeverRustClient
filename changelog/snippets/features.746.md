@@ -1,0 +1,1 @@
+- The web client can start a matchmaker search or join a lobby on your PC, and tell your phone when a match is found (Settings, Account, off by default).

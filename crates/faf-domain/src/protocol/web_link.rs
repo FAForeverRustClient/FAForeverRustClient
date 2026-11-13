@@ -4,15 +4,18 @@
 //!
 //! Both ends connect *out* to the web client's server, which pairs a browser
 //! with this client only when both are signed in to the same FAF account: the
-//! client proves it with its own FAF access token, which the server checks
-//! against Hydra's published signing keys and the client id it was issued to.
-//! Nothing on this computer listens for anything.
+//! client proves it with its OIDC ID token, which the server checks against
+//! Hydra's published signing keys and the client id it was issued to (`aud`).
+//! An ID token says who is signed in and nothing more: neither the API nor
+//! the lobby accepts it, so the server never holds anything that could act as
+//! the player. Nothing on this computer listens for anything.
 //!
 //! What crosses the link, and only this:
 //!
 //! * out: who is signed in, the lobby connection, the matchmaker queues, the
 //!   search, the party, the game this client is in, the friends list, the open
-//!   lobbies, and "match found";
+//!   lobbies, "match found", and "your PC needs you" when something the web
+//!   client asked for stops at a decision only the player at the PC can make;
 //! * in: four requests ([`RemoteCommand`]): start a search in named queues,
 //!   stop searching, join a game (with its password), and send everything
 //!   again. Each is checked here against this client's own state before it
@@ -20,14 +23,16 @@
 //!   allows any of it is off until the player turns it on.
 //!
 //! The server, the browser side and the same rules from the other end are in
-//! FAForever/webclient (`lib/link.js`). Messages are JSON text frames, version
-//! [`PROTOCOL_VERSION`]. Pure: the socket is `infra::web_link`, the loop that
-//! drives it `services::web_link`.
+//! FAForever/faf-webclient (`lib/link.js`). Messages are JSON text frames,
+//! version [`PROTOCOL_VERSION`]. `docs/web-link-protocol.json` is generated
+//! from the types here (`tests/web_link_protocol.rs`) and checked by the web
+//! client's own tests, so the two ends cannot drift apart unnoticed. Pure: the
+//! socket is `infra::web_link`, the loop that drives it `services::web_link`.
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::state::{AppState, Game, JoinState, LobbyCommand, LobbyStatus, MatchmakingState};
 use crate::AppCommand;
@@ -38,11 +43,14 @@ pub const PROTOCOL_VERSION: u32 = 1;
 pub const DEFAULT_URL: &str = "wss://webclient.faforever.com/api/link";
 
 /// The most queues one search request may name. FAF has five.
-const MAX_QUEUES: usize = 8;
-/// A lobby password, as long as the host dialog allows and then some.
-const MAX_PASSWORD_CHARS: usize = 100;
+pub const MAX_QUEUES: usize = 8;
+/// A queue's technical name: ASCII letters, digits and `_`, at most this long.
+pub const MAX_QUEUE_NAME_BYTES: usize = 64;
+/// A lobby password, as long as the host dialog allows and then some. Counted
+/// in characters (code points), not bytes or UTF-16 units.
+pub const MAX_PASSWORD_CHARS: usize = 100;
 
-/// The access token, kept out of `Debug` so a logged message never carries it.
+/// The ID token, kept out of `Debug` so a logged message never carries it.
 #[derive(Clone, PartialEq, Eq, Serialize)]
 #[serde(transparent)]
 pub struct Token(pub String);
@@ -57,15 +65,14 @@ impl std::fmt::Debug for Token {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Outbound {
-    /// The first message: who this is. `role` is always `"pc"`.
+    /// The first message: who this is. `role` is always `"pc"`. Nothing about
+    /// the computer itself is sent: its name is often its owner's.
     Hello {
         role: &'static str,
         version: u32,
         token: Token,
         /// "FAF Rust client 1.2.3", shown to the player's browsers.
         client: String,
-        /// The computer's name, shown to the player's browsers only.
-        device: String,
     },
     State {
         state: Snapshot,
@@ -73,10 +80,17 @@ pub enum Outbound {
     Games {
         games: Vec<GameSummary>,
     },
+    /// `matchFound` (with `queue` and its `title`), or `attention` (with a
+    /// `reason` the player can read): the two the server turns into a phone
+    /// notification.
     Event {
         event: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         queue: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        title: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        reason: Option<String>,
     },
     /// The answer to one [`Inbound::Command`].
     Result {
@@ -87,14 +101,45 @@ pub enum Outbound {
     },
 }
 
-/// The hello for this client.
-pub fn hello(token: String, client: String, device: String) -> Outbound {
+/// The hello for this client, with its ID token.
+pub fn hello(id_token: String, client: String) -> Outbound {
     Outbound::Hello {
         role: "pc",
         version: PROTOCOL_VERSION,
-        token: Token(token),
+        token: Token(id_token),
         client,
-        device,
+    }
+}
+
+/// A queue as the Play tab names it ("1 vs 1"): what the browser shows and
+/// the phone notification says, so neither has to know queue names.
+pub fn queue_title(team_size: i32) -> String {
+    format!("{team_size} vs {team_size}")
+}
+
+/// "Match found" for a queue, titled from this client's own queue list.
+pub fn match_found_event(queue: String, state: &AppState) -> Outbound {
+    let title = state
+        .lobby
+        .matchmaker_queues
+        .iter()
+        .find(|known| known.queue_name == queue)
+        .map(|known| queue_title(known.team_size));
+    Outbound::Event {
+        event: "matchFound".into(),
+        queue: Some(queue),
+        title,
+        reason: None,
+    }
+}
+
+/// "Your PC needs you", and why.
+pub fn attention_event(reason: String) -> Outbound {
+    Outbound::Event {
+        event: "attention".into(),
+        queue: None,
+        title: None,
+        reason: Some(reason),
     }
 }
 
@@ -166,7 +211,7 @@ fn queue_names(value: Option<&Value>) -> Option<Vec<String>> {
     for item in list {
         let name = item.as_str()?;
         let plain = !name.is_empty()
-            && name.len() <= 64
+            && name.len() <= MAX_QUEUE_NAME_BYTES
             && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_');
         if !plain {
             return None;
@@ -194,7 +239,15 @@ impl RemoteCommand {
                 }),
             },
             "joinGame" => {
-                let game_id = i32::try_from(value.get("gameId")?.as_i64()?).ok()?;
+                // JavaScript has one number type: `42.0` and `42` are the same
+                // id once the browser has parsed them, so both are read here.
+                let raw = value.get("gameId")?;
+                let whole = raw.as_i64().or_else(|| {
+                    raw.as_f64()
+                        .filter(|f| f.fract() == 0.0 && f.abs() < 1e12)
+                        .map(|f| f as i64)
+                })?;
+                let game_id = i32::try_from(whole).ok()?;
                 if game_id < 1 {
                     return None;
                 }
@@ -209,6 +262,28 @@ impl RemoteCommand {
             }
             "refresh" => Some(Self::Refresh),
             _ => None,
+        }
+    }
+
+    /// The request in the one shape both ends agree on: what the web client's
+    /// server passes on after its own check. `docs/web-link-protocol.json`
+    /// pins it.
+    pub fn to_wire(&self) -> Value {
+        match self {
+            Self::StartSearch { queues } => json!({ "action": "startSearch", "queues": queues }),
+            Self::StopSearch { queues: None } => json!({ "action": "stopSearch" }),
+            Self::StopSearch {
+                queues: Some(queues),
+            } => json!({ "action": "stopSearch", "queues": queues }),
+            Self::JoinGame {
+                game_id,
+                password: None,
+            } => json!({ "action": "joinGame", "gameId": game_id }),
+            Self::JoinGame {
+                game_id,
+                password: Some(password),
+            } => json!({ "action": "joinGame", "gameId": game_id, "password": password }),
+            Self::Refresh => json!({ "action": "refresh" }),
         }
     }
 }
@@ -354,6 +429,8 @@ pub struct PlayerSummary {
 #[serde(rename_all = "camelCase")]
 pub struct QueueSummary {
     pub name: String,
+    /// "1 vs 1", from [`queue_title`].
+    pub title: String,
     pub team_size: i32,
     pub players_in_queue: i32,
     /// RFC 3339, when the server said.
@@ -380,8 +457,10 @@ pub struct PartySummary {
 pub struct CurrentGame {
     pub id: Option<i32>,
     pub title: String,
-    /// "joining", "preparing", "launched", "lobby" or "playing".
+    /// "joining", "preparing", "launched", "lobby" or "playing"; or
+    /// "needsYou" and "failed", with `problem` saying what happened.
     pub status: &'static str,
+    pub problem: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -464,16 +543,37 @@ fn current_game(state: &AppState) -> Option<CurrentGame> {
             id: Some(*id),
             title: title_of(*id),
             status: "joining",
+            problem: None,
         }),
         JoinState::Preparing { .. } => Some(CurrentGame {
             id: None,
             title: String::new(),
             status: "preparing",
+            problem: None,
         }),
         JoinState::Launched { launch } => Some(CurrentGame {
             id: Some(launch.uid),
             title: launch.name.clone(),
             status: "launched",
+            problem: None,
+        }),
+        JoinState::NeedsModReplacement { id, .. } => Some(CurrentGame {
+            id: Some(*id),
+            title: title_of(*id),
+            status: "needsYou",
+            problem: problem(&state.lobby.join),
+        }),
+        JoinState::Failed { id, .. } => Some(CurrentGame {
+            id: Some(*id),
+            title: title_of(*id),
+            status: "failed",
+            problem: problem(&state.lobby.join),
+        }),
+        JoinState::LaunchFailed { .. } => Some(CurrentGame {
+            id: None,
+            title: String::new(),
+            status: "failed",
+            problem: problem(&state.lobby.join),
         }),
         JoinState::InGame => {
             let me = state
@@ -486,16 +586,52 @@ fn current_game(state: &AppState) -> Option<CurrentGame> {
                     id: Some(game.id),
                     title: game.title.clone(),
                     status,
+                    problem: None,
                 },
                 None => CurrentGame {
                     id: None,
                     title: String::new(),
                     status: "playing",
+                    problem: None,
                 },
             })
         }
         _ => None,
     }
+}
+
+/// Server and launch errors arrive as free text; a phone notification keeps
+/// to a sentence. Counted in characters (code points).
+pub const MAX_PROBLEM_CHARS: usize = 200;
+
+/// What the player has to know when a join stops short of the game: a
+/// decision only they can make at the PC, or a failure.
+fn problem(join: &JoinState) -> Option<String> {
+    let text = match join {
+        JoinState::NeedsModReplacement { .. } => {
+            "This lobby needs other versions of mods you have installed. Decide on your PC whether to replace them.".to_string()
+        }
+        JoinState::Failed { reason, .. } => format!("The game could not be joined: {}", reason.trim()),
+        JoinState::LaunchFailed { reason } => format!("The game could not start: {}", reason.trim()),
+        _ => return None,
+    };
+    Some(text.chars().take(MAX_PROBLEM_CHARS).collect())
+}
+
+/// Why the PC needs its player, if `after` is a join that just stopped at a
+/// decision or failed. Sent only after the web client asked for something
+/// (the service keeps track), so a player sitting at the PC gets no push.
+pub fn attention(before: &JoinState, after: &JoinState) -> Option<String> {
+    let stopped = matches!(
+        after,
+        JoinState::NeedsModReplacement { .. }
+            | JoinState::Failed { .. }
+            | JoinState::LaunchFailed { .. }
+    );
+    if !stopped || std::mem::discriminant(before) == std::mem::discriminant(after) {
+        return None;
+    }
+    problem(after)
 }
 
 fn matchmaking(state: &MatchmakingState) -> MatchmakingSummary {
@@ -525,6 +661,7 @@ pub fn snapshot(state: &AppState) -> Snapshot {
         .iter()
         .map(|queue| QueueSummary {
             name: queue.queue_name.clone(),
+            title: queue_title(queue.team_size),
             team_size: queue.team_size,
             players_in_queue: queue.num_players,
             pops_at: (!queue.queue_pops_at.is_empty()).then(|| queue.queue_pops_at.clone()),
@@ -940,7 +1077,7 @@ mod tests {
         assert_eq!(value["games"][0]["maxPlayers"], 8);
         assert_eq!(value["games"][0]["teams"]["1"][0], "Deli");
 
-        let hello = hello("secret".into(), "FAF Rust client".into(), "DESK".into());
+        let hello = hello("secret".into(), "FAF Rust client".into());
         assert!(
             !format!("{hello:?}").contains("secret"),
             "the token stays out of logs"
@@ -948,6 +1085,10 @@ mod tests {
         let value: Value = serde_json::from_str(&encode(&hello)).unwrap();
         assert_eq!(value["type"], "hello");
         assert_eq!(value["role"], "pc");
+        assert!(
+            value.get("device").is_none(),
+            "nothing about the computer is sent"
+        );
         assert_eq!(value["token"], "secret");
 
         assert_eq!(
@@ -963,6 +1104,68 @@ mod tests {
         );
         assert_eq!(decode(r#"{"type":"somethingNew"}"#), Some(Inbound::Unknown));
         assert_eq!(decode("not json"), None);
+    }
+
+    #[test]
+    fn a_game_id_is_read_however_javascript_wrote_it() {
+        let join = |id: Value| RemoteCommand::parse(&json!({"action": "joinGame", "gameId": id}));
+        assert_eq!(join(json!(42.0)), join(json!(42)));
+        assert_eq!(join(json!(42.5)), None);
+        assert_eq!(join(json!(2_147_483_648_i64)), None);
+        assert_eq!(join(json!("42")), None);
+    }
+
+    #[test]
+    fn a_request_has_one_wire_shape() {
+        for value in [
+            json!({"action": "startSearch", "queues": ["ladder1v1"]}),
+            json!({"action": "stopSearch"}),
+            json!({"action": "stopSearch", "queues": ["tmm2v2"]}),
+            json!({"action": "joinGame", "gameId": 7}),
+            json!({"action": "joinGame", "gameId": 7, "password": "pw"}),
+            json!({"action": "refresh"}),
+        ] {
+            assert_eq!(RemoteCommand::parse(&value).unwrap().to_wire(), value);
+        }
+    }
+
+    #[test]
+    fn a_join_that_stops_at_the_pc_says_why_once() {
+        let joining = JoinState::Joining {
+            id: 11,
+            prepared: false,
+        };
+        let stuck = JoinState::NeedsModReplacement {
+            id: 11,
+            conflicts: Vec::new(),
+        };
+        let reason = attention(&joining, &stuck).expect("the phone hears it");
+        assert!(reason.contains("on your PC"), "{reason}");
+        assert_eq!(attention(&stuck, &stuck), None, "said once");
+        assert_eq!(attention(&joining, &JoinState::InGame), None);
+        let failed = JoinState::Failed {
+            id: 11,
+            reason: "x".repeat(500),
+        };
+        assert!(attention(&joining, &failed).unwrap().chars().count() <= MAX_PROBLEM_CHARS);
+
+        let mut state = ready();
+        state.lobby.join = stuck;
+        let game = snapshot(&state).game.unwrap();
+        assert_eq!(game.status, "needsYou");
+        assert_eq!(game.title, "Setons");
+        assert!(game.problem.is_some());
+    }
+
+    #[test]
+    fn a_match_found_carries_the_queues_title() {
+        let state = ready();
+        let event = match_found_event("tmm2v2".into(), &state);
+        let value: Value = serde_json::from_str(&encode(&event)).unwrap();
+        assert_eq!(value["event"], "matchFound");
+        assert_eq!(value["title"], "2 vs 2");
+        assert!(value.get("reason").is_none());
+        assert_eq!(snapshot(&state).queues[0].title, "1 vs 1");
     }
 
     #[test]

@@ -1975,7 +1975,7 @@ export const en = {
   "settings.discord.disallowJoinsViaHint": "Keep the status visible, but remove the Join button so nobody can enter your lobby from Discord.",
   "settings.section.webLink.title": "Web client",
   "settings.webLink.enabled": "Allow control from the web client",
-  "settings.webLink.enabledHint": "While you are signed in, webclient.faforever.com, logged in with this FAF account, can show your friends and open lobbies, start or stop a matchmaker search, and join a game on this PC. Your phone can be told when a match is found. Nothing else.",
+  "settings.webLink.enabledHint": "While you are signed in, webclient.faforever.com, logged in with this FAF account, can show your friends and open lobbies, start or stop a matchmaker search, and join a game on this PC. Your phone can be told when a match is found, or when a game it asked to join needs you at this PC. Nothing else.",
   "settings.steam.presence": "Steam status",
   "settings.steam.presenceHint": "While you are in a game, Steam shows you playing Forged Alliance and counts the hours; having the client open does not count. Needs Steam running and Forged Alliance in your Steam library. Off unless you turn it on.",
   "settings.steam.confirmButton": "Turn on",

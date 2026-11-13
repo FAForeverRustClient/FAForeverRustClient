@@ -1662,7 +1662,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.discord.disallowJoinsViaHint": "Status sichtbar lassen, aber den Beitritts-Button entfernen, damit niemand über Discord in deine Lobby kommt.",
   "settings.section.webLink.title": "Webclient",
   "settings.webLink.enabled": "Steuerung über den Webclient erlauben",
-  "settings.webLink.enabledHint": "Solange du angemeldet bist, kann webclient.faforever.com, angemeldet mit diesem FAF-Konto, deine Freunde und offene Lobbys zeigen, eine Matchmaker-Suche starten oder beenden und auf diesem PC einem Spiel beitreten. Dein Handy kann benachrichtigt werden, wenn ein Match gefunden wurde. Sonst nichts.",
+  "settings.webLink.enabledHint": "Solange du angemeldet bist, kann webclient.faforever.com, angemeldet mit diesem FAF-Konto, deine Freunde und offene Lobbys zeigen, eine Matchmaker-Suche starten oder beenden und auf diesem PC einem Spiel beitreten. Dein Handy kann benachrichtigt werden, wenn ein Match gefunden wurde oder ein Spiel, dem es beitreten wollte, dich an diesem PC braucht. Sonst nichts.",
   "settings.steam.presence": "Steam-Status",
   "settings.steam.presenceHint": "Während du in einem Spiel bist, zeigt Steam dich als Spieler von Forged Alliance und zählt die Stunden; der geöffnete Client zählt nicht. Steam muss laufen und Forged Alliance in deiner Steam-Bibliothek sein. Aus, bis du es einschaltest.",
   "settings.steam.confirmButton": "Einschalten",

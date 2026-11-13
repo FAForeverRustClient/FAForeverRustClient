@@ -2,8 +2,10 @@
 //! server (`wss://webclient.faforever.com/api/link`, or `FAF_WEB_LINK_URL`).
 //!
 //! The server pairs it with the player's browsers by the FAF account in the
-//! access token sent in the hello. It accepts no `Origin` header on this side,
-//! which a browser always sends, so a web page cannot pose as this client;
+//! OIDC ID token sent in the hello: proof of who is signed in, and nothing
+//! the API or the lobby would accept, so the server never holds a token that
+//! could act as the player. It accepts no `Origin` header on this side, which
+//! a browser always sends, so a web page cannot pose as this client;
 //! tungstenite sends none.
 //!
 //! One task per connection pumps both directions and ends when either the
@@ -41,7 +43,7 @@ impl WebLinkClient {
     }
 
     /// The address, refused unless it is `wss://`, or `ws://` to this machine:
-    /// the hello carries the access token.
+    /// the hello carries the ID token.
     fn checked_url(&self) -> Result<String, WebLinkError> {
         let url = url::Url::parse(&self.url)
             .map_err(|_| WebLinkError::Unavailable("FAF_WEB_LINK_URL is not a URL".into()))?;
@@ -61,24 +63,11 @@ fn client_name() -> String {
     format!("FAF Rust client {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// The computer's name, so a player with two PCs can tell which one answers.
-/// Only the player's own browsers are shown it.
-fn device_name() -> String {
-    ["COMPUTERNAME", "HOSTNAME"]
-        .iter()
-        .find_map(|key| {
-            std::env::var(key)
-                .ok()
-                .filter(|name| !name.trim().is_empty())
-        })
-        .map(|name| name.trim().chars().take(64).collect())
-        .unwrap_or_else(|| "PC".into())
-}
-
 #[async_trait]
 impl WebLinkPort for WebLinkClient {
     async fn connect(&self) -> Result<WebLinkSession, WebLinkError> {
-        let token = self.tokens.get().ok_or(WebLinkError::NotSignedIn)?;
+        // The ID token, never the access token: see the module comment.
+        let token = self.tokens.id_token().ok_or(WebLinkError::NotSignedIn)?;
         let url = self.checked_url()?;
 
         let config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
@@ -97,7 +86,7 @@ impl WebLinkPort for WebLinkClient {
         })?;
         let (mut write, mut read) = ws.split();
 
-        let hello = web_link::hello(token, client_name(), device_name());
+        let hello = web_link::hello(token, client_name());
         write
             .send(Message::text(web_link::encode(&hello)))
             .await
@@ -215,6 +204,9 @@ mod tests {
     #[tokio::test]
     async fn without_a_login_there_is_nothing_to_connect_with() {
         let link = client("wss://webclient.faforever.com/api/link");
+        assert_eq!(link.connect().await.err(), Some(WebLinkError::NotSignedIn));
+        // An access token alone is not enough: only the ID token is ever sent.
+        link.tokens.set("access-token");
         assert_eq!(link.connect().await.err(), Some(WebLinkError::NotSignedIn));
     }
 }
