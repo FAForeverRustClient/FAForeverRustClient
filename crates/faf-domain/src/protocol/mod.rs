@@ -15,6 +15,7 @@ pub mod galactic_war;
 pub mod game_outcome;
 pub mod gpgnet;
 pub mod irc;
+pub mod lobby;
 pub mod log_analysis;
 pub mod map_generator;
 pub mod map_generator_name;
