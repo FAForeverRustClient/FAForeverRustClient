@@ -3745,6 +3745,28 @@ export type GamePreferences = {
 	 *  `ForceAffinity = "true"`. On by default, as in both reference clients.
 	 */
 	forceAffinity?: boolean,
+	/**
+	 *  Play games on the rebuilt engine instead of the original
+	 *  `ForgedAlliance.exe`: faf-re (github.com/Draiget/faf-re), the engine
+	 *  rebuilt from source as `main_x64.exe`.
+	 *
+	 *  It takes the same command line and speaks the same GPGNet protocol, so
+	 *  everything else about a launch stays as it is. The FAF install is still
+	 *  prepared as usual and the game is started with that install's
+	 *  `init_<mod>.lua`, so the rebuilt engine plays exactly the files the
+	 *  original would. Live games and offline games only: replays stay on the
+	 *  replay install, which has to match the engine version they were
+	 *  recorded on.
+	 *
+	 *  Off by default. On without [`Self::rebuilt_engine_exe`] the launch
+	 *  is refused, rather than quietly starting the original instead.
+	 */
+	rebuiltEngine?: boolean,
+	/**
+	 *  The rebuilt engine's executable, `main_x64.exe` from a faf-re build.
+	 *  Chosen in a file dialog of the client, like every program it starts.
+	 */
+	rebuiltEngineExe?: string,
 };
 
 /**
@@ -3771,6 +3793,8 @@ export type GamePreferencesPatch = {
 	companions?: CompanionProgram[],
 	autoUpdateMapAndMods?: boolean,
 	forceAffinity?: boolean,
+	rebuiltEngine?: boolean,
+	rebuiltEngineExe?: string,
 };
 
 export type GeneralPreferences = {

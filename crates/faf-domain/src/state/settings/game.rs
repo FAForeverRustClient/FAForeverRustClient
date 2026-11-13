@@ -235,6 +235,36 @@ pub struct GamePreferences {
     /// `ForceAffinity = "true"`. On by default, as in both reference clients.
     #[serde(default = "default_true")]
     pub force_affinity: bool,
+    /// Play games on the rebuilt engine instead of the original
+    /// `ForgedAlliance.exe`: faf-re (github.com/Draiget/faf-re), the engine
+    /// rebuilt from source as `main_x64.exe`.
+    ///
+    /// It takes the same command line and speaks the same GPGNet protocol, so
+    /// everything else about a launch stays as it is. The FAF install is still
+    /// prepared as usual and the game is started with that install's
+    /// `init_<mod>.lua`, so the rebuilt engine plays exactly the files the
+    /// original would. Live games and offline games only: replays stay on the
+    /// replay install, which has to match the engine version they were
+    /// recorded on.
+    ///
+    /// Off by default. On without [`Self::rebuilt_engine_exe`] the launch
+    /// is refused, rather than quietly starting the original instead.
+    #[serde(default)]
+    pub rebuilt_engine: bool,
+    /// The rebuilt engine's executable, `main_x64.exe` from a faf-re build.
+    /// Chosen in a file dialog of the client, like every program it starts.
+    #[serde(default)]
+    pub rebuilt_engine_exe: String,
+}
+
+impl GamePreferences {
+    /// The executable to play with instead of the original game, when the
+    /// rebuilt engine is switched on. `Some("")` is on without an
+    /// executable, which the launcher refuses.
+    pub fn rebuilt_engine(&self) -> Option<&str> {
+        self.rebuilt_engine
+            .then_some(self.rebuilt_engine_exe.as_str())
+    }
 }
 
 /// The most generated maps a keep list may hold. Far past what anybody sets,
@@ -276,6 +306,8 @@ impl Default for GamePreferences {
             companions: Vec::new(),
             auto_update_map_and_mods: false,
             force_affinity: true,
+            rebuilt_engine: false,
+            rebuilt_engine_exe: String::new(),
         }
     }
 }
@@ -290,6 +322,7 @@ impl GamePreferences {
             .take(32)
             .collect();
         self.launch_wrapper = self.launch_wrapper.trim().to_owned();
+        self.rebuilt_engine_exe = self.rebuilt_engine_exe.trim().to_owned();
         self.keep_generated_maps_limit =
             self.keep_generated_maps_limit.min(MAX_KEPT_GENERATED_MAPS);
         self.map_generator_instances = self
@@ -338,6 +371,8 @@ preference_patch! {
         companions: Vec<CompanionProgram>,
         auto_update_map_and_mods: bool,
         force_affinity: bool,
+        rebuilt_engine: bool,
+        rebuilt_engine_exe: String,
     }
 }
 

@@ -233,6 +233,13 @@ pub trait ProcessPort: Send + Sync {
     /// defaulted to nothing for a launcher that starts no process.
     fn set_borderless_window(&self, _enabled: bool) {}
 
+    /// Play live and offline games on the rebuilt engine (faf-re) at this
+    /// executable instead of the install's `ForgedAlliance.exe`, or on the
+    /// original with `None`. `Some("")` is switched on without an executable,
+    /// and a launch then fails saying so. Read at launch, and defaulted to
+    /// nothing for a launcher that starts no process.
+    fn set_rebuilt_engine(&self, _exe: Option<String>) {}
+
     /// Replace the companion programs started alongside every game and
     /// replay this launcher starts (Settings, Game). Read at each launch, and
     /// defaulted to nothing for a launcher that starts no process.
