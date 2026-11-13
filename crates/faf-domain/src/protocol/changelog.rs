@@ -1745,7 +1745,23 @@ fn nested_items(html: &str) -> Vec<ChangelogListItem> {
 /// `<span class="change">Health: </span><span class="old">500</span>`, an
 /// arrow, `<span class="new">1340</span>`.
 fn parse_html_change(html: &str) -> Option<ChangelogChange> {
-    parse_styled_html_change(html).or_else(|| historical::strike_change(html))
+    parse_styled_html_change(html)
+        .or_else(|| historical::strike_change(html))
+        .or_else(|| parse_plain_html_change(html))
+}
+
+/// Rolling notes also contain ordinary Markdown stat bullets, rendered without
+/// balance-change spans. Decode their text before splitting arrows, but keep
+/// code and links as inline content rather than discarding their markup.
+fn parse_plain_html_change(html: &str) -> Option<ChangelogChange> {
+    let mut text = String::new();
+    for span in parse_html_spans(html) {
+        match span {
+            ChangelogSpan::Text(value) | ChangelogSpan::Strong(value) => text.push_str(&value),
+            _ => return None,
+        }
+    }
+    parse_change(&text)
 }
 
 fn parse_styled_html_change(html: &str) -> Option<ChangelogChange> {
@@ -1936,6 +1952,69 @@ fn decode_entities(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rendered_plain_stat_changes_decode_arrows_and_preserve_values() {
+        for html in [
+            "HP: 10 -&gt; 72",
+            "HP: 10 --&gt; 72",
+            "HP: 10 \u{2192} 72",
+            "<strong>HP:</strong> 10 -&gt; 72",
+            "<p>HP: 10 -&gt; 72</p>",
+        ] {
+            let entry = parse_rendered_entry(
+                "fafdevelop",
+                &format!("<main><ul><li>{html}</li></ul></main>"),
+            );
+            let [ChangelogBlock::List { items }] = entry.blocks.as_slice() else {
+                panic!("{entry:?}");
+            };
+            assert_eq!(
+                items[0].change,
+                Some(ChangelogChange {
+                    label: "HP".into(),
+                    old: "10".into(),
+                    new: "72".into(),
+                }),
+                "missed plain stat markup: {html}"
+            );
+            assert!(!items[0].spans.is_empty());
+        }
+    }
+
+    #[test]
+    fn rendered_plain_stat_changes_keep_code_links_and_child_lists() {
+        let blocks = parse_html_blocks(concat!(
+            "<ul>",
+            "<li><code>HP: 10 -&gt; 72</code></li>",
+            "<li>HP: <a href=\"https://github.com/FAForever/fa/pull/7369\">10 -&gt; 72</a></li>",
+            "<li>Water speed:<ul><li>Ascendant: 2.7 -&gt; 3.24</li></ul></li>",
+            "<li>HP: 10 -&gt;</li>",
+            "</ul>",
+        ));
+        let [ChangelogBlock::List { items }] = blocks.as_slice() else {
+            panic!("{blocks:?}");
+        };
+        assert_eq!(items.len(), 4);
+        assert!(items.iter().all(|item| item.change.is_none()));
+        assert!(matches!(
+            items[0].spans.as_slice(),
+            [ChangelogSpan::Code(_)]
+        ));
+        assert!(items[1]
+            .spans
+            .iter()
+            .any(|span| matches!(span, ChangelogSpan::Link { .. })));
+        assert_eq!(items[2].children.len(), 1);
+        assert_eq!(
+            items[2].children[0].change,
+            Some(ChangelogChange {
+                label: "Ascendant".into(),
+                old: "2.7".into(),
+                new: "3.24".into(),
+            })
+        );
+    }
 
     #[test]
     fn ordered_html_lists_keep_numbers_at_each_depth_and_explicit_restarts() {

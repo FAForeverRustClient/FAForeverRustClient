@@ -262,6 +262,36 @@ describe("patch-note balance colors", () => {
 
 describe("blueprint and patch-note consistency", () => {
   it.each([
+    ["Ascendant", "2.7", "3.24", "Water speed:", "buff"],
+    ["Iashavoh", "2.6", "~3.24", "Water speed:", "buff"],
+    ["Iashavoh", "~3.24", "2.6", "Water speed:", "nerf"],
+    ["Iashavoh", "2.6", "≈3.24", "Water speed:", "buff"],
+    ["Iashavoh", "3.24", "~3.24", "Water speed:", null],
+    ["Ascendant", "2.7", "3.24", undefined, null],
+    ["Ascendant", "2.7", "3.24", "General:", null],
+    ["Mass cost", "2", "3", "Water speed:", "nerf"],
+    ["Damage", "2", "3", "Mass cost:", "buff"],
+    ["DoTPulses", "2", "3", "Water speed:", null],
+    ["Ascendant", "X", "3.24", "Water speed:", null],
+  ] as const)("uses explicit parent stat context for %s: %s -> %s", (label, old, next, context, expected) => {
+    expect(changelogVerdict({ label, old, new: next }, context)).toBe(expected);
+  });
+
+  it.each([
+    ["Water speed", "2.6", "~3.24", "buff"],
+    ["Mass cost", "100", "~120", "nerf"],
+    ["HP", "10", "72", "buff"],
+    ["Health", "100", "≈120", "buff"],
+    ["Water speed", "2.6", "~~3.24", null],
+    ["Water speed", "2.6", "about 3.24", null],
+    ["Water speed", "2.6", "~3.24 (another change)", null],
+  ] as const)("reads explicit approximate %s quantities without changing their text", (label, old, next, expected) => {
+    const change = Object.freeze({ label, old, new: next });
+    expect(changelogVerdict(change)).toBe(expected);
+    expect(change).toEqual({ label, old, new: next });
+  });
+
+  it.each([
     ["Torpedoes per volley", "5x2", "6x2", "buff"],
     ["Torpedoes per volley", "6x2", "5x2", "nerf"],
     ["Torpedoes per volley", "5x2", "4x3", "buff"],

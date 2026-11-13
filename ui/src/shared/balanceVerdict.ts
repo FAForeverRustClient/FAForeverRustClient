@@ -64,7 +64,7 @@ const ALIASES: Partial<Record<UnitStat | WeaponStat, readonly string[]>> = {
   buildRate: ["buildPower"],
   massProduction: ["massGain"],
   energyUpkeep: ["energyMaintenance", "energyConsumption", "energyMaintenanceConsumption", "energyMaintenanceCost", "powerDrain", "powerUpkeepCost", "chargeDrainRate", "energyDrain", "shieldUpkeep", "maintenanceCost"],
-  speed: ["maxSpeed", "maxSpeedReverse", "underwaterSpeed", "speedWhileSubmerged", "sniperModeSpeed", "snipeModeSpeed", "submergedSpeed", "speedOnWater", "maxAirspeed", "movementSpeed"],
+  speed: ["maxSpeed", "maxSpeedReverse", "underwaterSpeed", "speedWhileSubmerged", "sniperModeSpeed", "snipeModeSpeed", "submergedSpeed", "speedOnWater", "waterSpeed", "maxAirspeed", "movementSpeed"],
   radarRadius: ["radarRange"],
   sonarRadius: ["sonarRange"],
   omniRadius: ["omniRange"],
@@ -144,6 +144,7 @@ const UNITS: Record<string, readonly [string, number]> = {
 function quantity(text: string, allowFraction = false): Quantity | null {
   // A trailing percentage is an annotation of this value, not a second stat.
   const plain = text.trim().replace(/[\u00a0\u202f]/g, " ").replace(/\u2212/g, "-")
+    .replace(/^[~≈]\s*/, "")
     .replace(/\s*\([+-]?\d+(?:\.\d+)?%\)$/, "");
   const match = QUANTITY.exec(plain);
   if (!match) return null;
@@ -324,10 +325,10 @@ function booleanValue(text: string): boolean | null {
 }
 
 /** Interpret presentation only; the published label and values are untouched. */
-export function changelogVerdict(change: ChangelogChange): Verdict | null {
+export function changelogVerdict(change: ChangelogChange, statContext?: string): Verdict | null {
   // The target qualifier does not reverse the effect of a stun duration.
   const impliedDps = /\(\s*DPS\s*\)\s*$/i.test(change.label);
-  const label = normalizeLabel(change.label.replace(/\(\s*(?:DPS|x\d+)\s*\)\s*$/i, ""))
+  let label = normalizeLabel(change.label.replace(/\(\s*(?:DPS|x\d+)\s*\)\s*$/i, ""))
     .replace(/^stundurationagainst[a-z0-9]+$/, "stunduration")
     .replace(/^(?:uef|cybran|aeon|seraphim|sera)(hp|regen|hpregeneration)$/, (_, stat: string) => stat === "hp" ? "maxhealth" : "regenrate")
     .replace(/^veteranlevel[1-5]regen$/, "regenrate")
@@ -340,6 +341,10 @@ export function changelogVerdict(change: ChangelogChange): Verdict | null {
     if (before === null || after === null || before === after) return null;
     return after ? "nerf" : "buff";
   }
+  // A direct parent caption can name the stat while the child names a unit,
+  // e.g. Water speed: Ascendant/Iashavoh. Explicit child stats take priority,
+  // including fields deliberately left neutral.
+  if (!LABEL_DIRECTIONS.has(label) && statContext !== undefined) label = normalizeLabel(statContext);
   const direction = LABEL_DIRECTIONS.get(label);
   if (direction == null) return null;
   if (label === "chargecost" && /[()]/.test(change.old + change.new)) return chargeCostVerdict(change);

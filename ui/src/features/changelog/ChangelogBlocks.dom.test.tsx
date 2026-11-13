@@ -38,6 +38,7 @@ it("colors nested balance changes by effect and preserves the published text", (
 });
 
 it.each([
+  ["HP", "10", "72", "buff"],
   ["Charge cost", "0 E", "72000 E (3750 E/s average)", "nerf"],
   ["Aim Speed", "360 deg/s", "8 deg/s", "nerf"],
   ["AA weapon’s damage radius", "0", "0.3", "buff"],
@@ -93,6 +94,47 @@ it.each([
   ]} />);
   expect(container.querySelector(".changelog-change")?.getAttribute("data-verdict")).toBe(expected);
   expect(container.querySelector(".changelog-new")?.textContent).toBe(next);
+});
+
+it("uses a parent stat caption for named units while preserving their published labels and estimates", () => {
+  const change = (label: string, old: string, next: string): ChangelogListItem => ({
+    spans: [], change: { label, old, new: next }, children: [],
+  });
+  const items: ChangelogListItem[] = [
+    { spans: [{ type: "text", payload: "Water speed:" }], change: null, children: [
+      change("Ascendant", "2.7", "3.24"),
+      change("Iashavoh", "2.6", "~3.24"),
+      change("Mass cost", "100", "120"),
+      change("DoTPulses", "2", "3"),
+    ] },
+    change("Ascendant", "2.7", "3.24"),
+    { spans: [{ type: "text", payload: "General:" }], change: null, children: [change("Ascendant", "2.7", "3.24")] },
+  ];
+  const original = structuredClone(items);
+  const { container } = render(<ChangelogListItems items={items} />);
+  const rows = [...container.querySelectorAll(".changelog-change")];
+  expect(rows.map(row => row.getAttribute("data-verdict"))).toEqual(["buff", "buff", "nerf", null, null, null]);
+  expect(rows[0].querySelector(".changelog-change-label")?.textContent).toBe("Ascendant");
+  expect(rows[1].querySelector(".changelog-change-label")?.textContent).toBe("Iashavoh");
+  expect(rows[1].querySelector(".changelog-new")?.textContent).toBe("~3.24");
+  expect(items).toEqual(original);
+});
+
+it("does not infer stats from code, links or captions without a colon", () => {
+  const captions: ChangelogListItem["spans"][] = [
+    [{ type: "code", payload: "Water speed:" }],
+    [{ type: "link", payload: { text: "Water speed:", url: "https://faforever.com" } }],
+    [{ type: "text", payload: "Water speed" }],
+  ];
+  for (const spans of captions) {
+    const { container, unmount } = render(<ChangelogListItems items={[
+      { spans, change: null, children: [
+        { spans: [], change: { label: "Ascendant", old: "2.7", new: "3.24" }, children: [] },
+      ] },
+    ]} />);
+    expect(container.querySelector(".changelog-change")?.hasAttribute("data-verdict")).toBe(false);
+    unmount();
+  }
 });
 
 it("preserves numbered instructions, mixed nested lists and explicit number changes", () => {
