@@ -1752,7 +1752,7 @@ fn parse_html_change(html: &str) -> Option<ChangelogChange> {
 
 /// Rolling notes also contain ordinary Markdown stat bullets, rendered without
 /// balance-change spans. Decode their text before splitting arrows, but keep
-/// code and links as inline content rather than discarding their markup.
+/// code, links and nonnumeric paths as prose rather than discarding their markup.
 fn parse_plain_html_change(html: &str) -> Option<ChangelogChange> {
     let mut text = String::new();
     for span in parse_html_spans(html) {
@@ -1761,7 +1761,19 @@ fn parse_plain_html_change(html: &str) -> Option<ChangelogChange> {
             _ => return None,
         }
     }
-    parse_change(&text)
+    let change = parse_change(&text)?;
+    let starts_with_number = |value: &str| {
+        let value = value.trim_start_matches(|ch: char| {
+            ch.is_whitespace() || matches!(ch, '+' | '-' | '\u{2212}' | '~' | '≈')
+        });
+        let mut chars = value.chars();
+        match chars.next() {
+            Some('.') => chars.next().is_some_and(|ch| ch.is_ascii_digit()),
+            Some(ch) => ch.is_ascii_digit(),
+            None => false,
+        }
+    };
+    (starts_with_number(&change.old) && starts_with_number(&change.new)).then_some(change)
 }
 
 fn parse_styled_html_change(html: &str) -> Option<ChangelogChange> {
@@ -1990,12 +2002,14 @@ mod tests {
             "<li>HP: <a href=\"https://github.com/FAForever/fa/pull/7369\">10 -&gt; 72</a></li>",
             "<li>Water speed:<ul><li>Ascendant: 2.7 -&gt; 3.24</li></ul></li>",
             "<li>HP: 10 -&gt;</li>",
+            "<li>Upgrade Path: Stealth -&gt; Self-Repair -&gt; Cloak</li>",
+            "<li>Targets: TECH1 -&gt; TECH2</li>",
             "</ul>",
         ));
         let [ChangelogBlock::List { items }] = blocks.as_slice() else {
             panic!("{blocks:?}");
         };
-        assert_eq!(items.len(), 4);
+        assert_eq!(items.len(), 6);
         assert!(items.iter().all(|item| item.change.is_none()));
         assert!(matches!(
             items[0].spans.as_slice(),
@@ -2005,6 +2019,12 @@ mod tests {
             .spans
             .iter()
             .any(|span| matches!(span, ChangelogSpan::Link { .. })));
+        assert_eq!(
+            items[4].spans,
+            vec![ChangelogSpan::Text(
+                "Upgrade Path: Stealth -> Self-Repair -> Cloak".into()
+            )]
+        );
         assert_eq!(items[2].children.len(), 1);
         assert_eq!(
             items[2].children[0].change,

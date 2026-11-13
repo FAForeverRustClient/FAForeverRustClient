@@ -1,5 +1,6 @@
 - Patch notes color recognized buffs green and nerfs red, including anti-air splash changes; unchanged or ambiguous values stay neutral.
 - Patch notes and Unit History use the same rules to distinguish buffs from nerfs.
 - Patch notes use a slightly wider text column.
-- Plain HP changes in rolling patch notes now receive buff and nerf colors.
+- Plain numeric stat rows in rolling and historical patch notes now receive buff and nerf colors.
 - Changes grouped beneath a stat label now receive colors while keeping unit names and approximate values visible.
+- Upgrade paths remain prose instead of being formatted as numeric stat changes.
