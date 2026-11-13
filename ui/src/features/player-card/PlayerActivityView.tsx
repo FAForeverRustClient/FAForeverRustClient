@@ -171,7 +171,7 @@ function HoursChart({ activity }: { activity: PlayerActivity }) {
       }
     >
       {bars.length === 0 ? (
-        <p className="muted">{t("playerCard.maps.empty")}</p>
+        <p className="player-tab-card-empty muted">{t("playerCard.maps.empty")}</p>
       ) : (
         <>
           {legend.length > 1 && (
@@ -256,7 +256,11 @@ function WeekHeatmap({ weekMinutes }: { weekMinutes: number[] }) {
   const max = Math.max(0, ...week);
   const days = weekdayNames();
   return (
-    <TabCard title={t("playerCard.activity.weekTitle")} className="player-stats-chart">
+    <TabCard
+      title={t("playerCard.activity.weekTitle")}
+      className="player-stats-chart"
+      footnote={t("playerCard.activity.weekNote")}
+    >
       <div className="player-activity-week" role="table" aria-label={t("playerCard.activity.weekTitle")}>
         {days.map((day, row) => (
           <div key={day} className="player-activity-week-row" role="row">
@@ -291,7 +295,6 @@ function WeekHeatmap({ weekMinutes }: { weekMinutes: number[] }) {
           ))}
         </div>
       </div>
-      <p className="muted player-stats-insight-note">{t("playerCard.activity.weekNote")}</p>
     </TabCard>
   );
 }
@@ -303,7 +306,7 @@ function FactionTime({ activity }: { activity: PlayerActivity }) {
   return (
     <TabCard title={t("playerCard.activity.factionsTitle")} className="player-stats-chart">
       {total === 0 ? (
-        <p className="muted">{t("playerCard.maps.empty")}</p>
+        <p className="player-tab-card-empty muted">{t("playerCard.maps.empty")}</p>
       ) : (
         <ul className="player-activity-factions">
           {activity.factions.map((row) => {

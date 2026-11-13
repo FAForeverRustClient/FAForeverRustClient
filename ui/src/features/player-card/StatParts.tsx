@@ -7,6 +7,7 @@
 // of the same card instead of three reports that happen to share a window.
 
 import type { CSSProperties, ReactNode } from "react";
+import { Icon } from "../../design-system/Icon";
 
 export interface StatTile {
   /** Also the React key: a tile's label is unique within its row. */
@@ -54,17 +55,20 @@ export function StatTiles({ tiles, columns }: { tiles: StatTile[]; columns: numb
  * A table or chart under an eyebrow heading, the Overview card's head: the
  * title, an optional count beside it and the card's own controls at the far
  * end. A table as the card's last child runs to its edges (see the CSS).
+ * `footnote` is what the reader is owed about the card's numbers.
  */
 export function TabCard({
   title,
   count,
   actions,
+  footnote,
   children,
   className = "",
 }: {
   title: ReactNode;
   count?: ReactNode;
   actions?: ReactNode;
+  footnote?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -78,7 +82,23 @@ export function TabCard({
         {actions && <div className="player-tab-card-actions">{actions}</div>}
       </header>
       {children}
+      {footnote && <CardFootnote>{footnote}</CardFootnote>}
     </section>
+  );
+}
+
+/**
+ * A note about a card's numbers (what was left out, what a count includes),
+ * as a band across the card's foot with the info mark: the one place such a
+ * sentence goes, so it reads as part of what it explains instead of a loose
+ * line between two blocks.
+ */
+export function CardFootnote({ children }: { children: ReactNode }) {
+  return (
+    <p className="player-tab-card-footnote">
+      <Icon name="info" size={13} />
+      <span>{children}</span>
+    </p>
   );
 }
 

@@ -9,7 +9,7 @@ import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
 import { useAppStore } from "../../store/store";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
 import { formatDecimal, formatNumber } from "../../i18n";
@@ -177,6 +177,8 @@ export function PlayerMapStatistics({ playerId }: Props) {
 
   return (
     <div className="player-maps-view">
+      <HistoryBar stats={stats} full={full} onLoadFull={loadFull} />
+
       {/* Three figures, each with the breakdown under it, rather than six
           equal ones: ranked and unranked are parts of the games total, and the
           record is what the win rate is made of, drawn as its bar. The
@@ -212,21 +214,17 @@ export function PlayerMapStatistics({ playerId }: Props) {
         ]}
       />
 
-      {/* Said plainly rather than hidden: the numbers cover a prefix of the
-          history, and a reader comparing them to the profile deserves to know. */}
-      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
-
-      {/* Same reason, as one note. The record covers only the games FAF
-          scored, so a player whose history is mostly unranked lobbies sees a
-          small W/L beside a large game count, and is owed the arithmetic. And
-          when the leaderboards count more ranked games than the history
-          endpoint returned, those sit in the draws column without anybody
-          having drawn them; faftracker does this silently. Two sentences
-          rather than one message, because each count can appear alone. */}
-      {recordNote && <p className="player-maps-note muted">{recordNote}</p>}
-
+      {/* The record note, at the foot of the map record. The record covers
+          only the games FAF scored, so a player whose history is mostly
+          unranked lobbies sees a small W/L beside a large game count, and is
+          owed the arithmetic. And when the leaderboards count more ranked
+          games than the history endpoint returned, those sit in the draws
+          column without anybody having drawn them; faftracker does this
+          silently. Two sentences rather than one message, because each count
+          can appear alone. */}
       <TabCard
         title={t("playerCard.tab.maps")}
+        footnote={recordNote || undefined}
         count={formatNumber(maps.length)}
         actions={
           <div className="search-field player-maps-search">

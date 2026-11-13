@@ -22,9 +22,9 @@ import { EMPTY_REPLAY_QUERY } from "../../shared/replayQuery";
 import { requestReplaySearch } from "../../shared/replaySearchIntent";
 import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
 import { ResultFiltersMenu } from "./ResultFiltersMenu";
-import { RecordBar, Signed } from "./StatParts";
+import { CardFootnote, RecordBar, Signed } from "./StatParts";
 import { filterResults, NO_RESULT_FILTERS, type ResultFilters } from "./resultFilters";
 
 /** Rows added per press of "Show more". A long history is thousands. */
@@ -111,15 +111,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
 
   return (
     <div className="player-results-view">
-      <div className="player-results-head">
-        {/* Said, the way the tracker says it: the list is the games whose
-            outcome is known, and the rest of the history is not missing by
-            accident. */}
-        <p className="player-maps-note muted">
-          {t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
-        </p>
-        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
-      </div>
+      <HistoryBar stats={stats} full={full} onLoadFull={loadFull} />
 
       {/* One card: the record of what is listed and the filters across from
           it in the head, where the Chat tab keeps its roster's (#646), the
@@ -153,7 +145,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
         <RecordBar {...record} />
 
         {games.length === 0 && (
-          <div className="player-card-empty muted">{t("playerCard.results.filter.empty")}</div>
+          <p className="player-tab-card-empty muted">{t("playerCard.results.filter.empty")}</p>
         )}
 
         {/* The map leads, picture first, as on the Maps tab: it is what tells
@@ -234,21 +226,26 @@ export function PlayerResults({ playerId }: { playerId: number }) {
         </table>
         </div>
         )}
-      </section>
 
-      {/* Below the table, not above it (issue 362): the reader reaches the end
-          of the rows and the next page is where they already are, instead of
-          having scrolled the button off the top of the tab. */}
-      {shown < games.length && (
-        <div className="player-results-more">
-          <Button onClick={() => setShown((count) => count + PAGE)}>
-            {t("playerCard.results.showMore", {
-              shown: formatNumber(Math.min(shown, games.length)),
-              total: formatNumber(games.length),
-            })}
-          </Button>
-        </div>
-      )}
+        {/* Below the table, not above it (issue 362): the reader reaches the
+            end of the rows and the next page is where they already are,
+            instead of having scrolled the button off the top of the tab. */}
+        {shown < games.length && (
+          <div className="player-tab-card-foot">
+            <Button onClick={() => setShown((count) => count + PAGE)}>
+              {t("playerCard.results.showMore", {
+                shown: formatNumber(Math.min(shown, games.length)),
+                total: formatNumber(games.length),
+              })}
+            </Button>
+          </div>
+        )}
+
+        {/* Said, the way the tracker says it: the list is the games whose
+            outcome is known, and the rest of the history is not missing by
+            accident. At the foot of the list it is about. */}
+        <CardFootnote>{t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}</CardFootnote>
+      </section>
     </div>
   );
 }

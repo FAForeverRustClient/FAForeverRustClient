@@ -1922,12 +1922,6 @@ button.player-avatar-tile:disabled {
   min-height: 0;
 }
 
-.player-maps-note {
-  margin: 0;
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
 /* `.search-field` carries `flex: 1 1 240px`, written for a toolbar row; in
    the card's head it takes a fixed share of the line instead.
    Two class selectors rather than one: `.search-field` is a single class as
@@ -2207,20 +2201,6 @@ button.player-avatar-tile:disabled {
   gap: var(--space-2);
 }
 
-/* Wraps, so the record drops under the note on a narrow card instead of
-   squeezing it. */
-.player-results-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-3);
-}
-
-.player-results-head .player-maps-note {
-  margin: 0;
-}
-
 /* The record across from the Filters button, right above the table
    (issue 646). */
 .player-results-toolbar {
@@ -2351,14 +2331,6 @@ button.player-avatar-tile:disabled {
 .player-results-summary strong {
   color: var(--color-text);
   font-weight: 600;
-}
-
-/* The next page sits under the rows (issue 362), so it is still on screen
-   once the reader has scrolled to the end of them. */
-.player-results-more {
-  display: flex;
-  justify-content: center;
-  padding-block: var(--space-2);
 }
 
 .player-results-table th,
@@ -2492,19 +2464,7 @@ img.player-results-map-thumb {
   outline-offset: 2px;
 }
 
-/* The recent-games note with its "load everything" button (issue 440). */
-.player-history-scope {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 /* Statistics: Performance and Activity (issue 748), switched above the cards. */
-.player-stats-views {
-  justify-self: start;
-}
-
 .player-stats-views button {
   display: inline-flex;
   align-items: center;
@@ -3076,4 +3036,104 @@ img.player-results-map-thumb {
    them, then the games. */
 .player-results-card > .player-record-bar {
   height: 6px;
+}
+
+/* ── History bar and card notes ───────────────────────────────────────── */
+/* The bar every history tab opens on (`HistoryBar`): the tab's own switch at
+   its start, how much of the history is read, and the way to the rest at the
+   end. On the facts strip's tinted ground, so it reads as information about
+   the cards under it rather than one of them. */
+.player-history-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-height: 48px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+}
+
+/* The switch sits flush at the start, a hairline between it and the scope. */
+.player-history-bar:has(> .player-history-bar-start) {
+  padding-left: var(--space-2);
+}
+
+.player-history-bar-start {
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border);
+}
+
+.player-history-bar-scope {
+  display: flex;
+  flex: 1 1 320px;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--space-2);
+  margin: 0;
+  font-size: 13px;
+}
+
+.player-history-bar-scope > svg {
+  flex: none;
+  color: var(--color-subtle);
+}
+
+.player-history-bar-scope > strong {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.player-history-bar-note {
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+/* The way to the rest, at the bar's end: the size of a line's own button
+   (`status-notice-actions`), not a toolbar's. */
+.player-history-bar-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  margin-left: auto;
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
+/* A note about a card's numbers, as a band across its foot with the info
+   mark (`CardFootnote`). */
+.player-tab-card-footnote {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-4));
+  padding: 10px var(--space-4);
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.45;
+  background: color-mix(in srgb, var(--color-bg) 45%, var(--color-surface));
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+}
+
+.player-tab-card-footnote > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--color-subtle);
+}
+
+/* Straight under a table the band takes the table's last rule as its own,
+   so there is one line between them and no gap. */
+.player-tab-table + .player-tab-card-footnote {
+  margin-top: -10px;
+}
+
+.player-tab-table:has(+ .player-tab-card-footnote) tbody tr:last-child td {
+  border-bottom: 0;
 }

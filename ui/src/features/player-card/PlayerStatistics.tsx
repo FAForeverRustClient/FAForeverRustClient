@@ -26,7 +26,7 @@ import { useAppStore } from "../../store/store";
 import { formatDecimal, formatNumber, getLocale, intlTag } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 import { HistoryFailure } from "./HistoryFailure";
-import { HistoryScopeNote } from "./HistoryScopeNote";
+import { HistoryBar } from "./HistoryBar";
 import { RecordBar, RecordText, Signed, StatTiles, TabCard, type StatTile } from "./StatParts";
 import { PlayerActivityView } from "./PlayerActivityView";
 import { leaderboardTotalGames, rankedRecord } from "./rankedRecord";
@@ -311,11 +311,14 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
     </div>
   );
 
+  // One bar over both parts: the switch at its start, the scope after it, so
+  // switching moves nothing above the figures.
+  const bar = <HistoryBar stats={stats} full={full} onLoadFull={loadFull}>{switcher}</HistoryBar>;
+
   if (view === "activity") {
     return (
       <div className="player-statistics">
-        {switcher}
-        <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
+        {bar}
         <PlayerActivityView stats={stats} report={report} full={full} registeredAt={profile.registeredAt} />
       </div>
     );
@@ -323,9 +326,8 @@ export function PlayerStatistics({ profile }: { profile: PlayerCardProfile }) {
 
   return (
     <div className="player-statistics">
-      {switcher}
+      {bar}
       <StatTiles columns={5} tiles={cards} />
-      <HistoryScopeNote stats={stats} full={full} onLoadFull={loadFull} />
 
       <div className="player-statistics-grid">
         <TabCard title={t("playerCard.stats.ratingGainTitle")} className="player-stats-chart">
