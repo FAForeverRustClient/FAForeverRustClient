@@ -2,21 +2,29 @@ use faf_app::infra::fake_ports;
 use faf_app::infra::game_logs::NoGameLogs;
 use faf_app::App;
 use faf_domain::state::{
-    AuthCommand, NotificationEvent, ReportLogAttachment, ReportStatus, ReportingCommand,
-    ReportingEvent,
+    AuthCommand, NotificationEvent, NotificationKind, ReportLogAttachment, ReportStatus,
+    ReportingCommand, ReportingEvent,
 };
 use faf_domain::AppEvent;
 
 use crate::support;
+
+async fn next_reporting(events: &mut tokio::sync::broadcast::Receiver<AppEvent>) -> ReportingEvent {
+    support::next_event(events, "reporting event", |event| match event {
+        AppEvent::Reporting(event) => Some(event),
+        _ => None,
+    })
+    .await
+}
 
 #[tokio::test]
 async fn report_submission_emits_progress_confirmation_and_notification() {
     let app = support::start(fake_ports());
     let mut events = app.subscribe();
 
-    app.dispatch(AuthCommand::LoginTest.into()).await.unwrap();
-    let _ = events.recv().await.unwrap();
-    let _ = events.recv().await.unwrap();
+    app.dispatch_and_wait(AuthCommand::LoginTest.into())
+        .await
+        .unwrap();
 
     app.dispatch(
         ReportingCommand::Open {
@@ -28,16 +36,16 @@ async fn report_submission_emits_progress_confirmation_and_notification() {
     .await
     .unwrap();
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::Opened { player_id: 7, .. })
+        next_reporting(&mut events).await,
+        ReportingEvent::Opened { player_id: 7, .. }
     ));
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::HistoryLoading)
+        next_reporting(&mut events).await,
+        ReportingEvent::HistoryLoading
     ));
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::HistoryLoaded { .. })
+        next_reporting(&mut events).await,
+        ReportingEvent::HistoryLoaded { .. }
     ));
 
     app.dispatch(
@@ -55,17 +63,27 @@ async fn report_submission_emits_progress_confirmation_and_notification() {
     .unwrap();
 
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::Submitting)
+        next_reporting(&mut events).await,
+        ReportingEvent::Submitting
     ));
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::Submitted)
+        next_reporting(&mut events).await,
+        ReportingEvent::Submitted
     ));
-    assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Notifications(NotificationEvent::Added { .. })
-    ));
+    let notification = support::next_event(
+        &mut events,
+        "report submission notification",
+        |event| match event {
+            AppEvent::Notifications(NotificationEvent::Added { notification })
+                if notification.kind == NotificationKind::ReportSubmitted =>
+            {
+                Some(notification)
+            }
+            _ => None,
+        },
+    )
+    .await;
+    assert!(notification.body.contains("Aurora"));
 }
 
 /// Holds the game-participation check open until the test lets it answer,
@@ -168,18 +186,19 @@ async fn a_late_participation_refusal_stays_out_of_a_newer_report() {
 
 #[tokio::test]
 async fn reporting_yourself_is_rejected_before_the_port_is_called() {
-    let app = support::start(fake_ports());
+    let reporting = std::sync::Arc::new(RecordingReporting::default());
+    let app = support::start(faf_app::Ports {
+        reporting: reporting.clone(),
+        ..fake_ports()
+    });
     let mut events = app.subscribe();
 
-    app.dispatch(AuthCommand::LoginTest.into()).await.unwrap();
-    let _ = events.recv().await.unwrap();
-    let logged_in = events.recv().await.unwrap();
-    let player_id = match logged_in {
-        AppEvent::Auth(faf_domain::state::AuthEvent::TestLoggedIn { player }) => player.id,
-        other => panic!("expected test login, got {other:?}"),
-    };
+    app.dispatch_and_wait(AuthCommand::LoginTest.into())
+        .await
+        .unwrap();
+    let player_id = app.with_state(|state| state.auth.player.as_ref().unwrap().id);
 
-    app.dispatch(
+    app.dispatch_and_wait(
         ReportingCommand::Submit {
             player_id,
             login: "TestCommander".into(),
@@ -194,9 +213,13 @@ async fn reporting_yourself_is_rejected_before_the_port_is_called() {
     .unwrap();
 
     assert!(matches!(
-        events.recv().await.unwrap(),
-        AppEvent::Reporting(ReportingEvent::Failed { reason }) if reason.contains("yourself")
+        next_reporting(&mut events).await,
+        ReportingEvent::Failed { reason } if reason.contains("yourself")
     ));
+    assert!(
+        reporting.descriptions().is_empty(),
+        "a self-report reached the port"
+    );
 }
 
 // ── game log evidence ──────────────────────────────────────────────────────

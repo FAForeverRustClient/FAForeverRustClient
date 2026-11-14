@@ -119,6 +119,16 @@ function moduleFiles(path, name) {
   return [resolve(base, `${name}.rs`), resolve(base, name, "mod.rs")];
 }
 
+// Login can start several event producers. Counting and discarding receives
+// cannot isolate setup from a feature test on that shared stream.
+for (const path of await sourceFiles(resolve(root, "crates/faf-app/tests/it"), new Set([".rs"]))) {
+  const source = await readFile(path, "utf8");
+  const discarded = /\blet\s+_\s*=\s*\w+\s*\.\s*recv\s*\(\s*\)\s*\.\s*await\b/g;
+  for (const match of rustCode(source).matchAll(discarded)) {
+    report(path, `line ${lineNumber(source, match.index)} discards a stream event; await setup with dispatch_and_wait and observe feature events through support::next_event`);
+  }
+}
+
 // Application services depend on ports and domain types, never concrete IO.
 //
 // Both spellings count: importing infra, and calling into it by its full path.
