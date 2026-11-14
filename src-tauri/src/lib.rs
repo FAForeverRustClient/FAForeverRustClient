@@ -413,7 +413,11 @@ mod tests {
             .expect("production CSP must stay enabled");
 
         assert_eq!(csp["default-src"], "'self'");
-        assert_eq!(csp["connect-src"], "ipc: http://ipc.localhost");
+        // `'self'` is the app's own bundle and nothing else: the shipped
+        // notification sample is fetched from it, and without it the "Match
+        // found (FAF)" sound was blocked in every packaged build while the dev
+        // server, which the dev policy allows, played it (issue 713).
+        assert_eq!(csp["connect-src"], "'self' ipc: http://ipc.localhost");
         assert_eq!(csp["object-src"], "'none'");
         assert_eq!(csp["frame-ancestors"], "'none'");
 
