@@ -9693,6 +9693,8 @@ export type ReplayPlayer = {
 	 *  includes the player's avatar assignment.
 	 */
 	avatarUrl?: string | null,
+	/**  The avatar's name (`avatar.tooltip`), shown when the avatar is hovered. */
+	avatarTooltip?: string | null,
 	/**
 	 *  1=UEF, 2=Aeon, 3=Cybran, 4=Seraphim, 5=Random: the lobby selection
 	 *  recorded by `playerStats.faction`, not the faction Random resolved to.

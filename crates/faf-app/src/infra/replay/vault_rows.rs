@@ -158,11 +158,18 @@ fn resolve_map_thumbnail(
 /// `game.relationships.playerStats[] -> playerStats.relationships.player ->
 /// player.attributes.login`, grouped by `playerStats.attributes.team`.
 ///
+/// The avatar a player wears in a vault game: its URL and the name the API
+/// gives it (`tooltip`), which the roster shows on hover (issue 760).
+///
+/// The name only comes with a selected assignment; the legacy flat
+/// `avatarUrl` attribute carries no name.
 fn resolve_player_avatar(
     player: Option<&JsonApiResource>,
     index: &HashMap<(String, String), &JsonApiResource>,
-) -> Option<String> {
-    let player = player?;
+) -> (Option<String>, Option<String>) {
+    let Some(player) = player else {
+        return (None, None);
+    };
     let selected = rel_targets(&player.relationships, "avatarAssignments")
         .into_iter()
         .filter_map(|key| index.get(&key).copied())
@@ -173,21 +180,22 @@ fn resolve_player_avatar(
                 .and_then(Value::as_bool)
                 .unwrap_or(false)
         });
-    let selected_url = selected
+    let avatar = selected
         .and_then(|assignment| rel_target(&assignment.relationships, "avatar"))
-        .and_then(|key| index.get(&key).copied())
-        .and_then(|avatar| avatar.attributes.get("url"))
-        .and_then(Value::as_str)
-        .filter(|url| !url.trim().is_empty())
-        .map(str::to_string);
-    selected_url.or_else(|| {
-        player
+        .and_then(|key| index.get(&key).copied());
+    let text = |resource: &JsonApiResource, field: &str| {
+        resource
             .attributes
-            .get("avatarUrl")
+            .get(field)
             .and_then(Value::as_str)
-            .filter(|url| !url.trim().is_empty())
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
             .map(str::to_string)
-    })
+    };
+    if let Some(url) = avatar.and_then(|avatar| text(avatar, "url")) {
+        return (Some(url), avatar.and_then(|avatar| text(avatar, "tooltip")));
+    }
+    (text(player, "avatarUrl"), None)
 }
 
 fn resolve_teams(
@@ -210,7 +218,7 @@ fn resolve_teams(
             .and_then(Value::as_str)
             .unwrap_or("unknown")
             .to_string();
-        let avatar_url = resolve_player_avatar(player, index);
+        let (avatar_url, avatar_tooltip) = resolve_player_avatar(player, index);
         let faction = stat.attributes.get("faction").and_then(faction_value);
         let journals: Vec<&JsonApiResource> = rel_targets(&stat.relationships, "ratingChanges")
             .into_iter()
@@ -231,6 +239,7 @@ fn resolve_teams(
         by_team.entry(team).or_default().push(ReplayPlayer {
             name,
             avatar_url,
+            avatar_tooltip,
             faction,
             rating,
             rating_change,
@@ -653,7 +662,10 @@ mod tests {
                 {
                     "type": "avatar",
                     "id": "901",
-                    "attributes": { "url": "https://content.faforever.com/faf/avatars/GW_Seraphim.png" }
+                    "attributes": {
+                        "url": "https://content.faforever.com/faf/avatars/GW_Seraphim.png",
+                        "tooltip": "GW Seraphim"
+                    }
                 },
                 {
                     "type": "leaderboardRatingJournal",
@@ -696,6 +708,10 @@ mod tests {
         assert_eq!(
             replay.teams[0].players[0].avatar_url.as_deref(),
             Some("https://content.faforever.com/faf/avatars/GW_Seraphim.png")
+        );
+        assert_eq!(
+            replay.teams[0].players[0].avatar_tooltip.as_deref(),
+            Some("GW Seraphim")
         );
         assert_eq!(replay.teams[0].players[0].faction, Some(1));
         assert_eq!(replay.teams[0].players[0].rating, Some(1300));

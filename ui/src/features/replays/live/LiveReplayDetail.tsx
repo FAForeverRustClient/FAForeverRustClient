@@ -33,7 +33,7 @@ import { useClipboardCopy } from "../../../shared/hooks/useClipboardCopy";
 import { ReplayMapThumb } from "../ReplayCard";
 import { MapPreviewFrame } from "../../../shared/components/MapPreviewZoom";
 import { GeneratorFailure } from "../../../shared/components/GeneratorFailure";
-import { isObserverTeam, playerCount, ReplayDetailRoster } from "../ReplayRoster";
+import { isObserverTeam, playerCount, ReplayDetailRoster, type KnownAvatar } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
@@ -112,9 +112,11 @@ export function LiveReplayDetail({
 
   // The directory's avatars, keyed the way the roster asks for them. The lobby
   // sends no avatar with a game, so this is the only place one can come from.
-  const avatarByLogin = new Map<string, string>();
+  const avatarByLogin = new Map<string, KnownAvatar>();
   for (const profile of socialPlayers) {
-    if (profile.avatarUrl) avatarByLogin.set(profile.login.toLocaleLowerCase(), profile.avatarUrl);
+    if (profile.avatarUrl) {
+      avatarByLogin.set(profile.login.toLocaleLowerCase(), { url: profile.avatarUrl, tooltip: profile.avatarTooltip ?? "" });
+    }
   }
 
   // Only the facts this game has. A running game has no duration, no review

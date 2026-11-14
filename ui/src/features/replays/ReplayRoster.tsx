@@ -486,16 +486,26 @@ export function ReplayCardRoster({
   );
 }
 
+/** An avatar the chat directory knows for a login: its image and its name. */
+export type KnownAvatar = { url: string; tooltip: string };
+
 function ReplayPlayerAvatar({
   player,
   avatarByLogin,
 }: {
   player: ReplayPlayer;
-  avatarByLogin?: ReadonlyMap<string, string>;
+  avatarByLogin?: ReadonlyMap<string, KnownAvatar>;
 }) {
-  const url = player.avatarUrl || avatarByLogin?.get(player.name.toLocaleLowerCase());
+  const known = avatarByLogin?.get(player.name.toLocaleLowerCase());
+  const url = player.avatarUrl || known?.url;
+  // The avatar's own name on hover (issue 760). Without it the hover text was
+  // the row's "Actions for <name>", which says nothing about the avatar. The
+  // directory's name only belongs to the image when that image is the one shown.
+  const tooltip = player.avatarUrl
+    ? player.avatarTooltip || (known?.url === player.avatarUrl ? known.tooltip : "")
+    : known?.tooltip;
   return (
-    <span className="replay-player-avatar" aria-hidden="true">
+    <span className="replay-player-avatar" aria-hidden="true" title={url && tooltip ? tooltip : undefined}>
       {url && (
         <RecoverableImage
           src={url}
@@ -525,7 +535,7 @@ export function ReplayDetailRoster({
    * button that would turn it on, not up here.
    */
   showResults?: boolean;
-  avatarByLogin?: ReadonlyMap<string, string>;
+  avatarByLogin?: ReadonlyMap<string, KnownAvatar>;
   /**
    * Opens the chat player menu on a name, which is what a nickname does
    * everywhere else in this client: message, invite, friend, foe, mute, note,
