@@ -769,6 +769,10 @@ impl AppLoop {
         // owns its own tasks and never blocks this loop.
         services::discord::spawn(ctx.clone(), self.sink.clone());
 
+        // The web client, likewise: connected while the player allows it and
+        // is signed in, and closed when either stops being true.
+        services::web_link::spawn(ctx.clone(), self.sink.clone());
+
         // Likewise state-driven: a socket that dropped while the user is still
         // signed in should come back without them asking.
         services::reconnect::spawn(ctx.clone(), self.sink.clone());

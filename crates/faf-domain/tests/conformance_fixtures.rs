@@ -8356,6 +8356,10 @@ fn cases() -> Vec<Case> {
                     },
                 }
                 .into(),
+                SettingsEvent::WebLinkChanged {
+                    preferences: WebLinkPreferences { enabled: true },
+                }
+                .into(),
                 SettingsEvent::DebugChanged {
                     preferences: DebugPreferences {
                         ice_adapter_debug_window: true,

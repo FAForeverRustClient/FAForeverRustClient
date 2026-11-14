@@ -6669,6 +6669,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -69659,6 +69662,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -69977,6 +69983,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -70305,6 +70314,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -70639,6 +70651,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -70964,6 +70979,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -71310,6 +71328,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -71654,6 +71675,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -72003,6 +72027,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -72354,6 +72381,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -72830,6 +72860,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -73267,6 +73300,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -73275,6 +73311,398 @@
               "value": {
                 "disallowJoins": true,
                 "enabled": false
+              }
+            },
+            "kind": "Settings"
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "preferences": {
+                  "enabled": true
+                }
+              },
+              "type": "webLinkChanged"
+            },
+            "kind": "Settings"
+          },
+          "expected": {
+            "appearance": {
+              "backgroundDim": 60,
+              "backgroundImage": "",
+              "density": "comfortable",
+              "gameTileColumns": 0,
+              "hoverCloseDelayMs": 160,
+              "hoverOpenDelayMs": 500,
+              "hoverPanels": true,
+              "reduceMotion": false,
+              "replayFlags": false,
+              "sidebarWidth": 224,
+              "uiScale": 100
+            },
+            "avatarHistory": [
+              "https://example.test/cup.png",
+              "https://example.test/veteran.png",
+              ""
+            ],
+            "browsing": {
+              "coopBoardColumns": [],
+              "customGamesBrowser": {
+                "allowRules": [],
+                "applyFilters": false,
+                "columnOrder": [],
+                "columnWidths": [],
+                "detailHidden": false,
+                "detailWidth": 0,
+                "hideFoes": false,
+                "hideModded": false,
+                "hidePrivate": false,
+                "hideUnranked": false,
+                "rules": [],
+                "sort": "players",
+                "sortReversed": false
+              },
+              "customGamesView": "tiles",
+              "favoriteMaps": [],
+              "favoriteMods": [],
+              "hostCoop": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "hostGame": {
+                "enforceRatingRange": false,
+                "featuredMod": "faf",
+                "map": "",
+                "password": "",
+                "passwordEnabled": false,
+                "ratingMax": 1500,
+                "ratingMin": 800,
+                "title": "",
+                "visibility": "public"
+              },
+              "leaderboardIncludeFormerNames": false,
+              "leaderboardRatingColumns": [
+                "games",
+                "updated"
+              ],
+              "legacyStorageMigrated": false,
+              "liveReplayColumns": [],
+              "liveReplayFilters": {
+                "activePlayers": "",
+                "featuredMod": "",
+                "friendsOnly": false,
+                "gameType": "",
+                "hideModded": false,
+                "hideSinglePlayer": false,
+                "hideUnranked": false,
+                "maxPlayers": "",
+                "search": ""
+              },
+              "liveReplayOrder": [],
+              "liveReplayView": "list",
+              "mapVaultPreset": "recommended",
+              "mapVaultSort": "",
+              "matchmakerChatWidth": 0,
+              "matchmakerFactions": [
+                "UEF",
+                "Aeon",
+                "Cybran",
+                "Seraphim"
+              ],
+              "matchmakerInviteColumns": [],
+              "matchmakerInviteOrder": [],
+              "matchmakerRecentColumns": [],
+              "matchmakerRecentOrder": [],
+              "matchmakerUnselectedQueues": [],
+              "modPresets": [],
+              "modVaultPreset": "recommended",
+              "modVaultSort": "",
+              "rememberedFilters": {},
+              "replayChatChannel": "",
+              "replayChatTransfers": "show",
+              "replayListColumns": [],
+              "replayListOrder": [],
+              "replayVaultPlayer": "",
+              "replaysView": "tiles",
+              "searchPresets": [],
+              "vaultPageSize": 0,
+              "whitelistedHosts": []
+            },
+            "cacheInfo": {
+              "totalFiles": 0,
+              "totalSizeBytes": 0.0,
+              "versions": []
+            },
+            "chat": {
+              "autoJoinChannels": [],
+              "autoJoinLanguageChannel": true,
+              "autoJoinNewbieChannel": true,
+              "coloredNames": false,
+              "fontSize": 13,
+              "hiddenRosterCategories": [],
+              "hideFoeMessages": true,
+              "mutedPlayers": [],
+              "nameColors": {
+                "admins": "#ba55d3",
+                "foes": "#dc143c",
+                "friends": "#87cefa",
+                "moderators": "#32cd32",
+                "pings": "#ff8c00",
+                "players": {},
+                "selfColor": "#ffdd00"
+              },
+              "newbieChannelGameThreshold": 50,
+              "readMarkers": {},
+              "rosterWidth": 280,
+              "senderWidth": 116,
+              "showJoinsParts": false,
+              "showTimestamps": true,
+              "use24HourTime": true,
+              "visibleMessageLimit": 500
+            },
+            "connectivity": {
+              "adapter": "dynamic",
+              "hostAdapter": "java",
+              "selectionVersion": 2
+            },
+            "debug": {
+              "iceAdapterConsoleWindow": false,
+              "iceAdapterDebugWindow": false,
+              "iceAdapterInfoWindow": false,
+              "mapGeneratorWindow": false
+            },
+            "discord": {
+              "disallowJoins": true,
+              "enabled": false
+            },
+            "events": {
+              "reminders": [],
+              "weekStart": "monday"
+            },
+            "game": {
+              "additionalArguments": [],
+              "autoGenerateMaps": true,
+              "autoUpdateMapAndMods": false,
+              "borderlessWindow": false,
+              "cacheLifetimeDays": 30,
+              "cacheRollingBranches": false,
+              "cacheSizeAlertGb": 10,
+              "companions": [],
+              "confirmDownloadsBeforeJoining": true,
+              "forceAffinity": true,
+              "keepGeneratedMaps": false,
+              "keepGeneratedMapsLimit": 0,
+              "launchWrapper": "",
+              "mapGeneratorInstances": 0,
+              "pipeLiveReplay": false,
+              "rebuiltEngine": false,
+              "rebuiltEngineExe": "",
+              "showJoinProgress": true,
+              "showReplayProgress": true,
+              "steamPresence": false
+            },
+            "gamePath": "C:/games/FA/bin/ForgedAlliance.exe",
+            "general": {
+              "autoLogin": true,
+              "filterMemory": "session",
+              "keepRunningDuringGame": true,
+              "rememberTypedEntries": false,
+              "startPage": "news"
+            },
+            "keptGeneratedMaps": [
+              "neroxis_map_generator_1.15.2_keepme",
+              "neroxis_map_generator_1.15.2_alsokeep"
+            ],
+            "mapGenerator": {
+              "commandLineArgs": "",
+              "debug": false,
+              "generationType": "casual",
+              "mapSize": 512,
+              "numTeams": 2,
+              "numToGenerate": null,
+              "outputPath": "",
+              "previewPath": "",
+              "propStyle": "",
+              "propStyles": [],
+              "reclaimDensity": null,
+              "reclaimDensityMax": null,
+              "reclaimDensityMin": null,
+              "resourceDensity": null,
+              "resourceDensityMax": null,
+              "resourceDensityMin": null,
+              "resourceStyle": "",
+              "resourceStyles": [],
+              "seed": "",
+              "spawnCount": 6,
+              "style": "",
+              "styles": [],
+              "symmetries": [],
+              "symmetry": "",
+              "terrainStyle": "",
+              "terrainStyles": [],
+              "textureStyle": "",
+              "textureStyles": [],
+              "version": null,
+              "visualize": false
+            },
+            "mapPoolsSeen": [
+              {
+                "assignments": [
+                  91,
+                  92
+                ],
+                "queueName": "ladder1v1"
+              }
+            ],
+            "matchmakerVetoes": [
+              {
+                "mapPoolMapVersionId": 91,
+                "matchmakerQueueMapPoolId": 4,
+                "vetoTokensApplied": 1
+              }
+            ],
+            "notifications": {
+              "delivery": {},
+              "desktop": true,
+              "desktopAllKinds": false,
+              "desktopMonitor": null,
+              "desktopPosition": "bottomRight",
+              "desktopStyle": "popup",
+              "enabled": true,
+              "flashTaskbar": true,
+              "friendJoinedGame": true,
+              "friendOffline": true,
+              "friendOnline": true,
+              "friendPlaying": true,
+              "friendReplayReady": true,
+              "gameFull": true,
+              "gameLaunched": true,
+              "historyLifetimeSeconds": 0,
+              "mapGenerated": true,
+              "mapPoolMutedQueues": [],
+              "matchFound": true,
+              "mentions": true,
+              "mentionsRequireAt": false,
+              "newCustomGames": false,
+              "newCustomGamesFriendsOnly": true,
+              "notifyWhenFocused": false,
+              "partyInvites": true,
+              "popup": true,
+              "privateMessages": true,
+              "queueOpponentQueues": [],
+              "repeatCooldownSeconds": 2,
+              "reviewReminder": true,
+              "sound": true,
+              "soundChoiceVersion": 3,
+              "sounds": {
+                "friendJoinedGame": "chime",
+                "friendOffline": "chime",
+                "friendOnline": "chime",
+                "friendPlaying": "chime",
+                "gameFull": "alert",
+                "gameLaunched": "chime",
+                "matchFound": "alert",
+                "mention": "chime",
+                "newCustomGame": "chime",
+                "other": "chime",
+                "partyInvite": "chime",
+                "privateMessage": "chime",
+                "reviewReminder": "chime"
+              },
+              "streamLive": true,
+              "toastDurationSeconds": 5,
+              "toastPosition": "bottomLeft",
+              "volume": 70
+            },
+            "paths": {
+              "gamePrefsPath": "",
+              "javaPath": "",
+              "mapGeneratorDir": "",
+              "mapsDir": "D:/faf/vault/maps",
+              "modsDir": "",
+              "originalGameDir": "D:/SteamLibrary/steamapps/common/Supreme Commander Forged Alliance",
+              "replaysDir": "D:/faf/replays",
+              "vaultDir": "D:/faf/vault",
+              "winePrefix": "/home/player/.wine"
+            },
+            "replayGamePath": "",
+            "social": {
+              "playerNotes": [
+                {
+                  "login": "Ada",
+                  "note": "Map specialist",
+                  "playerId": 7
+                },
+                {
+                  "login": "Aurora",
+                  "note": "Reliable teammate",
+                  "playerId": 42
+                }
+              ],
+              "replayNotes": [
+                {
+                  "comment": "Comeback",
+                  "path": null,
+                  "replayId": 9,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "path": null,
+                  "replayId": 12,
+                  "tags": [
+                    "Lots finals"
+                  ]
+                },
+                {
+                  "comment": "a game's",
+                  "path": null,
+                  "replayId": 44,
+                  "tags": []
+                },
+                {
+                  "comment": "",
+                  "path": "/home/ada/Replays/Zed.fafreplay",
+                  "replayId": 0,
+                  "tags": [
+                    "practice"
+                  ]
+                },
+                {
+                  "comment": "vs two hard AIs",
+                  "path": "c:/replays/skirmish.fafreplay",
+                  "replayId": 0,
+                  "tags": []
+                }
+              ]
+            },
+            "theme": "forgeLight",
+            "updates": {
+              "automatic": true,
+              "backgroundDownload": false,
+              "channelChoiceVersion": 1,
+              "lastSeenVersion": null,
+              "preRelease": true,
+              "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": true
+            }
+          },
+          "update": {
+            "event": {
+              "field": "webLink",
+              "value": {
+                "enabled": true
               }
             },
             "kind": "Settings"
@@ -73660,6 +74088,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": true
             }
           },
           "update": {
@@ -74221,6 +74652,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": true
             }
           },
           "update": {
@@ -91675,6 +92109,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -92016,6 +92453,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -92392,6 +92832,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -92788,6 +93231,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -93153,6 +93599,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -93496,6 +93945,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -93825,6 +94277,9 @@
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -94181,6 +94636,9 @@
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -94530,6 +94988,9 @@
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -94868,6 +95329,9 @@
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -95210,6 +95674,9 @@
               "lastSeenVersion": "0.4.0",
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -95524,6 +95991,9 @@
                     "lastSeenVersion": null,
                     "preRelease": true,
                     "showWhatsNew": true
+                  },
+                  "webLink": {
+                    "enabled": false
                   }
                 }
               },
@@ -95829,6 +96299,9 @@
               "lastSeenVersion": null,
               "preRelease": true,
               "showWhatsNew": true
+            },
+            "webLink": {
+              "enabled": false
             }
           },
           "update": {
@@ -96132,6 +96605,9 @@
                   "lastSeenVersion": null,
                   "preRelease": true,
                   "showWhatsNew": true
+                },
+                "webLink": {
+                  "enabled": false
                 }
               }
             },
@@ -138413,6 +138889,9 @@
         "lastSeenVersion": null,
         "preRelease": true,
         "showWhatsNew": true
+      },
+      "webLink": {
+        "enabled": false
       }
     },
     "social": {

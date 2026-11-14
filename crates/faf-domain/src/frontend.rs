@@ -251,6 +251,7 @@ pub enum SettingsUpdate {
     Chat(Box<ChatPreferences>),
     Game(Box<GamePreferences>),
     Discord(Box<DiscordPreferences>),
+    WebLink(Box<WebLinkPreferences>),
     Connectivity(Box<ConnectivityPreferences>),
     Debug(Box<DebugPreferences>),
     Updates(Box<UpdatePreferences>),
@@ -283,6 +284,7 @@ impl SettingsUpdate {
             SettingsEvent::ChatChanged { .. } => Self::Chat(boxed(&state.chat)),
             SettingsEvent::GameChanged { .. } => Self::Game(boxed(&state.game)),
             SettingsEvent::DiscordChanged { .. } => Self::Discord(boxed(&state.discord)),
+            SettingsEvent::WebLinkChanged { .. } => Self::WebLink(boxed(&state.web_link)),
             SettingsEvent::ConnectivityChanged { .. } => {
                 Self::Connectivity(boxed(&state.connectivity))
             }

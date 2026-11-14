@@ -125,6 +125,8 @@ pub struct OAuthAuth {
 #[derive(Debug)]
 struct PendingSession {
     access_token: String,
+    /// Published beside the access token, for the web link (`infra::web_link`).
+    id_token: Option<String>,
     /// Kept in memory for renewal, regardless of the persistence preference.
     refresh_token: Option<StoredRefresh>,
     persist_refresh: bool,
@@ -268,6 +270,7 @@ impl OAuthAuth {
             .or(previous_refresh);
         *self.pending_slot() = Some(PendingSession {
             access_token: tokens.access_token,
+            id_token: tokens.id_token,
             refresh_token,
             persist_refresh,
             expires_in: tokens.expires_in,
@@ -313,6 +316,7 @@ impl OAuthAuth {
                                 return;
                             }
                             tokens.set(&response.access_token);
+                            tokens.set_id_token(response.id_token.as_deref());
                             if let Some(refresh) = &response.refresh_token {
                                 stored = stored.rotated(refresh);
                                 if persist {
@@ -479,6 +483,7 @@ impl AuthPort for OAuthAuth {
         };
         self.cancel_refresh();
         self.tokens.set(&session.access_token);
+        self.tokens.start_id_token(session.id_token.as_deref());
         // Keyring failures must not block an otherwise successful login.
         if let Some(refresh) = session.refresh_token {
             if session.persist_refresh {
@@ -1453,6 +1458,22 @@ mod tests {
         assert_eq!(published(&auth), (Some("at".into()), true));
         // A commit publishes once; a second has nothing left to publish.
         assert!(!auth.commit_session());
+        auth.cancel_refresh();
+    }
+
+    #[tokio::test]
+    async fn the_id_token_goes_live_with_the_session_and_not_before() {
+        let auth = adapter();
+        let tokens = TokenResponse {
+            id_token: Some("id".into()),
+            ..exchanged()
+        };
+        auth.stage_session(tokens, true, None, async { Ok(Player::new(7, "Ada")) })
+            .await
+            .unwrap();
+        assert_eq!(auth.tokens.id_token(), None, "published before commit");
+        assert!(auth.commit_session());
+        assert_eq!(auth.tokens.id_token().as_deref(), Some("id"));
         auth.cancel_refresh();
     }
 

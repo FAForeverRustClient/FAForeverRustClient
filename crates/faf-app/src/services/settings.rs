@@ -460,6 +460,15 @@ pub async fn handle(cmd: SettingsCommand, ctx: &ServiceCtx, out: &EventSink) {
             });
             persist(ctx, out).await;
         }
+        SettingsCommand::PatchWebLink { patch } => {
+            // Same as Discord: the web link service watches this event and
+            // connects, or closes the connection, from the new state.
+            merge(ctx, out, |settings| {
+                let preferences = patch.apply_to(settings.web_link);
+                (SettingsEvent::WebLinkChanged { preferences }, ())
+            });
+            persist(ctx, out).await;
+        }
         // One entry of a list or map, applied to the collection as state
         // holds it under the merge lock. The domain functions normalise the
         // group afterwards, exactly as a patch would.
