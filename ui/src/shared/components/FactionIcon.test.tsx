@@ -12,6 +12,8 @@ describe("FactionIcon", () => {
     const markup = renderToStaticMarkup(<FactionIcon faction={faction} />);
 
     expect(markup).toContain(`<svg aria-label="${name}"`);
+    // Its own hover text, which wins over a surrounding button's title.
+    expect(markup).toContain(`<title>${name}</title>`);
     expect(markup).toContain("<path");
     expect(markup).not.toContain(">&quot;");
   });
@@ -20,6 +22,7 @@ describe("FactionIcon", () => {
     const markup = renderToStaticMarkup(<FactionIcon faction={5} />);
 
     expect(markup).toContain('aria-label="Random"');
+    expect(markup).toContain("<title>Random</title>");
     // The four faction colours, which is what makes it the mark rather than a
     // glyph: this one does not follow `currentColor`.
     for (const colour of ["#F7BC0B", "#E31B13", "#3DA936", "#3884C5"]) {

@@ -27,19 +27,28 @@ interface FactionIconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
   size?: number;
 }
 
-/** The official faction glyphs used by the Java client, normalized for the web UI. */
+/**
+ * The official faction glyphs used by the Java client, normalized for the web UI.
+ *
+ * The faction's name is the glyph's own `<title>`, so hovering it says which
+ * faction it is. An SVG title wins over the `title` of whatever the icon sits
+ * in, so the roster's "Actions for <player>" on the row's button no longer
+ * stands in for it.
+ */
 export function FactionIcon({ faction, size = 16, style, ...props }: FactionIconProps) {
   const { t } = useTranslation();
   // Random. The four faction emblems in one, which is the mark FAF itself
   // uses; the die that stood here before was a guess at the idea and read as a
   // placeholder beside four real glyphs.
   if (faction === 5) {
+    const random = t("factions.random");
     return (
       <RandomFactionMark
-        aria-label={t("factions.random")}
+        aria-label={random}
         role="img"
         size={size}
         style={style}
+        tooltip={random}
         {...props}
       />
     );
@@ -65,6 +74,7 @@ export function FactionIcon({ faction, size = 16, style, ...props }: FactionIcon
       style={{ color: FACTION_COLORS[faction], ...style }}
       {...props}
     >
+      <title>{name}</title>
       <path d={glyph.path} />
     </svg>
   );
