@@ -447,6 +447,14 @@ impl GameProcess {
 
         let config = self.config.lock().unwrap();
         let wrapper = split_command(&config.launch_wrapper);
+        // Wrapped the way `game_argument_path` decides it: under a launch
+        // command or the Linux runtime the game is a Windows program.
+        let wrapped = !wrapper.is_empty() || crate::infra::linux_runtime::active().is_some();
+        let prefs = prefs_arguments(
+            crate::infra::paths::game_prefs_path().as_deref(),
+            &config.additional_arguments,
+            wrapped,
+        );
         tracing::info!(
             argument_count = args.len(),
             // Whether, not what: the launch command is a program of the
@@ -463,6 +471,7 @@ impl GameProcess {
             let arguments = config
                 .additional_arguments
                 .iter()
+                .chain(&prefs)
                 .map(std::ffi::OsString::from)
                 .chain(args.iter().map(std::ffi::OsString::from))
                 .collect();
@@ -480,12 +489,18 @@ impl GameProcess {
             (None, Some((program, rest))) => {
                 let mut command = Command::new(program);
                 command.args(rest).arg(&exe);
-                command.args(&config.additional_arguments).args(args);
+                command
+                    .args(&config.additional_arguments)
+                    .args(&prefs)
+                    .args(args);
                 command
             }
             (None, None) => {
                 let mut command = Command::new(&exe);
-                command.args(&config.additional_arguments).args(args);
+                command
+                    .args(&config.additional_arguments)
+                    .args(&prefs)
+                    .args(args);
                 command
             }
         };
@@ -1427,6 +1442,27 @@ fn require_init_name(featured_mod: &str) -> Result<(), String> {
     }
 }
 
+/// `/prefs <file>` for a `game.prefs` chosen in Settings, Paths (issue 739).
+///
+/// The client already read and wrote the chosen file (active mods, the
+/// second-instance flag, backups), but the game was never told about it and
+/// kept loading the default one from `%LOCALAPPDATA%`. Nothing when no file is
+/// chosen, which leaves FA on its default exactly as before, and nothing when
+/// the player's own launch arguments already name one: theirs wins, as it did
+/// when that was the only way to pick a file.
+fn prefs_arguments(configured: Option<&Path>, additional: &[String], wrapped: bool) -> Vec<String> {
+    let Some(path) = configured else {
+        return Vec::new();
+    };
+    if additional
+        .iter()
+        .any(|argument| argument.eq_ignore_ascii_case("/prefs"))
+    {
+        return Vec::new();
+    }
+    vec!["/prefs".into(), game_visible_path(path, wrapped)]
+}
+
 /// Build the FA argument list: server args first, then init/bugreport/gpgnet.
 ///
 /// Mirrors `fa/play.py:build_argument_list`. `savereplay` is the address of the
@@ -2107,6 +2143,29 @@ mod tests {
         let config = process.config.lock().unwrap();
         assert_eq!(config.game_path, "new-game");
         assert_eq!(config.replay_game_path, "new-replay");
+    }
+
+    #[test]
+    fn a_chosen_game_prefs_reaches_the_game() {
+        let arguments = prefs_arguments(Some(Path::new("C:/prefs/other.prefs")), &[], false);
+        assert_eq!(arguments, ["/prefs", "C:/prefs/other.prefs"]);
+    }
+
+    #[test]
+    fn a_chosen_game_prefs_under_wine_goes_through_the_z_drive() {
+        let arguments = prefs_arguments(Some(Path::new("/home/me/game.prefs")), &[], true);
+        assert_eq!(arguments, ["/prefs", r"Z:\home\me\game.prefs"]);
+    }
+
+    #[test]
+    fn no_chosen_game_prefs_adds_nothing() {
+        assert!(prefs_arguments(None, &[], false).is_empty());
+    }
+
+    #[test]
+    fn the_players_own_prefs_argument_wins() {
+        let own = vec!["/PREFS".to_string(), "D:/mine.prefs".to_string()];
+        assert!(prefs_arguments(Some(Path::new("C:/other.prefs")), &own, false).is_empty());
     }
 
     #[test]
