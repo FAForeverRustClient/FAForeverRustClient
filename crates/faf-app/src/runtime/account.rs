@@ -13,6 +13,20 @@ pub(crate) struct AccountConnection {
 }
 
 impl AccountConnection {
+    /// Keep a synchronous socket operation inside the current connection's
+    /// lifetime, so it cannot land on a replacement account's adapter.
+    pub(crate) fn with_current<T>(
+        &self,
+        session: &CancellationToken,
+        operation: impl FnOnce() -> T,
+    ) -> Option<T> {
+        let active = super::lock_runtime(&self.active, "account connection");
+        if session.is_cancelled() || active.as_ref().is_none_or(CancellationToken::is_cancelled) {
+            return None;
+        }
+        Some(operation())
+    }
+
     pub(crate) async fn acquire(&self, session: &CancellationToken) -> Option<ConnectionGuard<'_>> {
         loop {
             let released = self.released.notified();
@@ -70,5 +84,21 @@ mod tests {
         assert!(connection.acquire(&second).await.is_none());
         drop(current);
         assert!(connection.acquire(&second).await.is_some());
+    }
+
+    #[tokio::test]
+    async fn account_operations_are_fenced_against_replacement_connections() {
+        let connection = AccountConnection::default();
+        let first = CancellationToken::new();
+        assert_eq!(connection.with_current(&first, || 1), None);
+        let guard = connection.acquire(&first).await.unwrap();
+        assert_eq!(connection.with_current(&first, || 1), Some(1));
+        first.cancel();
+        assert_eq!(connection.with_current(&first, || 1), None);
+        drop(guard);
+        let second = CancellationToken::new();
+        let _guard = connection.acquire(&second).await.unwrap();
+        assert_eq!(connection.with_current(&first, || 1), None);
+        assert_eq!(connection.with_current(&second, || 2), Some(2));
     }
 }

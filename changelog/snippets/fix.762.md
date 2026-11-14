@@ -1,0 +1,3 @@
+- Leaving or changing a party no longer rejoins its old chat room after a reconnect.
+- Closing a replay panel no longer leaves its pending replay reads running in the background.
+- Opening Chat or Live Replays no longer overrides a manual disconnect.

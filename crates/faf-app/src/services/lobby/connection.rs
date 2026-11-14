@@ -33,7 +33,7 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     let Some(_active) = ctx.lobby.active.acquire(&session).await else {
         return;
     };
-    if only_if_armed && !ctx.lobby.auto_reconnect.armed() {
+    if only_if_armed && !ctx.lifecycle.lobby_wanted() {
         return;
     }
 

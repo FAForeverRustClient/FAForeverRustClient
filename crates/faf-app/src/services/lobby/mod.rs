@@ -37,8 +37,8 @@ mod updates;
 use faf_domain::state::{HostGameConfig, JoinState, LobbyCommand, LobbyEvent};
 
 use crate::runtime::{
-    account::AccountConnection, AutoReconnect, Cancellable, EventSink, LatestRequest,
-    LobbyOperations, RunningGame, ServiceCtx,
+    account::AccountConnection, Cancellable, EventSink, LatestRequest, LobbyOperations,
+    RunningGame, ServiceCtx,
 };
 
 pub use connection::reconnect;
@@ -90,10 +90,6 @@ pub struct LobbyContext {
     /// socket comes back, so the server can be told to restore the game
     /// session it dropped along with the connection.
     running_game: RunningGame,
-    /// Whether [`reconnect`](crate::services::reconnect) should bring this
-    /// socket back after an unexpected drop, so a user who hung up stays hung
-    /// up while a laptop resume does not.
-    auto_reconnect: AutoReconnect,
     /// Whether this session has compared the matchmaker map pools with the
     /// ones last seen (#406). Once per run: pools change between releases,
     /// not between reconnects.
@@ -164,13 +160,6 @@ impl LobbyContext {
     pub fn running_game_handle(&self) -> RunningGame {
         self.running_game.clone()
     }
-
-    /// Whether an explicit `Connect` armed the lobby connection to come back
-    /// after an unexpected drop. Read by
-    /// [`reconnect`](crate::services::reconnect).
-    pub fn auto_reconnect_armed(&self) -> bool {
-        self.auto_reconnect.armed()
-    }
 }
 
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -181,7 +170,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // it did, a connection whose adapter had given up stayed down for
             // good. Armed before the guard, so asking while a connection is
             // already in flight still re-arms it. The same shape as chat.
-            ctx.lobby.auto_reconnect.arm();
+            ctx.lifecycle.request_lobby();
             connection::connect(ctx, out).await
         }
         LobbyCommand::Join {
@@ -246,7 +235,7 @@ pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
             // The user hung up, so the reconnect watchdog leaves it hung up.
             // Disarmed before the socket closes: the watchdog reads the flag
             // when it sees `Disconnected`, which this is about to cause.
-            ctx.lobby.auto_reconnect.disarm();
+            ctx.lifecycle.stop_lobby();
             // Cancels the active connection; the `Connect` task above then sees the
             // stream close and emits `Disconnected`.
             out.emit(LobbyEvent::JoinCancelled);

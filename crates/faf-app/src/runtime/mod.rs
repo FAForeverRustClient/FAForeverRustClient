@@ -23,6 +23,7 @@ mod cancellation;
 mod census;
 mod command_policy;
 mod policies;
+pub(crate) mod request_order;
 pub use cancellation::CancellationSlot;
 pub(crate) use command_policy::{end_turn, expect_admitted, Key};
 use command_policy::{CommandAdmission, Lane, Pair, PairHalf};
@@ -47,6 +48,7 @@ pub struct ServiceCtx {
     /// runtime loop alone so a service starting another service's command
     /// goes through it as well: see [`run_command`].
     pub(crate) admission: CommandAdmission,
+    pub(crate) lifecycle: Arc<services::lifecycle::LifecycleContext>,
     pub lobby: services::lobby::LobbyContext,
     pub chat: services::chat::ChatContext,
     pub settings: services::settings::SettingsContext,
@@ -90,6 +92,7 @@ pub struct EventSink {
     send_order: Arc<Mutex<()>>,
     account: Arc<Mutex<CancellationToken>>,
     account_scope: Option<CancellationToken>,
+    lifecycle: Arc<services::lifecycle::LifecycleContext>,
 }
 
 /// One state delta with the exact authoritative-state revision it produced.
@@ -246,6 +249,7 @@ impl EventSink {
         let (revision, update, next_account) = {
             let mut guard = write_state(&self.state, &self.revision);
             faf_domain::reduce(&mut guard, &event);
+            self.lifecycle.observe(&event);
             let next_account = if matches!(&event, AppEvent::Auth(auth) if auth.resets_account_activity())
             {
                 let mut current = lock_runtime(&self.account, "account session");
@@ -376,75 +380,20 @@ struct QueuedCommand {
 /// pair a command is comes from its policy: see [`command_policy::Pair`].
 #[derive(Debug, Default)]
 struct ReleaseOrder {
-    next: AtomicU64,
+    next: Mutex<u64>,
     released: std::sync::Mutex<std::collections::HashMap<Pair, u64>>,
-    analysis: std::sync::Mutex<Option<QueuedRead>>,
-    details: std::sync::Mutex<Option<QueuedRead>>,
-}
-
-#[derive(Debug)]
-struct QueuedRead {
-    seq: u64,
-    uid: i32,
-    path: Option<String>,
-    request_id: Option<u32>,
-    cancelled: bool,
+    reads: request_order::ReadOrder,
 }
 
 impl ReleaseOrder {
     fn stamp(&self, command: &AppCommand) -> u64 {
-        let seq = self.next.fetch_add(1, std::sync::atomic::Ordering::AcqRel) + 1;
-        {
-            use faf_domain::state::ReplayCommand;
-            let read = match command {
-                AppCommand::Replays(ReplayCommand::LoadAnalysis {
-                    uid,
-                    local_path,
-                    request_id,
-                }) => Some((&self.analysis, *uid, local_path, *request_id, false)),
-                AppCommand::Replays(ReplayCommand::LoadDetails {
-                    uid,
-                    local_path,
-                    request_id,
-                }) => Some((&self.details, *uid, local_path, *request_id, false)),
-                AppCommand::Replays(ReplayCommand::CancelReads {
-                    uid,
-                    local_path,
-                    request_id,
-                }) => {
-                    for slot in [&self.analysis, &self.details] {
-                        let mut read = lock_runtime(slot, "replay read slot");
-                        if let Some(current) = read.as_mut().filter(|current| {
-                            current.seq < seq
-                                && faf_domain::state::replay_read_key(
-                                    current.uid,
-                                    current.path.as_deref(),
-                                ) == faf_domain::state::replay_read_key(
-                                    *uid,
-                                    local_path.as_deref(),
-                                )
-                                && (request_id.is_none() || current.request_id == *request_id)
-                        }) {
-                            current.cancelled = true;
-                        }
-                    }
-                    None
-                }
-                _ => None,
-            };
-            if let Some((slot, uid, path, request_id, cancelled)) = read {
-                let mut current = lock_runtime(slot, "replay read slot");
-                if current.as_ref().is_none_or(|current| current.seq < seq) {
-                    *current = Some(QueuedRead {
-                        seq,
-                        uid,
-                        path: path.clone(),
-                        request_id,
-                        cancelled,
-                    });
-                }
-            }
-        }
+        // Allocate and record under one guard. Otherwise a cancel can be
+        // recorded before the older start has installed its read identity.
+        let mut next = lock_runtime(&self.next, "command dispatch sequence");
+        *next += 1;
+        let seq = *next;
+        self.reads
+            .record(seq, services::commands::read_intent(command));
         if let Some(PairHalf::Release(pair)) = command_policy::policy(command).pair {
             self.record_release(pair, seq);
         }
@@ -460,19 +409,11 @@ impl ReleaseOrder {
     }
 
     fn superseded(&self, command: &AppCommand, seq: u64) -> bool {
-        let read_slot = match command {
-            AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. }) => {
-                Some(&self.analysis)
-            }
-            AppCommand::Replays(faf_domain::state::ReplayCommand::LoadDetails { .. }) => {
-                Some(&self.details)
-            }
-            _ => None,
-        };
-        if let Some(slot) = read_slot {
-            return lock_runtime(slot, "replay read slot")
-                .as_ref()
-                .is_none_or(|current| current.seq != seq || current.cancelled);
+        if let Some(superseded) = self
+            .reads
+            .superseded(seq, services::commands::read_intent(command))
+        {
+            return superseded;
         }
         let Some(PairHalf::Start(pair)) = command_policy::policy(command).pair else {
             return false;
@@ -501,6 +442,7 @@ impl App {
         let order = Arc::new(ReleaseOrder::default());
         let send_order = Arc::new(Mutex::new(()));
         let account = Arc::new(Mutex::new(CancellationToken::new()));
+        let lifecycle = Arc::new(services::lifecycle::LifecycleContext::default());
         let process = ports.process.clone();
         let settings = ports.settings.clone();
         let map_generator = ports.map_generator.clone();
@@ -513,11 +455,13 @@ impl App {
             send_order: send_order.clone(),
             account: account.clone(),
             account_scope: None,
+            lifecycle: lifecycle.clone(),
         };
         let ctx = ServiceCtx {
             backend_version: backend_version.into(),
             ports,
             admission: CommandAdmission::default(),
+            lifecycle,
             lobby: services::lobby::LobbyContext::default(),
             chat: services::chat::ChatContext::default(),
             settings: services::settings::SettingsContext::default(),
@@ -763,6 +707,7 @@ impl AppLoop {
     /// single [`EventSink::emit`] chokepoint.
     pub async fn run(self) {
         let ctx = Arc::new(self.ctx);
+        services::lifecycle::spawn(ctx.clone(), self.sink.clone());
 
         // Discord Rich Presence is the one feature no command drives: the
         // status mirrors state, so it observes the event stream instead. It
@@ -810,74 +755,14 @@ impl AppLoop {
             };
             let admission = command_policy::policy(&command).admission;
             let turn = ctx.admission.admit(admission);
-            // Claim analysis before spawning: a close or replacement can run
-            // before the executor ever polls this task.
-            let analysis = match &command {
-                AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis {
-                    uid,
-                    local_path,
-                    request_id,
-                }) => services::replays::begin_analysis(
-                    *uid,
-                    local_path.clone(),
-                    *request_id,
-                    &ctx,
-                    &sink,
-                ),
-                _ => None,
-            };
-            let details = match &command {
-                AppCommand::Replays(faf_domain::state::ReplayCommand::LoadDetails {
-                    uid,
-                    local_path,
-                    request_id,
-                }) => Some(services::replays::begin_details(
-                    *uid,
-                    local_path.clone(),
-                    *request_id,
-                    &ctx,
-                    &sink,
-                )),
-                _ => None,
-            };
-            let unit_selection = match &command {
-                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::Select { id }) => {
-                    Some(services::unit_history::begin_selection(
-                        vec![id.clone()],
-                        &ctx,
-                        &sink,
-                    ))
-                }
-                AppCommand::UnitHistory(faf_domain::state::UnitHistoryCommand::SetSelection {
-                    ids,
-                }) => Some(services::unit_history::begin_selection(
-                    ids.clone(),
-                    &ctx,
-                    &sink,
-                )),
-                _ => None,
-            };
+            let prepared = services::commands::prepare(command, &ctx, &sink);
             async move {
                 let Some(mut turn) = turn else {
                     tracing::debug!("dropped a command whose kind is already running");
                     return;
                 };
                 turn.ready().await;
-                command_policy::run_admitted(admission, turn, async {
-                    if let Some(work) = analysis {
-                        services::replays::run_analysis(work, &ctx, &sink).await;
-                    } else if let Some(work) = details {
-                        services::replays::run_details(work, &ctx, &sink).await;
-                    } else if let Some(work) = unit_selection {
-                        services::unit_history::run_selection(work, &ctx, &sink).await;
-                    } else if !matches!(
-                        command,
-                        AppCommand::Replays(faf_domain::state::ReplayCommand::LoadAnalysis { .. })
-                    ) {
-                        dispatch(command, &ctx, &sink).await;
-                    }
-                })
-                .await;
+                command_policy::run_admitted(admission, turn, prepared.run(&ctx, &sink)).await;
             }
         };
         drive(
@@ -1128,17 +1013,18 @@ pub(crate) fn run_command<'a>(
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send + 'a>> {
     let admission = command_policy::policy(&command).admission;
     let turn = ctx.admission.admit(admission);
+    let prepared = services::commands::prepare(command, ctx, out);
     Box::pin(async move {
         let Some(mut turn) = turn else {
             return;
         };
         turn.ready().await;
-        command_policy::run_admitted(admission, turn, dispatch(command, ctx, out)).await;
+        command_policy::run_admitted(admission, turn, prepared.run(ctx, out)).await;
     })
 }
 
 /// Route a command to the owning service. One arm per slice (ARCHITECTURE.md §8).
-async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
+pub(crate) async fn dispatch(cmd: AppCommand, ctx: &ServiceCtx, sink: &EventSink) {
     if sink
         .account_scope
         .as_ref()
@@ -2097,3 +1983,6 @@ mod client_update_tests;
 
 #[cfg(test)]
 mod poison_tests;
+
+#[cfg(test)]
+mod lifecycle_tests;
