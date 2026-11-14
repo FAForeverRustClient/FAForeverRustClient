@@ -7,6 +7,7 @@ import type { MapSummary } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { generatedMapDescriptionRows } from "../../../shared/generatedMapDescription";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { GameMapImage } from "../GameMapImage";
 import { formatMapDimensions, type HostMap } from "./hostMapCatalogue";
 
@@ -28,6 +29,10 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
 }: Props) {
   const { t } = useTranslation();
   const [copiedTitle, setCopiedTitle] = useState(false);
+  // A generated map can be listed without being on disk: a favourite whose
+  // folder another client cleared out (issue 759). Its picture is then the
+  // generator's placeholder, so the column offers to generate it again.
+  const mapGen = useNamedMapGeneration(chosen?.folderName);
 
   // Reset by itself, so the tick is feedback rather than a state the button
   // gets stuck in.
@@ -76,6 +81,22 @@ export const HostMapDetailsColumn = memo(function HostMapDetailsColumn({
             <div className="host-preview-placeholder">
               <Icon name="maps" size={32} />
             </div>
+          )}
+          {chosen && (mapGen.canGenerate || mapGen.isGenerating) && (
+            <button
+              type="button"
+              className="host-preview-generate"
+              disabled={mapGen.isGenerating}
+              title={mapGen.progress?.label ?? t("lobby.details.generateMap")}
+              onClick={mapGen.generate}
+            >
+              <Icon
+                name={mapGen.isGenerating ? "refresh" : "plus"}
+                size={13}
+                className={mapGen.isGenerating ? "spin" : undefined}
+              />
+              {t(mapGen.isGenerating ? "lobby.details.generatingMap" : "lobby.details.generateMap")}
+            </button>
           )}
         </div>
 
