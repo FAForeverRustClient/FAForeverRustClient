@@ -1,0 +1,2 @@
+- The captains draft ranks the available players by rating, opens a player's card from their name, and shows every team's roster, average rating and open places, with who picks next.
+- The tournament chat tab opens the event's global chat straight away.

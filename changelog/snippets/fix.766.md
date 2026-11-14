@@ -1,0 +1,1 @@
+- Switching to a short tournament section, such as News, no longer makes the page jump.
