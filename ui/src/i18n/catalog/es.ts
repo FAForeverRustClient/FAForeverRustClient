@@ -1748,7 +1748,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.discord.disallowJoinsViaHint": "Mantener el estado visible, pero quitar el botón de unirse para que nadie entre en tu sala desde Discord.",
   "settings.section.webLink.title": "Cliente web",
   "settings.webLink.enabled": "Permitir el control desde el cliente web",
-  "settings.webLink.enabledHint": "Mientras tengas la sesión iniciada, webclient.faforever.com, abierto con esta misma cuenta de FAF, puede mostrar tus amigos y las salas abiertas, iniciar o detener una búsqueda de emparejamiento y unirse a una partida en este equipo. Tu móvil puede recibir un aviso cuando se encuentra una partida, o cuando una partida a la que pidió unirse te necesita en este equipo. Nada más.",
+  "settings.webLink.enabledHint": "Mientras tengas la sesión iniciada, webclient.faforever.com, abierto con esta misma cuenta de FAF, puede mostrar tus amigos y las salas abiertas, iniciar o detener una búsqueda de emparejamiento y unirse a una partida en este equipo. Tu móvil puede recibir un aviso cuando se encuentra una partida, o cuando una partida a la que pidió unirse te necesita en este equipo. Nada más. Para reconocerte, recibe el comprobante de inicio de sesión de FAF, que incluye tu nombre de cuenta y tu dirección de correo electrónico.",
   "settings.steam.presence": "Estado de Steam",
   "settings.steam.presenceHint": "Mientras estás en una partida, Steam te muestra jugando a Forged Alliance y cuenta las horas; tener el cliente abierto no cuenta. Necesita Steam abierto y Forged Alliance en tu biblioteca. Desactivado salvo que lo actives.",
   "settings.steam.confirmButton": "Activar",

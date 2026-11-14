@@ -1513,7 +1513,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.discord.disallowJoinsViaHint": "Zachowaj widoczny status, ale usuń przycisk dołączania, aby nikt nie wszedł do twojej poczekalni z Discorda.",
   "settings.section.webLink.title": "Klient webowy",
   "settings.webLink.enabled": "Zezwól na sterowanie z klienta webowego",
-  "settings.webLink.enabledHint": "Gdy jesteś zalogowany, webclient.faforever.com, otwarty na tym samym koncie FAF, może pokazywać twoich znajomych i otwarte poczekalnie, rozpoczynać i zatrzymywać wyszukiwanie w matchmakingu oraz dołączać do gry na tym komputerze. Telefon może dostać powiadomienie, gdy mecz zostanie znaleziony albo gdy gra, do której poprosił o dołączenie, potrzebuje cię przy tym komputerze. Nic więcej.",
+  "settings.webLink.enabledHint": "Gdy jesteś zalogowany, webclient.faforever.com, otwarty na tym samym koncie FAF, może pokazywać twoich znajomych i otwarte poczekalnie, rozpoczynać i zatrzymywać wyszukiwanie w matchmakingu oraz dołączać do gry na tym komputerze. Telefon może dostać powiadomienie, gdy mecz zostanie znaleziony albo gdy gra, do której poprosił o dołączenie, potrzebuje cię przy tym komputerze. Nic więcej. Aby cię rozpoznać, otrzymuje potwierdzenie logowania z FAF, które zawiera nazwę twojego konta i adres e-mail.",
   "settings.steam.presence": "Status Steam",
   "settings.steam.presenceHint": "W trakcie gry Steam pokazuje, że grasz w Forged Alliance, i liczy godziny; otwarty klient się nie liczy. Wymaga uruchomionego Steama i Forged Alliance w bibliotece. Wyłączone, dopóki tego nie włączysz.",
   "settings.steam.confirmButton": "Włącz",

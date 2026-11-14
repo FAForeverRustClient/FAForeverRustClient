@@ -1749,7 +1749,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.discord.disallowJoinsViaHint": "Garder le statut visible, mais retirer le bouton Rejoindre pour que personne n'entre dans votre salon depuis Discord.",
   "settings.section.webLink.title": "Client web",
   "settings.webLink.enabled": "Autoriser le contrôle depuis le client web",
-  "settings.webLink.enabledHint": "Tant que vous êtes connecté, webclient.faforever.com, ouvert avec ce même compte FAF, peut afficher vos amis et les salons ouverts, lancer ou arrêter une recherche de matchmaking et rejoindre une partie sur cet ordinateur. Votre téléphone peut être prévenu quand un match est trouvé, ou quand une partie qu'il a demandé de rejoindre a besoin de vous sur cet ordinateur. Rien d'autre.",
+  "settings.webLink.enabledHint": "Tant que vous êtes connecté, webclient.faforever.com, ouvert avec ce même compte FAF, peut afficher vos amis et les salons ouverts, lancer ou arrêter une recherche de matchmaking et rejoindre une partie sur cet ordinateur. Votre téléphone peut être prévenu quand un match est trouvé, ou quand une partie qu'il a demandé de rejoindre a besoin de vous sur cet ordinateur. Rien d'autre. Pour vous reconnaître, il reçoit la preuve de connexion de FAF, qui contient votre nom de compte et votre adresse e-mail.",
   "settings.steam.presence": "Statut Steam",
   "settings.steam.presenceHint": "Pendant une partie, Steam vous montre en train de jouer à Forged Alliance et compte les heures ; le client ouvert ne compte pas. Steam doit tourner et Forged Alliance être dans votre bibliothèque. Désactivé tant que vous ne l'activez pas.",
   "settings.steam.confirmButton": "Activer",
