@@ -1,4 +1,4 @@
 - Hovering a player's avatar in a replay now shows the avatar's name.
 - Live replays count a game's players by its lineup, so the player count, the "Active players" filter and "Hide single-player games" agree with the teams shown.
 - Games start with the game.prefs file chosen in Settings > Paths.
-- The "Match found (FAF)" sound plays again.
+- The "Match found (FAF)" notification sound now plays in installed builds.
