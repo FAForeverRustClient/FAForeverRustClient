@@ -1,0 +1,1 @@
+- A generated map that is no longer on disk can be generated again from the host dialog's preview.

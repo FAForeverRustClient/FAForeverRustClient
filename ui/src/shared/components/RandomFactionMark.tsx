@@ -18,8 +18,13 @@ import { useId, type SVGProps } from "react";
  */
 export function RandomFactionMark({
   size = 16,
+  tooltip,
   ...props
-}: Omit<SVGProps<SVGSVGElement>, "children"> & { size?: number }) {
+}: Omit<SVGProps<SVGSVGElement>, "children"> & {
+  size?: number;
+  /** The hover text, as the mark's own SVG `<title>` (see `FactionIcon`). */
+  tooltip?: string;
+}) {
   const id = useId();
   const clip = `${id}-clip`;
   const mask = (index: number) => `${id}-mask${index}`;
@@ -33,6 +38,7 @@ export function RandomFactionMark({
       xmlns="http://www.w3.org/2000/svg"
       {...props}
     >
+      {tooltip && <title>{tooltip}</title>}
       <g clipPath={`url(#${clip})`}>
         <mask
           id={mask(0)}

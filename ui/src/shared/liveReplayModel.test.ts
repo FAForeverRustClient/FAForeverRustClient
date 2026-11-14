@@ -5,6 +5,7 @@ import {
   filterChoices,
   joinFilterChoices,
   liveFeaturedModOptions,
+  liveLineupCount,
   matchesFilterChoice,
   parseLiveFilters,
   prettyFeaturedMod,
@@ -24,6 +25,24 @@ describe("the live replay delay", () => {
     // A tick that stopped before this game started, or a clock behind the
     // server's: seven and a half minutes is not a wait the server imposes.
     expect(replayDelayRemaining(game, started - 150_000)).toBe(300);
+  });
+});
+
+describe("the live player count", () => {
+  it("counts the lineup, not the players still connected", () => {
+    // The server's count after one side of a 1v1 has left the running game.
+    const game = { players: 1, teams: { "2": ["Jalayas"], "3": ["T82"] } } as unknown as Game;
+    expect(liveLineupCount(game)).toBe(2);
+  });
+
+  it("leaves observers out", () => {
+    const game = { players: 3, teams: { "1": ["a", "b"], "-1": ["watcher"] } } as unknown as Game;
+    expect(liveLineupCount(game)).toBe(2);
+  });
+
+  it("falls back to the server's count for a game without a lineup", () => {
+    const game = { players: 4, teams: {} } as unknown as Game;
+    expect(liveLineupCount(game)).toBe(4);
   });
 });
 

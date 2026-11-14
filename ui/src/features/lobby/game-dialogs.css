@@ -910,6 +910,38 @@
   color: var(--color-muted);
 }
 
+/* "Generate map" for a generated map that is not on disk (issue 759), in the
+   preview's bottom-right corner. Labelled rather than a bare "+": the
+   picture above it is the generator's placeholder, so the button is the only
+   thing on screen that says why. */
+.host-preview-generate {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+.host-preview-generate:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+
+.host-preview-generate:disabled {
+  opacity: 0.75;
+  cursor: default;
+}
+
 /* The name, under the picture rather than dimming the corner of it. */
 .host-preview-name {
   display: flex;

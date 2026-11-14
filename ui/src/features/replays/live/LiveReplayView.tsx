@@ -16,6 +16,7 @@ import {
   DEFAULT_LIVE_FILTERS,
   LIVE_REPLAY_BATCH_SIZE,
   liveFeaturedModOptions,
+  liveLineupCount,
   liveSortValue,
   matchesFilterChoice,
   replayDelayRemaining,
@@ -104,7 +105,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   );
   const featuredMods = useMemo(() => liveFeaturedModOptions(liveGames), [liveGames]);
   const activePlayerOptions = useMemo(
-    () => [...new Set(liveGames.map((game) => game.players))].sort((a, b) => a - b),
+    () => [...new Set(liveGames.map(liveLineupCount))].sort((a, b) => a - b),
     [liveGames],
   );
   const maxPlayerOptions = useMemo(
@@ -144,10 +145,10 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
           (!search || searchText.includes(search)) &&
           matchesFilterChoice(filters.gameType, game.gameType) &&
           matchesFilterChoice(filters.featuredMod, game.modName) &&
-          matchesFilterChoice(filters.activePlayers, game.players) &&
+          matchesFilterChoice(filters.activePlayers, liveLineupCount(game)) &&
           matchesFilterChoice(filters.maxPlayers, game.maxPlayers) &&
           (!filters.hideModded || simModCount === 0) &&
-          (!filters.hideSinglePlayer || game.players !== 1) &&
+          (!filters.hideSinglePlayer || liveLineupCount(game) !== 1) &&
           (!filters.hideUnranked || ranked) &&
           (!filters.friendsOnly || players.some((name) => friendSet.has(name.toLocaleLowerCase())))
         );

@@ -17,7 +17,7 @@ import type { mapSize } from "../../shared/mapPresentation";
 import { openReviews } from "../../shared/openReviews";
 import { requestModVaultFocus } from "../../shared/modVaultFocus";
 import { useAppStore } from "../../store/store";
-import { ReplayDetailRoster } from "./ReplayRoster";
+import { ReplayDetailRoster, type KnownAvatar } from "./ReplayRoster";
 import { useHasReplayNote } from "./ReplayNotesEditor";
 import type { GeneratorProgress } from "./replayDetailPresentation";
 import type { GameRating } from "./useGameRating";
@@ -195,9 +195,11 @@ export const ReplayDetailLineup = memo(function ReplayDetailLineup({
   const socialPlayers = useAppStore((state) => state.state.social.players);
   const [showResults, setShowResults] = useState(false);
   const avatarByLogin = useMemo(() => {
-    const avatars = new Map<string, string>();
+    const avatars = new Map<string, KnownAvatar>();
     for (const player of socialPlayers) {
-      if (player.avatarUrl) avatars.set(player.login.toLocaleLowerCase(), player.avatarUrl);
+      if (player.avatarUrl) {
+        avatars.set(player.login.toLocaleLowerCase(), { url: player.avatarUrl, tooltip: player.avatarTooltip ?? "" });
+      }
     }
     return avatars;
   }, [socialPlayers]);

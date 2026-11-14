@@ -10,7 +10,7 @@ import type { Game, LiveReplayTracking } from "../../../ipc/bindings";
 import { ipc } from "../../../ipc/client";
 import { formatClockDuration, formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
 import type { MapPresentation } from "../../../shared/mapPresentation";
-import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
+import { gameStartedAt, liveLineupCount, prettyGameType } from "../../../shared/liveReplayModel";
 import { useAppStore } from "../../../store/store";
 import { MapThumbnail } from "../../../shared/components/MapThumbnail";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
@@ -356,7 +356,7 @@ export const LiveReplayRow = memo(function LiveReplayRow({
         <small>{mapLabel} · {prettyGameType(game.gameType)}</small>
       </button>
     </td>,
-    <td key={3} className="live-number-cell"><strong>{game.players}</strong><small>/ {game.maxPlayers}</small></td>,
+    <td key={3} className="live-number-cell"><strong>{liveLineupCount(game)}</strong><small>/ {game.maxPlayers}</small></td>,
     <td key={4} className="live-rating-cell">{game.averageRating > 0 ? game.averageRating : t("common.notAvailable")}</td>,
     <td key={5} className="live-host-cell"><LivePlayerName name={game.host} onMenu={onPlayerMenu} /></td>,
     <td key={6} className="live-mods-cell">
