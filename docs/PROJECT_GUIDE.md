@@ -101,7 +101,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | Path | Meaning |
 |---|---|
 | `src/lib.rs` | Re-exports (`App`, `AppLoop`, `EventSink`, `ServiceCtx`, `Ports`). |
-| `src/runtime/mod.rs` | **The loop.** `App` (handle), `AppLoop` (processes commands), `EventSink` (the *one* point where reduction + broadcasting happens), `ServiceCtx` (injected dependencies). |
+| `src/runtime/mod.rs` | **The loop.** `App` (handle), `AppLoop` (schedules prepared service work), `EventSink` (the *one* point where reduction + broadcasting happens), `ServiceCtx` (injected dependencies). Generic queued-read ordering lives in `runtime/request_order.rs`; feature-specific preparation and read identities live in `services/commands.rs`. |
 | `src/ports/mod.rs` | **`Ports`** bundle (one field per external system), injected into `ServiceCtx`. |
 | `src/ports/auth.rs` | Trait **`AuthPort`**: request/response (login/logout). |
 | `src/ports/lobby.rs` | Trait **`LobbyPort`**: *streaming* (`connect()` → receiver of game snapshots; `disconnect()` cancels). |
@@ -110,11 +110,13 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/infra/oauth.rs` | **`OAuthAuth`**: real login: FAF Ory Hydra, Authorization Code + PKCE, loopback redirect listener, token exchange, `/me` lookup, keyring storage. |
 | `src/infra/auth.rs` | **`FakeAuth`**: simulates login (offline); used by tests and `FAF_FAKE_AUTH=1`. |
 | `src/infra/session.rs` | **`TokenStore`**: in-memory access-token holder shared from auth to network ports (never in `AppState`). |
-| `src/infra/lobby_ws.rs` | **`LobbyClient`**: the real FAF lobby connection (`ask_session`→`auth`→`game_info`): the socket, the handshake, reconnecting, and what a session remembers between messages (the player directory, the game lists), then graceful disconnect. The messages themselves are decoded and encoded by `faf-domain/src/protocol/lobby.rs`. Selected automatically for account sessions; runs the bundled `faf-uid` binary (or `FAF_UID_PATH`) for the anti-smurf `unique_id`. |
+| `src/infra/lobby_ws.rs` | **`LobbyClient`**: the real FAF lobby connection (`ask_session`→`auth`→`game_info`): socket I/O, handshake timing, reconnecting and graceful disconnect. The pure `src/infra/lobby_ws/session.rs` fold owns the player directory, ratings, game lists and match state, returning ordered effects for the adapter to perform. The messages themselves are decoded and encoded by `faf-domain/src/protocol/lobby.rs`. Selected automatically for account sessions; runs the bundled `faf-uid` binary (or `FAF_UID_PATH`) for the anti-smurf `unique_id`. |
 | `src/infra/lobby.rs` | **`FakeLobby`**: sends a changing game list every 2s; cancellable like the real client. |
 | `src/infra/settings_file.rs` | **`FileSettings`**: persists settings as JSON in the OS config dir. |
 | `src/infra/settings_fake.rs` | **`FakeSettings`**: in-memory settings for tests/offline. |
 | `src/services/mod.rs` | Collection module for services. |
+| `src/services/lifecycle.rs` | Owns login-triggered lobby/chat starts and party-room membership. Connection intent changes synchronously with auth reduction; delayed starts and retries respect explicit disconnect. Connection epochs and account guards prevent room operations from reaching replacement sockets. React only renders the resulting state. |
+| `src/infra/irc_session/` | IRC decision handlers grouped by registration, membership, roster, history and messages. `irc_session.rs` applies the common history-playback guard before dispatching a line. |
 | `src/services/session.rs` | Service **session**: handshake → reports backend version. |
 | `src/services/auth.rs` | Service **auth**: command → `AuthPort` → events. |
 | `src/services/nav.rs` | Service **nav**: pure UI state transition (command → event). |
@@ -195,7 +197,7 @@ How data flows concretely: useful for debugging:
 2. `src-tauri/src/commands.rs` (command `dispatch`) pushes the `AppCommand` into the loop.
 3. `runtime/mod.rs` routes to `services/auth.rs::handle`.
 4. The service emits `LoginStarted`, calls `ctx.ports.auth.login()` (→ `OAuthAuth`: opens the browser, catches the redirect, exchanges the code, looks up `/me`), emits `LoggedIn { player }`.
-5. `EventSink::emit` reduces each event into `AppState` **and** broadcasts it.
+5. `EventSink::emit` reduces each event into `AppState` **and** broadcasts it. Auth resets also update backend connection intent before publication; `services/lifecycle.rs` starts lobby/chat and synchronizes the party room without a frontend connection effect.
 6. `src-tauri` forwards the event as `app://event` to the frontend.
 7. `ipc/client.ts` (`onEvent`) → `store.apply` → `store/reducer.ts` updates the slice.
 8. `App.tsx` sees `auth.status === "loggedIn"` → renders `AppShell`.

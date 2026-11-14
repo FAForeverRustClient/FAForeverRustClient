@@ -27,8 +27,6 @@ import {
 import "./live-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
 
-const connectLobby = () => ipc.send({ kind: "Lobby", command: { type: "connect" } });
-
 export function LiveReplayView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
@@ -85,13 +83,9 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
     });
   };
 
-  // The live-games feed only flows once the lobby websocket is connected;
-  // don't rely on the Play tab having been opened first (same auto-connect
-  // posture as LobbyView.tsx's own useEffect).
+  // The backend owns the live lobby feed. These catalogues provide map art
+  // and ranked-status metadata for the games already in state.
   useEffect(() => {
-    if (useAppStore.getState().state.lobby.status === "disconnected") {
-      connectLobby();
-    }
     ipc.send({ kind: "Maps", command: { type: "loadVault" } });
     // Both catalogues, for the same reason the Play tab loads both: "is
     // this rated" is a question about the map and about the sim mods.

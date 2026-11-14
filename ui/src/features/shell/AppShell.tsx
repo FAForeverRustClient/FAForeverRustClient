@@ -33,7 +33,6 @@ import { useTranslation } from "../../i18n/useTranslation";
 import { ReportPlayerModal } from "../reporting/ReportPlayerModal";
 import { NotificationCenter } from "../notifications/NotificationCenter";
 import { ProfileMenu, type ProfileMenuTarget } from "./ProfileMenu";
-import { partyChatChannel } from "../../shared/partyChat";
 import { PlayerName } from "../../shared/components/nameColors";
 import { useLinkRequests } from "../../shared/deepLinks";
 import "./shell.css";
@@ -70,9 +69,7 @@ export function AppShell() {
   const [deferredUpdate, setDeferredUpdate] = useState<string | null>(null);
   const activeTab = useAppStore((s) => s.state.nav.activeTab);
   const auth = useAppStore((s) => s.state.auth);
-  const chatStatus = useAppStore((s) => s.state.chat.status);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
-  const party = useAppStore((s) => s.state.lobby.party);
   // What the profile line says, from the lobby connection rather than the
   // account. It said "Online" with a green dot whenever an account was signed
   // in, so it contradicted the status bar every time FAF was unreachable.
@@ -87,8 +84,6 @@ export function AppShell() {
     connecting: t("shell.sidebar.connecting"),
     online: t("shell.sidebar.online"),
   }[presence];
-  // The party message carries ids, not names: the room name needs the owner's
-  // real login, which only the live directory has. See `partyChatChannel`.
   const social = useAppStore((s) => s.state.social);
   const player = auth.player;
   // The menu on the player's own name (#514): sign out and play offline,
@@ -106,7 +101,6 @@ export function AppShell() {
   const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(appearance.sidebarWidth));
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const joinedPartyChannelRef = useRef<string | null>(null);
   const contentRef = useRef<HTMLElement>(null);
 
   const openTab = openTabForMode(auth.mode, activeTab);
@@ -174,26 +168,6 @@ export function AppShell() {
       document.removeEventListener("mouseup", stopResize);
     };
   }, [isResizingSidebar]);
-
-  const currentPartyChannel = partyChatChannel(party, social, player);
-  useEffect(() => {
-    // Match the Java/Python lifecycle: changing leaders parts the old room and
-    // joins the new one; dissolving/leaving a party only parts. Resetting the
-    // ref while offline ensures reconnecting joins the current party again.
-    if (chatStatus !== "connected") {
-      joinedPartyChannelRef.current = null;
-      return;
-    }
-
-    const previous = joinedPartyChannelRef.current;
-    if (previous && previous !== currentPartyChannel) {
-      ipc.send({ kind: "Chat", command: { type: "leaveChannel", payload: { channel: previous } } });
-    }
-    if (currentPartyChannel && previous !== currentPartyChannel) {
-      ipc.send({ kind: "Chat", command: { type: "joinChannel", payload: { channel: currentPartyChannel } } });
-    }
-    joinedPartyChannelRef.current = currentPartyChannel;
-  }, [chatStatus, currentPartyChannel]);
 
   const handleSidebarMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     event.preventDefault();

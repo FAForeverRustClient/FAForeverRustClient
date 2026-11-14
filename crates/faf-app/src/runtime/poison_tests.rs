@@ -252,13 +252,7 @@ fn poisoned_release_order_locks_preserve_cancellation_and_read_ownership() {
         let seq = order.stamp(&first);
         let poisoned = order.clone();
         poison(move || {
-            let slot = if analysis {
-                &poisoned.analysis
-            } else {
-                &poisoned.details
-            };
-            let _guard = slot.lock().unwrap();
-            panic!("simulated replay read bookkeeping panic");
+            poisoned.reads.poison_for_test();
         });
         // Both the admission read and a later cancellation still operate on
         // the retained owner, rather than erasing unrelated pending work.
@@ -275,12 +269,7 @@ fn poisoned_release_order_locks_preserve_cancellation_and_read_ownership() {
         let second = load(2);
         let seq = order.stamp(&second);
         assert!(!order.superseded(&second, seq));
-        let slot = if analysis {
-            &order.analysis
-        } else {
-            &order.details
-        };
-        assert!(!slot.is_poisoned());
+        assert!(!order.reads.is_poisoned_for_test());
     }
 }
 
@@ -302,6 +291,38 @@ fn poisoned_running_registry_still_tracks_and_finishes_commands() {
     running.finish(first);
     running.finish(second);
     assert_eq!(running.longest(1), (0, vec![]));
+}
+
+#[test]
+fn poisoned_dispatch_sequence_retains_monotonic_read_cancellation() {
+    let _turn = take_turn();
+    let order = Arc::new(ReleaseOrder::default());
+    let command = ReplayCommand::LoadAnalysis {
+        uid: 7,
+        local_path: None,
+        request_id: Some(1),
+    }
+    .into();
+    let first = order.stamp(&command);
+    let poisoned = order.clone();
+    poison(move || {
+        let _guard = poisoned.next.lock().unwrap();
+        panic!("simulated dispatch bookkeeping panic");
+    });
+    let cancelled = order.stamp(
+        &ReplayCommand::CancelReads {
+            uid: 7,
+            local_path: None,
+            request_id: Some(1),
+        }
+        .into(),
+    );
+    assert!(cancelled > first);
+    assert!(order.superseded(&command, first));
+    let replacement = order.stamp(&command);
+    assert!(replacement > cancelled);
+    assert!(!order.superseded(&command, replacement));
+    assert!(!order.next.is_poisoned());
 }
 
 struct ErrorCount(Arc<AtomicUsize>);
