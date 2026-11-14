@@ -2,3 +2,4 @@
 - Live replays count a game's players by its lineup, so the player count, the "Active players" filter and "Hide single-player games" agree with the teams shown.
 - Games start with the game.prefs file chosen in Settings > Paths.
 - The "Match found (FAF)" notification sound now plays in installed builds.
+- Hovering a faction icon now shows the faction's name instead of the player's actions.
