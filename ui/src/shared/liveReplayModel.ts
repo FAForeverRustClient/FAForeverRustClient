@@ -59,6 +59,24 @@ export function allGamePlayers(game: Game): string[] {
   return Object.values(game.teams).flat();
 }
 
+/**
+ * How many players a live game is played by: its lineup, observers left out.
+ *
+ * Not the server's `num_players`. That counts the players still connected, so
+ * it drops as players leave a running game: a 1v1 whose loser has quit read
+ * "1 / 2" beside a lineup of two, and the "Active players" filter and "Hide
+ * single-player games" both went by that number (issue 758). The server's
+ * count is the answer only for a game that came without a lineup.
+ */
+export function liveLineupCount(game: Game): number {
+  let count = 0;
+  for (const [team, players] of Object.entries(game.teams)) {
+    if (Number(team) < 0) continue;
+    count += players.length;
+  }
+  return count > 0 ? count : game.players;
+}
+
 export function gameStartedAt(game: Game): Date | null {
   if (game.launchedAt === null || game.launchedAt <= 0) return null;
   const date = new Date(game.launchedAt * 1000);
@@ -81,7 +99,7 @@ export function liveSortValue(game: Game, key: LiveSortKey): string | number {
   switch (key) {
     case "started": return game.launchedAt ?? 0;
     case "title": return game.title.toLocaleLowerCase();
-    case "players": return game.players;
+    case "players": return liveLineupCount(game);
     case "rating": return game.averageRating;
     case "host": return game.host.toLocaleLowerCase();
     case "mods": return Object.keys(game.simMods).length;

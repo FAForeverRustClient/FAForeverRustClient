@@ -37,7 +37,7 @@ import { isObserverTeam, playerCount, ReplayDetailRoster } from "../ReplayRoster
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
-import { gameStartedAt, prettyGameType } from "../../../shared/liveReplayModel";
+import { gameStartedAt, liveLineupCount, prettyGameType } from "../../../shared/liveReplayModel";
 import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 import { formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
@@ -135,7 +135,7 @@ export function LiveReplayDetail({
   }
   facts.push({
     label: t("replays.detail.players"),
-    value: `${game.players} / ${game.maxPlayers}`,
+    value: `${liveLineupCount(game)} / ${game.maxPlayers}`,
   });
   if (game.averageRating > 0) {
     facts.push({

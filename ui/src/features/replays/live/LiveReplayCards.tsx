@@ -26,7 +26,7 @@ import { ReplayMapThumb, ReplayMetaFact, ReplayThumbGenerate, replayCardTitle } 
 import { ReplayCardRoster } from "../ReplayRoster";
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayAgeLabel, LiveWatchButton } from "./LiveReplayRow";
-import { prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
+import { liveLineupCount, prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
 import { isCoopGame } from "../../../shared/gameRules";
 import "../online-replays.css";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -216,7 +216,7 @@ const LiveReplayCard = memo(function LiveReplayCard({
           <ReplayMetaFact
             icon="users"
             label={t("replays.card.players")}
-            value={`${game.players} / ${game.maxPlayers}`}
+            value={`${liveLineupCount(game)} / ${game.maxPlayers}`}
           />
           {/* Beside the count, in the grid's wider column: "10 min ago" does
               not fit the narrow one. */}
