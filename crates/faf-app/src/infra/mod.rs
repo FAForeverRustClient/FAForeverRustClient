@@ -43,7 +43,8 @@
 //!   `chat_fake`, `settings_fake`, `tourney_fake`. The other fakes sit at the
 //!   bottom of the adapter they stand in for. [`fake_ports`] assembles the
 //!   offline bundle.
-//! * **Cross-cutting**: `session` (the access token store) and `discord`.
+//! * **Cross-cutting**: `session` (the access token store), `discord`, and
+//!   `web_link`, the socket to the web client.
 
 /// The account the offline bundle is signed in as.
 ///
@@ -141,6 +142,7 @@ pub mod unit_icons;
 pub mod updater;
 pub mod uploads;
 pub(crate) mod vault_install;
+pub mod web_link;
 pub use interrupted_work::recover_interrupted_work;
 
 pub use auth::FakeAuth;
@@ -186,6 +188,7 @@ pub use tutorials::{FakeTutorials, TutorialsClient, TutorialsConfig};
 pub use unit_history::{FakeUnitHistory, UnitHistoryClient, UnitHistoryConfig};
 pub use updater::{FakeGameUpdater, GameUpdaterClient, UpdaterConfig};
 pub use uploads::{FakeUploads, UploadsClient, UploadsConfig};
+pub use web_link::{FakeWebLink, WebLinkClient};
 
 use std::sync::Arc;
 
@@ -677,6 +680,7 @@ pub fn fake_ports() -> Ports {
         chat: Arc::new(FakeChat::default()),
         coop: Arc::new(FakeCoop),
         discord: Arc::new(FakeDiscord),
+        web_link: Arc::new(FakeWebLink),
         lobby: Arc::new(FakeLobby::default()),
         settings: Arc::new(FakeSettings::default()),
         ice: Arc::new(FakeIce),
@@ -875,11 +879,17 @@ pub fn real_ports() -> Ports {
     // presence watcher honours before anything is published.
     let discord: Arc<dyn crate::ports::DiscordPort> = Arc::new(DiscordClient::faf());
 
+    // Always built, never gated: it connects only while the player has turned
+    // the web link on and is signed in, which the service checks, and it
+    // carries the same access token every other FAF connection does.
+    let web_link: Arc<dyn crate::ports::WebLinkPort> = Arc::new(WebLinkClient::faf(tokens.clone()));
+
     Ports {
         auth: Arc::new(OAuthAuth::new(OAuthConfig::from_env(), tokens)),
         chat,
         coop,
         discord,
+        web_link,
         lobby,
         settings: Arc::new(FileSettings::faf()),
         ice,

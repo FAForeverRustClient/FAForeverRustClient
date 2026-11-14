@@ -953,6 +953,9 @@ export const INITIAL_STATE: AppState = {
       "enabled": true,
       "disallowJoins": false
     },
+    "webLink": {
+      "enabled": false
+    },
     "connectivity": {
       "adapter": "dynamic",
       "hostAdapter": "java",

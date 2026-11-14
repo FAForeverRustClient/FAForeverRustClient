@@ -176,8 +176,8 @@ pub use settings::{
     LiveReplayFilters, NotificationDelivery, NotificationPreferences, NotificationSound,
     NotificationSoundChoices, PathPreferences, PlayerNote, ReplayChatTransfers, ReplayNote,
     SearchPreset, SettingsCommand, SettingsEvent, SettingsState, SocialPreferences, Theme,
-    ToastPosition, UiDensity, UpdatePreferences, WeekStart, MAX_SIDEBAR_WIDTH, MIN_SIDEBAR_WIDTH,
-    SIDEBAR_RAIL_BELOW,
+    ToastPosition, UiDensity, UpdatePreferences, WebLinkPreferences, WeekStart, MAX_SIDEBAR_WIDTH,
+    MIN_SIDEBAR_WIDTH, SIDEBAR_RAIL_BELOW,
 };
 pub use social::{
     Contact, ContactsState, LoginLookup, PlayerLobbyRating, PlayerProfile, Relation, SocialCommand,

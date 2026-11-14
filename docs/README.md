@@ -16,6 +16,7 @@ document.
 | [`SMOKE_TEST.md`](SMOKE_TEST.md) | The checklist for a native build: joining, replays, tournaments and matchmaking against the real game and server, plus the log lines that carry the client's performance numbers. |
 | [`design-philosophy.md`](design-philosophy.md) | Why the interface looks and behaves the way it does. |
 | [`training-catalogue.md`](training-catalogue.md) | The contract for the training library's published manifest: repository layout, the manifest format, and why it is a Git document rather than a service. |
+| [`web-link.md`](web-link.md) | The web client steering this client: how the two are paired, what crosses the link, what a browser may ask for, and the deployment it runs through. [`web-link-protocol.json`](web-link-protocol.json) is the generated contract the web client tests against. |
 | [`events-catalogue.md`](events-catalogue.md) | The same, for the community calendar the Events tab reads. Says which parts of that calendar the client already knows without being told. |
 | [`env.example.txt`](env.example.txt) | Template for a local dev launch. Copy it to `docs/env.txt`, which is gitignored, and put your own paths in that copy. |
 

@@ -71,7 +71,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Lane | Policy patterns |
 |---|---|
-| `Ordinary` | 243 |
+| `Ordinary` | 244 |
 | `Priority` | 34 |
 
 ### Priority commands
@@ -100,7 +100,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `SingleFlight` | 23 |
 | `Serial` | 20 |
 | `Latest` | 5 |
-| `ServiceGuarded` | 40 |
+| `ServiceGuarded` | 41 |
 
 ### Keys
 
@@ -145,7 +145,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `ChatConnection` | `Chat::Connect` |
 | `LobbyJoin` | `Lobby::Join` |
 | `Login` | `Auth::Login`, `Auth::Logout`, `Auth::Restore` |
-| `Settings` | `Settings::AddCompanion`, `Settings::CheckInstalls`, `Settings::ClearGameCache`, `Settings::DeleteModPreset`, `Settings::DeleteSearchPreset`, `Settings::Load`, `Settings::PatchAppearance`, `Settings::PatchBrowsing`, `Settings::PatchChat`, `Settings::PatchCompanion`, `Settings::PatchConnectivity`, `Settings::PatchDebug`, `Settings::PatchDiscord`, `Settings::PatchEvents`, `Settings::PatchGame`, `Settings::PatchGeneral`, `Settings::PatchNotifications`, `Settings::PatchPaths`, `Settings::PatchUpdates`, `Settings::RefreshGameCache`, `Settings::RemoveCompanion`, `Settings::RemoveNotificationSound`, `Settings::RenameReplayTag`, `Settings::SaveModPreset`, `Settings::SaveSearchPreset`, `Settings::SetGamePath`, `Settings::SetListMember`, `Settings::SetMapGenerator`, `Settings::SetPlayerNameColor`, `Settings::SetPlayerNote`, `Settings::SetReplayGamePath`, `Settings::SetReplayNote`, `Settings::SetTheme`, `Settings::TestCompanion` |
+| `Settings` | `Settings::AddCompanion`, `Settings::CheckInstalls`, `Settings::ClearGameCache`, `Settings::DeleteModPreset`, `Settings::DeleteSearchPreset`, `Settings::Load`, `Settings::PatchAppearance`, `Settings::PatchBrowsing`, `Settings::PatchChat`, `Settings::PatchCompanion`, `Settings::PatchConnectivity`, `Settings::PatchDebug`, `Settings::PatchDiscord`, `Settings::PatchEvents`, `Settings::PatchGame`, `Settings::PatchGeneral`, `Settings::PatchNotifications`, `Settings::PatchPaths`, `Settings::PatchUpdates`, `Settings::PatchWebLink`, `Settings::RefreshGameCache`, `Settings::RemoveCompanion`, `Settings::RemoveNotificationSound`, `Settings::RenameReplayTag`, `Settings::SaveModPreset`, `Settings::SaveSearchPreset`, `Settings::SetGamePath`, `Settings::SetListMember`, `Settings::SetMapGenerator`, `Settings::SetPlayerNameColor`, `Settings::SetPlayerNote`, `Settings::SetReplayGamePath`, `Settings::SetReplayNote`, `Settings::SetTheme`, `Settings::TestCompanion` |
 
 ### Start/release pairs
 

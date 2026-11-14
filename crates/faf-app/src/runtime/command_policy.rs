@@ -832,6 +832,7 @@ fn settings(command: &SettingsCommand) -> CommandPolicy {
         | SettingsCommand::PatchChat { .. }
         | SettingsCommand::PatchGame { .. }
         | SettingsCommand::PatchDiscord { .. }
+        | SettingsCommand::PatchWebLink { .. }
         | SettingsCommand::PatchConnectivity { .. }
         | SettingsCommand::PatchDebug { .. }
         | SettingsCommand::PatchUpdates { .. }
