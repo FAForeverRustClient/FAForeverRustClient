@@ -24,7 +24,7 @@ import { usePlayerHistory } from "./usePlayerHistory";
 import { HistoryFailure } from "./HistoryFailure";
 import { HistoryBar } from "./HistoryBar";
 import { ResultFiltersMenu } from "./ResultFiltersMenu";
-import { CardFootnote, RecordBar, Signed } from "./StatParts";
+import { Signed, StatTiles, TabCard } from "./StatParts";
 import { filterResults, NO_RESULT_FILTERS, type ResultFilters } from "./resultFilters";
 
 /** Rows added per press of "Show more". A long history is thousands. */
@@ -58,6 +58,29 @@ function tally(games: readonly { outcome: string }[]) {
     else if (game.outcome === "draw") record.draws += 1;
   }
   return record;
+}
+
+/** One decimal place, signed the way a change reads: +12.5, -3.0. */
+function signedDecimal(value: number): string {
+  const text = formatDecimal(Math.abs(value));
+  return value > 0 ? `+${text}` : value < 0 ? `-${text}` : text;
+}
+
+/**
+ * What `games` did to the rating: the sum of every change, and that sum
+ * spread over the games that changed it. A game with no rating data adds
+ * nothing and is not counted, so an unrated game does not pull the average
+ * towards zero. `null` when none of them has a change.
+ */
+function ratingSummary(games: readonly { ratingChangeHundredths: number | null }[]) {
+  let total = 0;
+  let rated = 0;
+  for (const game of games) {
+    if (game.ratingChangeHundredths === null) continue;
+    total += game.ratingChangeHundredths;
+    rated += 1;
+  }
+  return rated > 0 ? { total: total / 100, average: total / 100 / rated } : null;
 }
 
 /**
@@ -106,33 +129,63 @@ export function PlayerResults({ playerId }: { playerId: number }) {
 
   const hidden = stats.totalGames - allGames.length;
   const rows = games.slice(0, shown);
-  const record = tally(rows);
+  // Over every game the filters keep, not only the rows "Show more" has
+  // reached: the tiles answer "how did these games go", whatever is scrolled.
+  const record = tally(games);
   const rate = winRate(record.wins, record.losses);
+  const rating = ratingSummary(games);
+  const ratedGames = games.filter((game) => game.ratingChangeHundredths !== null).length;
 
   return (
     <div className="player-results-view">
       <HistoryBar stats={stats} full={full} onLoadFull={loadFull} />
 
-      {/* One card: the record of what is listed and the filters across from
-          it in the head, where the Chat tab keeps its roster's (#646), the
-          record's shape as a bar under them, and the games below. */}
-      <section className="player-tab-card surface-panel player-results-card">
-        <div className="player-results-toolbar">
-          {/* The rows on screen, not the whole history: the Maps tab already
-              gives the record over everything, and this follows "Show more". */}
-          <p className="player-results-summary" aria-live="polite">
-            <span className="muted">{t("playerCard.results.shownSummary", { count: rows.length })}</span>{" "}
-            {t("playerCard.maps.recordSplit", {
+      {/* The Maps tab's three tiles, over the filtered games, so a filter
+          change reads in them at once. */}
+      <StatTiles
+        columns={3}
+        tiles={[
+          {
+            label: t("playerCard.maps.gamesTotal"),
+            value: formatNumber(games.length),
+            detail: t("playerCard.maps.gamesSplit", {
+              ranked: formatNumber(ratedGames),
+              unranked: formatNumber(games.length - ratedGames),
+            }),
+          },
+          {
+            label: t("playerCard.maps.winRate"),
+            value: rate === null ? "–" : `${formatDecimal(rate)}%`,
+            empty: rate === null,
+            record,
+            detail: t("playerCard.maps.recordSplit", {
               wins: formatNumber(record.wins),
               losses: formatNumber(record.losses),
               draws: formatNumber(record.draws),
-            })}
-            {rate !== null && (
+            }),
+          },
+          {
+            label: t("playerCard.results.ratingTotal"),
+            value: rating ? <Signed value={rating.total}>{signedDecimal(rating.total)}</Signed> : "–",
+            empty: rating === null,
+            detail: rating ? (
               <>
-                <span className="muted"> · {t("playerCard.maps.winRate")}</span> <strong>{formatDecimal(rate)}%</strong>
+                <Signed value={rating.average}>{signedDecimal(rating.average)}</Signed>{" "}
+                {t("playerCard.results.ratingAverage")}
               </>
-            )}
-          </p>
+            ) : t("playerCard.results.noRating"),
+          },
+        ]}
+      />
+
+      {/* The games, under the Maps tab's card head: title and count at the
+          start, the filters at the far end where the Maps tab has its search. */}
+      <TabCard
+        title={t("playerCard.tab.results")}
+        count={formatNumber(games.length)}
+        className="player-results-card"
+        footnote={t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}
+        actions={
           <ResultFiltersMenu
             filters={filters}
             queues={queueOptions}
@@ -141,9 +194,8 @@ export function PlayerResults({ playerId }: { playerId: number }) {
               setShown(PAGE);
             }}
           />
-        </div>
-        <RecordBar {...record} />
-
+        }
+      >
         {games.length === 0 && (
           <p className="player-tab-card-empty muted">{t("playerCard.results.filter.empty")}</p>
         )}
@@ -240,12 +292,7 @@ export function PlayerResults({ playerId }: { playerId: number }) {
             </Button>
           </div>
         )}
-
-        {/* Said, the way the tracker says it: the list is the games whose
-            outcome is known, and the rest of the history is not missing by
-            accident. At the foot of the list it is about. */}
-        <CardFootnote>{t("playerCard.results.note", { hidden: formatNumber(Math.max(0, hidden)) })}</CardFootnote>
-      </section>
+      </TabCard>
     </div>
   );
 }

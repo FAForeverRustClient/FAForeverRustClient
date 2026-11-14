@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 //
-// The results list: its record line (wins, losses and draws among the rows on
-// screen, and the win rate by the Maps tab's rule, draws left out, following
-// "Show more" as it adds rows), and the small map picture on every row.
+// The results list: its three tiles (games, the win rate by the Maps tab's
+// rule, draws left out, and the rating change over every filtered game, not
+// only the rows "Show more" has reached), the history bar only while part of
+// the history is unread, and the small map picture on every row.
 
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -18,7 +19,7 @@ failOnConsoleError();
 
 const PLAYER = 7;
 
-function game(gameId: number, outcome: "win" | "loss" | "draw"): PlayerGameResult {
+function game(gameId: number, outcome: "win" | "loss" | "draw", ratingChangeHundredths: number | null = null): PlayerGameResult {
   return {
     gameId,
     playedAt: "2026-10-05T22:00:00Z",
@@ -27,7 +28,7 @@ function game(gameId: number, outcome: "win" | "loss" | "draw"): PlayerGameResul
     mapFolder: "canis_river.v0003",
     generated: false,
     outcome,
-    ratingChangeHundredths: null,
+    ratingChangeHundredths,
   };
 }
 
@@ -42,7 +43,7 @@ function history(): PlayerGameResult[] {
   return outcomes.map((outcome, index) => game(1000 + index, outcome));
 }
 
-function mount(games: PlayerGameResult[] = history()) {
+function mount(games: PlayerGameResult[] = history(), truncated = false) {
   const stats: PlayerMapStats = {
     totalGames: games.length + 3,
     rankedGames: games.length,
@@ -53,7 +54,7 @@ function mount(games: PlayerGameResult[] = history()) {
     unattributed: 0,
     queues: [],
     maps: [],
-    truncated: false,
+    truncated,
     playerId: PLAYER,
     games,
   };
@@ -64,18 +65,41 @@ function mount(games: PlayerGameResult[] = history()) {
   render(<PlayerResults playerId={PLAYER} />);
 }
 
-const summary = () => screen.getByText(/games shown/).closest("p")?.textContent ?? "";
+/** A tile's label and everything under it, as one string. */
+const tile = (label: string) => screen.getByText(label, { selector: "dt" }).parentElement?.textContent ?? "";
 
-describe("PlayerResults record line", () => {
-  it("sums up the rows on screen and follows Show more", async () => {
+describe("PlayerResults tiles", () => {
+  it("sum up every filtered game, not only the rows on screen", async () => {
     const user = userEvent.setup();
     mount();
 
-    expect(summary()).toBe("Of the 50 games shown: Won 30 · Lost 18 · Drawn 2 · Win rate 62.5%");
+    expect(tile("Games")).toBe("Games60Ranked 0 · Unranked 60");
+    expect(tile("Win rate")).toBe("Win rate69.0%Won 40 · Lost 18 · Drawn 2");
+    expect(tile("Rating")).toBe("Rating–No rating data");
 
     await user.click(screen.getByRole("button", { name: "Show more (50/60)" }));
 
-    expect(summary()).toBe("Of the 60 games shown: Won 40 · Lost 18 · Drawn 2 · Win rate 69.0%");
+    expect(tile("Win rate")).toBe("Win rate69.0%Won 40 · Lost 18 · Drawn 2");
+  });
+
+  it("add the rating change and its average over the rated games", () => {
+    // +15 and -5 rated, the third without rating data: +10 in all, +5 a game.
+    mount([game(1, "win", 1500), game(2, "loss", -500), game(3, "win", null)]);
+
+    expect(tile("Games")).toBe("Games3Ranked 2 · Unranked 1");
+    expect(tile("Rating")).toBe("Rating+10.0+5.0 per game");
+  });
+});
+
+describe("PlayerResults history bar", () => {
+  it("is left out once the whole history is read", () => {
+    mount();
+    expect(screen.queryByText("All games")).toBeNull();
+  });
+
+  it("is there while part of the history is unread", () => {
+    mount(history(), true);
+    expect(screen.getByRole("button", { name: "Load full history" })).toBeTruthy();
   });
 });
 

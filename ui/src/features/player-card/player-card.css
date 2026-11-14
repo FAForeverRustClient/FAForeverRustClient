@@ -2185,17 +2185,7 @@ button.player-avatar-tile:disabled {
 .player-results-view {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* The record across from the Filters button, right above the table
-   (issue 646). */
-.player-results-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-width: 0;
+  gap: 12px;
 }
 
 /* The roster's filter button from the Chat tab, with its word: it says when
@@ -2299,25 +2289,41 @@ button.player-avatar-tile:disabled {
   font-variant-numeric: tabular-nums;
 }
 
+/* From and to side by side, each with its word over the field. */
+.player-results-filter-dates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.player-results-filter-date {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.player-results-filter-date-input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.player-results-filter-date-input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -1px;
+}
+
 .player-results-filter-footer {
   display: flex;
   justify-content: flex-end;
-}
-
-/* The record of the rows on screen, across from the note: the note says what
-   is listed, this sums it up. */
-.player-results-summary {
-  margin: 0;
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.player-results-summary strong {
-  color: var(--color-text);
-  font-weight: 600;
 }
 
 .player-results-table th,
@@ -3039,12 +3045,6 @@ img.player-results-map-thumb {
   color: var(--color-error-text);
 }
 
-/* The Results card: the record and the filters in the head, its bar under
-   them, then the games. */
-.player-results-card > .player-record-bar {
-  height: 6px;
-}
-
 /* ── History bar and card notes ───────────────────────────────────────── */
 /* The bar every history tab opens on (`HistoryBar`): the tab's own switch at
    its start, how much of the history is read, and the way to the rest at the
@@ -3071,6 +3071,12 @@ img.player-results-map-thumb {
   align-items: center;
   padding-right: var(--space-3);
   border-right: 1px solid var(--color-border);
+}
+
+/* A tab's switch with no bar around it, once the whole history is read. */
+.player-history-switch {
+  display: flex;
+  align-items: center;
 }
 
 .player-history-bar-scope {

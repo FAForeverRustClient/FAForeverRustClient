@@ -38,11 +38,11 @@ describe("HistoryBar", () => {
     expect(onLoadFull).toHaveBeenCalledOnce();
   });
 
-  it("says the whole history is read, with nothing to load", () => {
-    render(<HistoryBar stats={stats(false)} full={false} onLoadFull={() => {}} />);
+  it("is left out once the whole history is read", () => {
+    const { container } = render(<HistoryBar stats={stats(false)} full={false} onLoadFull={() => {}} />);
 
-    expect(screen.getByText("All games")).toBeTruthy();
-    expect(screen.queryByRole("button")).toBeNull();
+    expect(container.firstChild).toBeNull();
+    expect(screen.queryByText("All games")).toBeNull();
   });
 
   it("keeps the scan's ceiling said once the whole history was asked for", () => {
@@ -54,12 +54,24 @@ describe("HistoryBar", () => {
 
   it("puts the tab's own switch at its start", () => {
     render(
-      <HistoryBar stats={stats(false)} full={false} onLoadFull={() => {}}>
+      <HistoryBar stats={stats(true)} full={false} onLoadFull={() => {}}>
         <button type="button">Performance</button>
       </HistoryBar>,
     );
 
     const start = screen.getByRole("button", { name: "Performance" }).parentElement;
     expect(start?.classList.contains("player-history-bar-start")).toBe(true);
+  });
+
+  it("keeps the tab's own switch, without the bar, once the whole history is read", () => {
+    render(
+      <HistoryBar stats={stats(false)} full={false} onLoadFull={() => {}}>
+        <button type="button">Performance</button>
+      </HistoryBar>,
+    );
+
+    const holder = screen.getByRole("button", { name: "Performance" }).parentElement;
+    expect(holder?.classList.contains("player-history-switch")).toBe(true);
+    expect(screen.queryByText("All games")).toBeNull();
   });
 });

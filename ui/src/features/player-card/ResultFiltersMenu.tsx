@@ -7,6 +7,7 @@
 // dropdown was cramped into the width of its trigger.
 
 import { useEffect, useRef, useState } from "react";
+import { DateInput } from "../../design-system/DateInput";
 import { Icon } from "../../design-system/Icon";
 import { OverlayParentContext, useOverlayLayer } from "../../design-system/useOverlayLayer";
 import { useTranslation } from "../../i18n/useTranslation";
@@ -27,7 +28,12 @@ interface Props {
 
 /** How many filters are set, for the count on the button. */
 export function activeResultFilterCount(filters: ResultFilters): number {
-  return (filters.rated === "all" ? 0 : 1) + filters.queues.length;
+  return (
+    (filters.rated === "all" ? 0 : 1) +
+    filters.queues.length +
+    (filters.from === "" ? 0 : 1) +
+    (filters.to === "" ? 0 : 1)
+  );
 }
 
 export function ResultFiltersMenu({ filters, onChange, queues }: Props) {
@@ -93,6 +99,34 @@ export function ResultFiltersMenu({ filters, onChange, queues }: Props) {
                     {t(option.label)}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="player-results-filter-row">
+              <span className="player-results-filter-label">{t("playerCard.results.filter.period")}</span>
+              {/* Either end may stay empty: only "from" is every game since,
+                  only "to" every game up to and including that day. */}
+              <div className="player-results-filter-dates">
+                <label className="player-results-filter-date">
+                  <span className="muted">{t("playerCard.results.filter.from")}</span>
+                  <DateInput
+                    className="player-results-filter-date-input"
+                    value={filters.from}
+                    max={filters.to || undefined}
+                    aria-label={t("playerCard.results.filter.from")}
+                    onChange={(value) => onChange({ ...filters, from: value })}
+                  />
+                </label>
+                <label className="player-results-filter-date">
+                  <span className="muted">{t("playerCard.results.filter.to")}</span>
+                  <DateInput
+                    className="player-results-filter-date-input"
+                    value={filters.to}
+                    min={filters.from || undefined}
+                    aria-label={t("playerCard.results.filter.to")}
+                    onChange={(value) => onChange({ ...filters, to: value })}
+                  />
+                </label>
               </div>
             </div>
 
