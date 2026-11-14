@@ -14,7 +14,7 @@
 // Which rooms exist is decided server-side by permission, so nothing is
 // filtered here: a room this account may not see simply never arrives.
 
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import { SectionTabs, sectionPanelProps, type SectionTab } from "../../../design-system/SectionTabs";
@@ -42,7 +42,7 @@ const ROOM_TABS_ID = "tournament-chat-room";
  * gets no claim made about it.
  */
 function roomAudience(room: ChatRoom): MessageKey | null {
-  if (room.id === "global") return "tournaments.chat.audienceGlobal";
+  if (room.id === GLOBAL_ROOM) return "tournaments.chat.audienceGlobal";
   if (room.id.startsWith("match:")) return "tournaments.chat.matchChatHint";
   return null;
 }
@@ -59,6 +59,9 @@ interface ChatPanelProps {
   /** The room kept open beside the sections. */
   pinnedRoomId: string | null;
 }
+
+/** The event-wide room every entrant shares. */
+const GLOBAL_ROOM = "global";
 
 /**
  * Memoised: a pinned room's poll redraws the pane beside this tab every few
@@ -78,6 +81,13 @@ export const ChatPanel = memo(function ChatPanel({
   /** Finished matches start folded away, which is the whole point of the group. */
   const [showCompleted, setShowCompleted] = useState(false);
   const [searchRequest, setSearchRequest] = useState(0);
+  // Opening the tab is asking for the chat: the event-wide room opens by
+  // itself rather than after a click on its tab. Only while nothing is open,
+  // so a match room opened from elsewhere stays the one shown.
+  const hasGlobal = rooms.some((room) => room.id === GLOBAL_ROOM);
+  useEffect(() => {
+    if (openRoomId === null && hasGlobal) chat.openRoom(GLOBAL_ROOM);
+  }, [openRoomId, hasGlobal, chat]);
 
   if (rooms.length === 0) {
     return <p className="muted">{t("tournaments.chat.none")}</p>;
