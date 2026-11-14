@@ -7667,6 +7667,14 @@
   min-width: 0;
 }
 
+/* At least a window tall under the tabs, so a short section (News, say)
+   opened while the page is scrolled down a little leaves the page where it
+   was. Shorter, the page could not stay scrolled that far, snapped back, and
+   the title slid down into view on every switch. The chat sizes its own row. */
+.tournament-body-row:not(.is-fill) {
+  min-height: 100vh;
+}
+
 /* The chat's row: as tall as the pane leaves it, its section stretched to that
    height so the log inside can fill it. */
 .tournament-body-row.is-fill {
