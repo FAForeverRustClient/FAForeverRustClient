@@ -679,6 +679,12 @@ interface Props {
   playerName: string;
   searching: boolean;
   selectedFactions?: string[];
+  /**
+   * The Java client's party row (Java Client theme): "Your party:" with
+   * Invite and Leave beside it, always there and disabled when they do
+   * nothing, and no invite seat among the members.
+   */
+  javaLayout?: boolean;
 }
 
 /**
@@ -693,6 +699,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
   playerName,
   searching,
   selectedFactions,
+  javaLayout = false,
 }: Props) {
   const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -743,7 +750,29 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
   const canInvite = members.length < PARTY_CAPACITY;
 
   return (
-    <section className="matchmaker-card surface-panel party-strip">
+    <section className={javaLayout ? "party-strip is-java" : "matchmaker-card surface-panel party-strip"}>
+      {javaLayout ? (
+        <div className="java-tmm-party-head">
+          <h2 className="java-tmm-heading">{t("lobby.matchmaker.java.partyTitle")}</h2>
+          <button
+            type="button"
+            className="java-tmm-outline is-invite"
+            disabled={!canInvite || !canManageParty || searching}
+            title={searching ? t("lobby.party.lockedWhileSearching") : !canManageParty ? t("lobby.party.leaderOnly") : undefined}
+            onClick={() => setInviteOpen(true)}
+          >
+            {t("lobby.matchmaker.java.invitePlayers")}
+          </button>
+          <button
+            type="button"
+            className="java-tmm-outline is-leave"
+            disabled={!isParty || searching}
+            onClick={() => ipc.send({ kind: "Lobby", command: { type: "leaveParty" } })}
+          >
+            {t("lobby.party.leave")}
+          </button>
+        </div>
+      ) : (
       <div className="party-strip-head">
         <div>
           <span className="matchmaker-kicker">{t("lobby.party.yours")}</span>
@@ -777,9 +806,12 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
           )}
         </div>
       </div>
+      )}
 
       <div className="party-seats">
-        {members.map((member) => {
+        {/* The Java client lists members only once there is a party: alone,
+            the player card above is the only seat. */}
+        {(!javaLayout || isParty) && members.map((member) => {
           const leader = member.playerId === party.ownerId || (!isParty && member.playerId === playerId);
           const avatar = avatarFor(member);
           const kickable = canManageParty && member.playerId !== playerId;
@@ -838,7 +870,7 @@ export const MatchmakerPartyPanel = memo(function MatchmakerPartyPanel({
             </div>
           );
         })}
-        {canInvite && (
+        {canInvite && !javaLayout && (
           <button
             type="button"
             className="party-seat party-seat-invite"
