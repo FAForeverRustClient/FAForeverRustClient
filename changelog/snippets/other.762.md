@@ -1,0 +1,3 @@
+- No visible changes: connection and party chat lifecycles now run in the backend.
+- No visible changes: command scheduling uses shared request ordering and service-owned preparation.
+- No visible changes: lobby and chat protocol handling is split into smaller modules.
