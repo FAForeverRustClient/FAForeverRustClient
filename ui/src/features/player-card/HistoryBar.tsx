@@ -8,10 +8,12 @@
 // That used to be a muted sentence with a primary button in the middle of it,
 // placed wherever each tab had room: under the figures on one tab, above them
 // on another, beside a note on the third. Now it is one bar, first on all
-// three, in the same place, saying the scope even when it is the whole
-// history, so it reads as part of the tab rather than something dropped into
-// it. A control that switches the whole tab (the Statistics tab's Performance
-// and Activity) goes at the bar's start.
+// three, in the same place. A control that switches the whole tab (the
+// Statistics tab's Performance and Activity) goes at the bar's start.
+//
+// Only while part of the history is unread: once all of it is here, an
+// "All games" bar says nothing the figures under it do not, so it is left
+// out, and a tab's own switch stands on its own in its place.
 
 import type { ReactNode } from "react";
 import { Button } from "../../design-system/Button";
@@ -33,23 +35,23 @@ export function HistoryBar({
   children?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const partial = stats.truncated;
-  const scope = partial
-    ? t("playerCard.history.gameCount.last", { count: formatNumber(stats.totalGames) })
-    : t("playerCard.history.gameCount.all");
+  if (!stats.truncated) {
+    return children ? <div className="player-history-switch">{children}</div> : null;
+  }
+  const scope = t("playerCard.history.gameCount.last", { count: formatNumber(stats.totalGames) });
   // Said plainly rather than hidden: the numbers cover a prefix of the
   // history, and even the whole scan, once asked for, has a ceiling.
-  const explanation = !partial ? null : full ? t("playerCard.maps.truncated") : t("playerCard.history.recentOnly");
+  const explanation = full ? t("playerCard.maps.truncated") : t("playerCard.history.recentOnly");
 
   return (
     <div className="player-history-bar surface-panel">
       {children && <div className="player-history-bar-start">{children}</div>}
       <p className="player-history-bar-scope">
-        <Icon name={partial ? "hourglass" : "check"} size={14} />
+        <Icon name="hourglass" size={14} />
         <strong>{scope}</strong>
-        {explanation && <span className="player-history-bar-note">{explanation}</span>}
+        <span className="player-history-bar-note">{explanation}</span>
       </p>
-      {partial && !full && (
+      {!full && (
         <Button className="player-history-bar-action" onClick={onLoadFull}>
           <Icon name="download" size={14} />
           {t("playerCard.history.loadAll")}

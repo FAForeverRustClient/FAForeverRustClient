@@ -1,0 +1,3 @@
+- A player profile's Results tab can be filtered by date: every game from a day, up to a day, or between two days.
+- The Results tab opens on three tiles for the filtered games, as the Maps tab does: games, win rate, and the rating gained or lost with the average per game.
+- The Results, Maps and Statistics tabs show the history bar only while part of the history is still unloaded.
