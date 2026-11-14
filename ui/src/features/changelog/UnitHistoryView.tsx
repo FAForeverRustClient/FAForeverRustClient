@@ -846,8 +846,7 @@ function SourceTag({ release, t }: { release: UnitRelease | undefined; t: Transl
   return <span className="unit-history-source">{t("changelog.units.baseGame")}</span>;
 }
 
-/** A change the way the patch notes print one: the old value struck through
- * in red, an arrow, the new value in green, and how far it moved. */
+/** Neutral old/new values with a separate delta colored by the stat's effect. */
 function ChangeLine({ change, history, t }: { change: UnitChange; history: UnitHistory; t: Translate }) {
   switch (change.type) {
     case "added":

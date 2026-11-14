@@ -16,18 +16,8 @@ use faf_domain::state::{
 use serde_json::Value;
 use tokio::sync::mpsc;
 
-/// Operational severity attached to a lobby `notice` frame.
-///
-/// `Kill` and `Kick` are commands as well as presentation hints: the former
-/// terminates the active FA process, while the latter ends this lobby session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ServerNoticeStyle {
-    Info,
-    Warning,
-    Error,
-    Kill,
-    Kick,
-}
+/// How the server means a `notice`: a wire type, so it is the protocol's.
+pub use faf_domain::protocol::lobby::ServerNoticeStyle;
 
 /// One thing the lobby connection tells us about. Game-list snapshots, join
 /// replies, and in-game relay traffic all travel the same socket, so they share

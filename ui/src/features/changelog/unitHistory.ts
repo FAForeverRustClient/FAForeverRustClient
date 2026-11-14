@@ -5,6 +5,9 @@
 import type { UnitChange, UnitHistory, UnitKind, UnitStat, UnitSummary, UnitValueKey, WeaponStat } from "../../ipc/bindings";
 import type { MessageKey } from "../../i18n";
 import { formatNumber } from "../../i18n";
+import { valueVerdict, type Verdict } from "../../shared/balanceVerdict";
+
+export { valueVerdict, type Verdict } from "../../shared/balanceVerdict";
 
 type Translate = (key: MessageKey, params?: Record<string, string | number>) => string;
 
@@ -375,33 +378,6 @@ export function factsLayout(count: number): { shown: number; columns: 2 | 3 | 4 
 export function changePercent(before: number | null, after: number | null): string | null {
   if (before === null || after === null || before === 0 || before === after) return null;
   return formatPercentChange((after / before) * 100);
-}
-
-/** Whether a change made the unit stronger or weaker. */
-export type Verdict = "buff" | "nerf";
-
-/** Values a unit is better off with less of: what it costs, how long it takes
- * to build, what it draws, and how close an enemy can get under its guns. */
-const LOWER_IS_BETTER: ReadonlySet<UnitStat | WeaponStat> = new Set<UnitStat | WeaponStat>([
-  "massCost",
-  "energyCost",
-  "buildTime",
-  "energyUpkeep",
-  "minRange",
-]);
-
-/** Values that say nothing on their own: a longer salvo delay or burn can be
- * the price of more damage, which DPS already counts. */
-const NO_VERDICT: ReadonlySet<UnitStat | WeaponStat> = new Set<UnitStat | WeaponStat>(["salvoDelay", "dotTime"]);
-
-/** A value going from `before` to `after` as a buff or a nerf, `null` when it
- * is neither or the value has no better direction. */
-export function valueVerdict(key: UnitValueKey, before: number | null, after: number | null): Verdict | null {
-  if (before === null || after === null || before === after) return null;
-  const stat = key.payload.stat;
-  if (NO_VERDICT.has(stat)) return null;
-  const up = after > before;
-  return up !== LOWER_IS_BETTER.has(stat) ? "buff" : "nerf";
 }
 
 /** What one release did to a unit, by its value changes: all buffs, all

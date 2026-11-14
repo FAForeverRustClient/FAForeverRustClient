@@ -91,6 +91,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/events.rs` | **`AppEvent`**: enum-of-enums, one variant per slice. The only mutation source. |
 | `src/commands.rs` | **`AppCommand`**: enum-of-enums, intentions from the UI. |
 | `src/reducer.rs` | **`reduce()`**: the entire mutation surface of the app. Pure, total, tested. |
+| `src/protocol/` | Wire codecs, pure: one module per external protocol. `protocol/lobby.rs` is the lobby's: **`ServerMessage::decode`** reads a message from the server into a typed value, **`ClientMessage`** is everything the client sends, and `protocol/lobby/` holds one file per message family (players, games, matchmaker, notices). |
 
 > **Slice structure:** Each `state/<name>.rs` contains exactly four things: its `State`, its
 > `Event`s, its `Command`s, and its pure `reduce()` function. Plus unit tests.
@@ -109,7 +110,7 @@ The heart. Types, state, and the reducer live here. Trivially testable.
 | `src/infra/oauth.rs` | **`OAuthAuth`**: real login: FAF Ory Hydra, Authorization Code + PKCE, loopback redirect listener, token exchange, `/me` lookup, keyring storage. |
 | `src/infra/auth.rs` | **`FakeAuth`**: simulates login (offline); used by tests and `FAF_FAKE_AUTH=1`. |
 | `src/infra/session.rs` | **`TokenStore`**: in-memory access-token holder shared from auth to network ports (never in `AppState`). |
-| `src/infra/lobby_ws.rs` | **`LobbyClient`**: real FAF lobby WebSocket protocol (`ask_session`→`auth`→`game_info`), game-list aggregation, graceful disconnect. Selected automatically for account sessions; runs the bundled `faf-uid` binary (or `FAF_UID_PATH`) for the anti-smurf `unique_id`. |
+| `src/infra/lobby_ws.rs` | **`LobbyClient`**: the real FAF lobby connection (`ask_session`→`auth`→`game_info`): the socket, the handshake, reconnecting, and what a session remembers between messages (the player directory, the game lists), then graceful disconnect. The messages themselves are decoded and encoded by `faf-domain/src/protocol/lobby.rs`. Selected automatically for account sessions; runs the bundled `faf-uid` binary (or `FAF_UID_PATH`) for the anti-smurf `unique_id`. |
 | `src/infra/lobby.rs` | **`FakeLobby`**: sends a changing game list every 2s; cancellable like the real client. |
 | `src/infra/settings_file.rs` | **`FileSettings`**: persists settings as JSON in the OS config dir. |
 | `src/infra/settings_fake.rs` | **`FakeSettings`**: in-memory settings for tests/offline. |
