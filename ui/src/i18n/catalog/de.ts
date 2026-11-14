@@ -4822,12 +4822,6 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.game.borderlessWindow": "Randloses Fenster",
   "settings.game.forceAffinity": "Spiel von den ersten CPU-Kernen fernhalten",
   "settings.game.forceAffinityHint": "Auf Rechnern mit sechs oder mehr logischen Kernen meidet Forged Alliance die ersten beiden, auf denen das System den Großteil seiner eigenen Arbeit erledigt. Gilt ab dem nächsten Spiel.",
-  "settings.game.engine": "Spiel-Engine",
-  "settings.game.engineHint": "faf-re ist die aus dem Quelltext neu gebaute Engine von Forged Alliance. Sie spielt dieselben Spiele mit denselben Dateien und mit Spielern auf der Original-Engine. Replays öffnen immer im Original. Gilt ab dem nächsten Spiel.",
-  "settings.game.engine.original": "Forged Alliance (Original)",
-  "settings.game.engine.rebuilt": "faf-re (neu gebaute Engine)",
-  "settings.game.engineExe": "faf-re-Programm",
-  "settings.game.engineExeMissing": "main_x64.exe aus einem faf-re-Build auswählen",
   "lobby.joinDownload.title": "Diese Lobby braucht Mods, die du nicht hast",
   "lobby.joinDownload.body": {
     one: "Der Beitritt zu „{title}“ lädt 1 Simulationsmod herunter:",

@@ -1,4 +1,3 @@
-- Games can be played on faf-re, the Forged Alliance engine rebuilt from source: Settings, Game, Game engine.
 - On Linux, a new game install and the replay folder go to ~/.local/share/faforever instead of a folder in your home directory. An existing ~/.faforever is still used.
 - The client keeps a weekly copy of your game.prefs (the last three), so key bindings and game options survive a bad write. Open them from Settings, Paths.
 - A map in the matchmaker's map pool can be hosted as a custom game straight from its large preview.

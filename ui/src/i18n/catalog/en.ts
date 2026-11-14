@@ -5249,14 +5249,6 @@ export const en = {
   "settings.game.borderlessWindow": "Borderless window",
   "settings.game.forceAffinity": "Keep the game off the first CPU cores",
   "settings.game.forceAffinityHint": "On computers with six or more logical cores, Forged Alliance skips the first two, where the system does most of its own work. Applies from the next game.",
-  // Which program plays the game: the original, or faf-re, the engine
-  // rebuilt from source. The project's name stays as it is in every language.
-  "settings.game.engine": "Game engine",
-  "settings.game.engineHint": "faf-re is the Forged Alliance engine rebuilt from source. It plays the same games with the same files and players on the original engine. Replays always open on the original. Applies from the next game.",
-  "settings.game.engine.original": "Forged Alliance (original)",
-  "settings.game.engine.rebuilt": "faf-re (rebuilt engine)",
-  "settings.game.engineExe": "faf-re executable",
-  "settings.game.engineExeMissing": "Choose main_x64.exe from a faf-re build",
   // Joining used to fetch whatever a lobby required the moment you
   // double-clicked it. Two dialogs answer that: what is about to arrive, and
   // then what is arriving.

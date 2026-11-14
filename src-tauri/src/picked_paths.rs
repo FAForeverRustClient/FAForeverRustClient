@@ -226,19 +226,10 @@ where
         PathRule::Launch(patch) if patch.companions.is_some() => {
             Err("companion programs are changed one entry at a time".into())
         }
-        PathRule::Launch(patch) => {
-            let current = settings().game;
-            // The rebuilt engine is a program the client starts in place of
-            // the game, so it is held to what the game path is: picked here,
-            // already stored, or cleared.
-            if let Some(exe) = &patch.rebuilt_engine_exe {
-                admit_path(picked, exe, &current.rebuilt_engine_exe)?;
-            }
-            match launch_change(patch, &current) {
-                Some(change) => confirm(change).await,
-                None => Ok(()),
-            }
-        }
+        PathRule::Launch(patch) => match launch_change(patch, &settings().game) {
+            Some(change) => confirm(change).await,
+            None => Ok(()),
+        },
         PathRule::AddCompanion(companion) => {
             if companion.has_command() {
                 Err("a new companion entry starts without a program".into())
@@ -476,10 +467,6 @@ fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Opt
         borderless_window: _,
         auto_update_map_and_mods: _,
         force_affinity: _,
-        // Admitted as a picked path before this is asked, and switching it
-        // on can only start the executable that was picked.
-        rebuilt_engine: _,
-        rebuilt_engine_exe: _,
     } = patch;
     let wrapper = launch_wrapper
         .as_deref()
@@ -873,52 +860,6 @@ mod tests {
         .into();
         assert!(
             check(&reset, &PickedPaths::default(), SettingsState::default())
-                .await
-                .is_ok()
-        );
-    }
-
-    #[tokio::test]
-    async fn the_rebuilt_engine_must_be_picked_like_the_game() {
-        let set = |exe: &str| -> AppCommand {
-            SettingsCommand::PatchGame {
-                patch: Box::new(GamePreferencesPatch {
-                    rebuilt_engine: Some(true),
-                    rebuilt_engine_exe: Some(exe.into()),
-                    ..Default::default()
-                }),
-            }
-            .into()
-        };
-        let picked = PickedPaths::default();
-        assert!(
-            check(&set("C:/evil.exe"), &picked, SettingsState::default())
-                .await
-                .is_err()
-        );
-        picked.remember("D:/faf-re/main_x64.exe");
-        assert!(check(
-            &set("D:/faf-re/main_x64.exe"),
-            &picked,
-            SettingsState::default()
-        )
-        .await
-        .is_ok());
-        // Clearing it, and switching it alone, start nothing new.
-        assert!(
-            check(&set(""), &PickedPaths::default(), SettingsState::default())
-                .await
-                .is_ok()
-        );
-        let switch = SettingsCommand::PatchGame {
-            patch: Box::new(GamePreferencesPatch {
-                rebuilt_engine: Some(false),
-                ..Default::default()
-            }),
-        }
-        .into();
-        assert!(
-            check(&switch, &PickedPaths::default(), SettingsState::default())
                 .await
                 .is_ok()
         );
