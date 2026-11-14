@@ -2520,67 +2520,83 @@
   margin: 0;
 }
 
-/* The captains draft. The pool is a plain list because it is scanned by name
-   and rating, and a grid would spread that across the screen. */
-.tournament-draft {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+/* The captains draft, as the Teams section of a draft event: the Teams
+   section's cards, and in the right-hand column the draft's state. */
+.tournament-draft-clock {
+  margin: 0;
+  font-weight: 600;
 }
 
-.tournament-draft-head {
+.tournament-draft-actions {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
   flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
-.tournament-draft-head h5 {
-  margin: 0;
-}
-
-.tournament-draft-next {
-  margin: 0;
-}
-
-.tournament-draft-pool-heading {
-  margin: var(--space-2) 0 0;
-}
-
-/* The team picking now, marked like a live match. */
-.tournament-team-card.is-on-clock {
+/* The team picking now, marked like a live match; and the draft's state when
+   the pick is this account's to make. One marked card at a time: this
+   account's own team is drawn like every other, so it does not read as a
+   second team on the clock. */
+.tournament-team-card.is-on-clock,
+.tournament-draft-state.is-yours {
   border-color: var(--color-accent);
 }
 
-.tournament-draft-roster {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: flex;
-  flex-direction: column;
+.tournament-team-card.is-drafting.is-mine {
+  box-shadow: none;
+}
+
+.tournament-team-card.is-drafting.is-mine:not(.is-on-clock) {
+  border-color: var(--color-border);
+}
+
+/* A drafting team's average, right after its combined rating, with a dot
+   between them: the line's own gap on either side of the dot. */
+.tournament-team-rating-also {
+  flex: none;
+}
+
+.tournament-team-rating:has(.tournament-team-rating-also) {
   gap: 6px;
 }
 
-.tournament-draft-roster li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  min-height: 24px;
-  min-width: 0;
+.tournament-team-rename {
+  flex: none;
+  width: 24px;
+  height: 22px;
+  margin-left: auto;
 }
 
-.tournament-draft-roster .tournament-entrant-name {
+/* A drafting team's roster, one line per member: the name with a crown for
+   the captain, and the event's rating on the right. The account's rating
+   beside the name is left to the player card. */
+.tournament-roster-row.is-compact .tournament-roster-who {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.tournament-roster-row.is-compact .player-chip-rating {
+  display: none;
+}
+
+/* Every line between two hairlines and of one height, the captain's first
+   line included: without this it starts the card's gap below the head's
+   hairline, and reads as a taller row than the members under it. */
+.tournament-team-card.is-drafting > .tournament-roster {
+  margin-top: -10px;
+}
+
+.tournament-roster-crown {
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
+  flex: none;
+  color: var(--color-rating);
 }
 
-/* An open place reads as a gap in the roster, not as a person. */
-.tournament-draft-roster li.is-open {
-  font-size: 12px;
-  font-style: italic;
+/* A captain candidate's tile: the whole name is the checkbox's label. */
+.tournament-free-agent > .tournament-checkbox {
+  flex: 1;
+  min-width: 0;
 }
 
 .tournament-entrants td.tournament-entrants-action {
