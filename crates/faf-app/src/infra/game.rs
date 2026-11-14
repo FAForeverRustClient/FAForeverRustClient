@@ -64,10 +64,6 @@ pub struct GameConfig {
     /// The Wine prefix to run in (`WINEPREFIX`), from Settings, Paths. Empty
     /// leaves the child's environment as this process found it.
     pub wine_prefix: String,
-    /// The rebuilt engine (faf-re) live and offline games are played on
-    /// instead of [`Self::game_path`], from Settings, Game. `None` plays the
-    /// original; `Some("")` is switched on without an executable.
-    pub rebuilt_engine: Option<String>,
 }
 
 impl GameConfig {
@@ -78,71 +74,8 @@ impl GameConfig {
             additional_arguments: Vec::new(),
             launch_wrapper: std::env::var("FAF_LAUNCH_WRAPPER").unwrap_or_default(),
             wine_prefix: String::new(),
-            rebuilt_engine: None,
         }
     }
-}
-
-/// What a live or offline game is started as: the executable, the `/init`
-/// argument naming its init script, and the word errors use for it.
-#[derive(Debug, PartialEq)]
-struct PlayTarget {
-    exe: String,
-    init: String,
-    what: &'static str,
-}
-
-/// Which executable plays the game, and how it is told where its init script
-/// is.
-///
-/// The original runs in the install's `bin`, beside `init_<mod>.lua`, so the
-/// bare file name finds it. The rebuilt engine (faf-re) runs in its own
-/// folder, because it loads its own hook scripts (`fafengine\`) and DLLs from
-/// beside its executable, so it gets the script of that same install as an
-/// absolute path. It sets `InitFileDir` to the script's folder just as the
-/// original does, so every path FAF's init script works out from there is the
-/// same either way: the same gamedata, the same `fa_path.lua`, the same mods.
-///
-/// `init_path` turns the script's path into the one the game sees, which is
-/// a different spelling under Wine.
-fn play_target(
-    game_path: &str,
-    rebuilt_engine: Option<&str>,
-    featured_mod: &str,
-    init_path: impl FnOnce(&Path) -> String,
-) -> Result<PlayTarget, String> {
-    let init_name = format!("init_{featured_mod}.lua");
-    let Some(engine) = rebuilt_engine else {
-        return Ok(PlayTarget {
-            exe: game_path.to_owned(),
-            init: init_name,
-            what: "game",
-        });
-    };
-    if engine.is_empty() {
-        return Err(
-            "the rebuilt engine (faf-re) is switched on but no executable is chosen: pick its main_x64.exe in Settings → Game, or switch it off"
-                .into(),
-        );
-    }
-    // The install is still the one the client prepares: its init script is
-    // what the rebuilt engine plays with.
-    let bin = Path::new(game_path)
-        .parent()
-        .filter(|_| !game_path.is_empty())
-        .ok_or("no game install configured: set it in Settings → Paths")?;
-    let init = bin.join(&init_name);
-    if !init.is_file() {
-        return Err(format!(
-            "{} is missing, so the rebuilt engine has nothing to start with: the game install has not been prepared for {featured_mod}",
-            init.display()
-        ));
-    }
-    Ok(PlayTarget {
-        exe: engine.to_owned(),
-        init: init_path(&init),
-        what: "rebuilt engine (faf-re)",
-    })
 }
 
 /// A running Forged Alliance, and which executable it is running.
@@ -361,21 +294,6 @@ impl GameProcess {
         tracing::warn!("the previous Forged Alliance process has not exited; launching anyway");
     }
 
-    /// The executable and init argument of the next live or offline game:
-    /// the install's own, or the rebuilt engine's. See [`play_target`].
-    fn play_target(&self, featured_mod: &str) -> Result<PlayTarget, String> {
-        let (game_path, rebuilt_engine) = {
-            let config = self.config.lock().unwrap();
-            (config.game_path.clone(), config.rebuilt_engine.clone())
-        };
-        play_target(
-            &game_path,
-            rebuilt_engine.as_deref(),
-            featured_mod,
-            |init| self.game_argument_path(init),
-        )
-    }
-
     fn spawn(
         &self,
         slot: Slot,
@@ -405,12 +323,7 @@ impl GameProcess {
                 "the configured {what} install no longer exists: {game_path}"
             ));
         }
-        // The rebuilt engine is not an install of its own: it plays the FAF
-        // install's files from wherever it was built, so where it sits says
-        // nothing about which game it would load.
-        let rebuilt_engine =
-            self.config.lock().unwrap().rebuilt_engine.as_deref() == Some(game_path);
-        if !rebuilt_engine && is_original_game_executable(&exe) {
+        if is_original_game_executable(&exe) {
             return Err(format!(
                 "the configured {what} path is the original Steam/retail game, not a FAF-managed executable: select the ForgedAlliance.exe under FAForever\\bin"
             ));
@@ -718,7 +631,7 @@ impl ProcessPort for GameProcess {
 
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         require_init_name(&params.featured_mod)?;
-        let target = self.play_target(&params.featured_mod)?;
+        let path = self.config.lock().unwrap().game_path.clone();
         // Before the game can rewrite it on exit (issue 750).
         crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
@@ -744,17 +657,16 @@ impl ProcessPort for GameProcess {
             .as_ref()
             .map(|recorder| recorder.savereplay_url(params.game_id, &params.player_login));
 
-        allow_second_instance(&target.exe).await;
+        allow_second_instance(&path).await;
         let result = self.spawn(
             Slot::Game,
-            &target.exe,
+            &path,
             &build_arguments(
                 &params,
-                &target.init,
                 &self.game_argument_path(&log_path),
                 savereplay.as_deref(),
             ),
-            target.what,
+            "game",
         );
 
         // Held for the game's lifetime: dropping the recorder aborts its
@@ -777,15 +689,15 @@ impl ProcessPort for GameProcess {
         map: String,
     ) -> Result<Option<PathBuf>, String> {
         require_init_name(&featured_mod)?;
-        let target = self.play_target(&featured_mod)?;
+        let path = self.config.lock().unwrap().game_path.clone();
         crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
-        allow_second_instance(&target.exe).await;
+        allow_second_instance(&path).await;
         self.spawn(
             Slot::Game,
-            &target.exe,
-            &offline_arguments(&target.init, &map, &self.game_argument_path(&log_path)),
-            target.what,
+            &path,
+            &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
+            "game",
         )?;
         // The path this side of any Wine translation: the client reads it, the
         // game only writes it.
@@ -827,10 +739,6 @@ impl ProcessPort for GameProcess {
         let mut config = self.config.lock().unwrap();
         config.game_path = game_path;
         config.replay_game_path = replay_game_path;
-    }
-
-    fn set_rebuilt_engine(&self, exe: Option<String>) {
-        self.config.lock().unwrap().rebuilt_engine = exe;
     }
 
     fn set_additional_arguments(&self, arguments: Vec<String>) {
@@ -1468,17 +1376,15 @@ fn prefs_arguments(configured: Option<&Path>, additional: &[String], wrapped: bo
 /// Mirrors `fa/play.py:build_argument_list`. `savereplay` is the address of the
 /// local [`crate::infra::replay_recorder::ReplayRecorder`]; without it FA writes
 /// no replay for a networked game at all, which is why played games used to
-/// leave nothing in the local library. `init` is the init script argument
-/// from [`play_target`].
+/// leave nothing in the local library.
 fn build_arguments(
     params: &GameLaunchParams,
-    init: &str,
     log_path: &str,
     savereplay: Option<&str>,
 ) -> Vec<String> {
     let mut args = params.args.clone();
     args.push("/init".into());
-    args.push(init.to_string());
+    args.push(format!("init_{}.lua", params.featured_mod));
     args.push("/nobugreport".into());
     if let Some(url) = savereplay {
         args.push("/savereplay".into());
@@ -1498,10 +1404,13 @@ fn build_arguments(
 /// load. Deliberately no `/gpgnet`: there is no adapter and no lobby.
 ///
 /// An empty `map` leaves `/map` out, which opens the game's own menu rather
-/// than a scenario: the "Play offline" on the login screen (#397). `init` is
-/// the init script argument from [`play_target`].
-fn offline_arguments(init: &str, map: &str, log_path: &str) -> Vec<String> {
-    let mut arguments = vec!["/init".into(), init.to_string(), "/nobugreport".into()];
+/// than a scenario: the "Play offline" on the login screen (#397).
+fn offline_arguments(featured_mod: &str, map: &str, log_path: &str) -> Vec<String> {
+    let mut arguments = vec![
+        "/init".into(),
+        format!("init_{featured_mod}.lua"),
+        "/nobugreport".into(),
+    ];
     if !map.is_empty() {
         arguments.extend(["/map".into(), map.into()]);
     }
@@ -1554,67 +1463,6 @@ impl ProcessPort for FakeGame {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn untranslated(path: &Path) -> String {
-        path.display().to_string()
-    }
-
-    #[test]
-    fn the_original_game_finds_its_init_script_beside_itself() {
-        let target = play_target("C:/FAF/bin/ForgedAlliance.exe", None, "faf", untranslated);
-        assert_eq!(
-            target,
-            Ok(PlayTarget {
-                exe: "C:/FAF/bin/ForgedAlliance.exe".into(),
-                init: "init_faf.lua".into(),
-                what: "game",
-            })
-        );
-    }
-
-    #[test]
-    fn the_rebuilt_engine_plays_the_install_s_init_script() {
-        let temp = tempfile::tempdir().unwrap();
-        let bin = temp.path().join("bin");
-        std::fs::create_dir_all(&bin).unwrap();
-        std::fs::write(bin.join("init_faf.lua"), "").unwrap();
-        let game = bin.join("ForgedAlliance.exe").display().to_string();
-
-        let target =
-            play_target(&game, Some("D:/faf-re/main_x64.exe"), "faf", untranslated).unwrap();
-
-        assert_eq!(target.exe, "D:/faf-re/main_x64.exe");
-        assert_eq!(target.init, bin.join("init_faf.lua").display().to_string());
-        assert!(Path::new(&target.init).is_absolute());
-        // The path the game sees, which under Wine is spelled differently.
-        let wine = play_target(&game, Some("D:/faf-re/main_x64.exe"), "faf", |_| {
-            "Z:\\init_faf.lua".into()
-        });
-        assert_eq!(wine.unwrap().init, "Z:\\init_faf.lua");
-    }
-
-    #[test]
-    fn the_rebuilt_engine_is_refused_without_what_it_needs() {
-        let temp = tempfile::tempdir().unwrap();
-        let game = temp
-            .path()
-            .join("bin")
-            .join("ForgedAlliance.exe")
-            .display()
-            .to_string();
-        // Switched on with no executable: never the original in its place.
-        assert!(play_target(&game, Some(""), "faf", untranslated)
-            .unwrap_err()
-            .contains("no executable is chosen"));
-        // No install to take the init script from.
-        assert!(play_target("", Some("D:/faf-re/main_x64.exe"), "faf", untranslated).is_err());
-        // An install not yet prepared for this featured mod.
-        assert!(
-            play_target(&game, Some("D:/faf-re/main_x64.exe"), "coop", untranslated)
-                .unwrap_err()
-                .contains("init_coop.lua")
-        );
-    }
 
     #[test]
     fn a_wrapper_is_split_into_a_program_and_its_arguments() {
@@ -1754,11 +1602,11 @@ mod tests {
 
     #[test]
     fn an_offline_launch_without_a_map_opens_the_game_menu() {
-        let menu = offline_arguments("init_faf.lua", "", "game.log");
+        let menu = offline_arguments("faf", "", "game.log");
         assert!(!menu.iter().any(|argument| argument == "/map"));
         assert_eq!(&menu[..2], ["/init", "init_faf.lua"]);
 
-        let tutorial = offline_arguments("init_tutorials.lua", "SCMP_001", "game.log");
+        let tutorial = offline_arguments("tutorials", "SCMP_001", "game.log");
         let at = tutorial
             .iter()
             .position(|argument| argument == "/map")
@@ -1785,7 +1633,7 @@ mod tests {
 
     #[test]
     fn builds_fa_command_line_in_order() {
-        let args = build_arguments(&params(), "init_faf.lua", "diagnostics/game-99.log", None);
+        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
         assert_eq!(
             &args[..7],
             vec![
@@ -1808,12 +1656,7 @@ mod tests {
         // replay for a networked game at all: without it a played game leaves
         // nothing on disk, which is the bug this fixes.
         let url = "gpgnet://127.0.0.1:5000/99/me.SCFAreplay";
-        let args = build_arguments(
-            &params(),
-            "init_faf.lua",
-            "diagnostics/game-99.log",
-            Some(url),
-        );
+        let args = build_arguments(&params(), "diagnostics/game-99.log", Some(url));
         let save = args.iter().position(|a| a == "/savereplay").unwrap();
         assert_eq!(args[save + 1], url);
         assert!(save < args.iter().position(|a| a == "/gpgnet").unwrap());
@@ -1823,7 +1666,7 @@ mod tests {
     fn no_recorder_means_no_savereplay_flag() {
         // A recorder that could not bind must not leave FA streaming at a dead
         // port: the game is still perfectly playable without a replay.
-        let args = build_arguments(&params(), "init_faf.lua", "diagnostics/game-99.log", None);
+        let args = build_arguments(&params(), "diagnostics/game-99.log", None);
         assert!(!args.iter().any(|a| a == "/savereplay"));
     }
 

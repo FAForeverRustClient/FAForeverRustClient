@@ -9,7 +9,6 @@ import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import { gameNeedsALaunchWrapper, runsOnWindows } from "../../shared/platform";
 import { LinuxRuntimeSettings } from "./LinuxRuntimeSettings";
 import { CompanionProgramsSettings } from "./CompanionProgramsSettings";
-import { RebuiltEngineSettings } from "./RebuiltEngineSettings";
 
 /// Mirrors `faf_domain::state::settings::MAX_MAP_GENERATOR_INSTANCES`, so the
 /// list never offers a count the backend would quietly clamp.
@@ -204,9 +203,7 @@ export function GameSettingsSection() {
         </SettingRow>
       </SettingsGroup>
       <SettingsGroup title={t("settings.game.group.launch")}>
-        {/* First in the group: it decides which program everything below
-            is started with. */}
-        <RebuiltEngineSettings />
+
 
         {/* Windows only: on Linux the game is a Wine window, and the window
             manager there has its own answer (#445). */}
