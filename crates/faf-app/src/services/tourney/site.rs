@@ -5,13 +5,18 @@
 use std::collections::HashMap;
 
 use faf_domain::state::{
-    AccessKind, HallOfFame, SiteDocument, SiteRead, TourneyAction, TourneyEvent,
+    AccessKind, HallOfFame, PendingSummary, SiteDocument, SiteRead, Tourney, TourneyAction,
+    TourneyEvent,
 };
 
+use crate::ports::{RequestError, TourneyReadPort};
 use crate::runtime::{EventSink, ServiceCtx};
 
 use super::reads::open_series;
 use super::writes::failed;
+
+#[cfg(test)]
+mod tests;
 
 /// Whether this account may host: `TourneyRead::LoadHosting`.
 pub(super) async fn load_hosting(ctx: &ServiceCtx, out: &EventSink) {
@@ -60,6 +65,10 @@ pub(super) async fn load_articles(ctx: &ServiceCtx, out: &EventSink) {
 /// silently, like the hosting status; the pages say when they could not.
 pub(super) async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink) {
     out.emit(TourneyEvent::SiteLoading { read });
+    if read == SiteRead::Pending {
+        load_pending(ctx, out).await;
+        return;
+    }
     match ctx.ports.tourney_site.site_read(read).await {
         Ok(SiteDocument::HallOfFame(hall)) => {
             out.emit(TourneyEvent::SiteLoaded {
@@ -77,6 +86,75 @@ pub(super) async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink)
             });
         }
     }
+}
+
+/// A pending item is only a hint: verify whose pick it is before announcing
+/// "your pick". Organisers may act for other captains, which is permission
+/// to pick but does not make those captains' turns their own.
+async fn load_pending(ctx: &ServiceCtx, out: &EventSink) {
+    let ticket = ctx.tourney.pending_answers.ticket();
+    let result = match ctx.ports.tourney_site.site_read(SiteRead::Pending).await {
+        Ok(SiteDocument::Pending(pending)) => {
+            Ok(confirm_draft_turns(pending, ctx.ports.tourney_read.as_ref()).await)
+        }
+        Ok(_) => Err(RequestError::unexpected(
+            "expected tournament pending items",
+        )),
+        Err(error) => Err(error),
+    };
+    ctx.tourney.pending_answers.land((), ticket, || {
+        let pending = match result {
+            Ok(pending) => pending,
+            Err(error) => {
+                tracing::warn!(%error, "could not read the tournament pending items");
+                // Do not keep claiming a turn we could not refresh. Other
+                // pending items and the admin alerts keep their last answer.
+                let mut pending = out.with_state(|state| state.tourney.site.pending.clone());
+                pending.items.retain(|item| item.kind != "draft");
+                pending
+            }
+        };
+        out.emit(TourneyEvent::SiteLoaded {
+            document: SiteDocument::Pending(pending),
+        });
+        true
+    });
+}
+
+async fn confirm_draft_turns(
+    mut pending: PendingSummary,
+    read: &dyn TourneyReadPort,
+) -> PendingSummary {
+    let mut turns = HashMap::new();
+    for item in std::mem::take(&mut pending.items) {
+        let keep = if item.kind != "draft" {
+            true
+        } else if let Some(mine) = turns.get(&item.tournament_id) {
+            *mine
+        } else {
+            let mine = match read.detail(&item.tournament_id).await {
+                Ok(event) => event.id == item.tournament_id && is_my_draft_turn(&event),
+                Err(error) => {
+                    tracing::debug!(%error, "could not verify a pending tournament draft turn");
+                    false
+                }
+            };
+            turns.insert(item.tournament_id.clone(), mine);
+            mine
+        };
+        if keep {
+            pending.items.push(item);
+        }
+    }
+    pending
+}
+
+fn is_my_draft_turn(event: &Tourney) -> bool {
+    event.viewer.logged_in
+        && event
+            .draft_turn()
+            .and_then(|turn| event.team(turn))
+            .is_some_and(|team| event.is_captain_of(team))
 }
 
 /// Ids per request for the Hall of Fame's FAF accounts: they go in the query
