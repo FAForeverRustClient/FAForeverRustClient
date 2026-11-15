@@ -1,0 +1,1 @@
+- Right-click tournament players to open the standard player menu.
