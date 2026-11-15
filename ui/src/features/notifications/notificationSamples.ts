@@ -9,6 +9,7 @@ const settings: NotificationAction = { type: "openSettings", payload: { section:
 // Actions are presentation examples only. Neither the gallery nor native preview IDs execute them.
 export const NOTIFICATION_SAMPLES = {
   matchFound: { title: "notifications.msg.matchFound.title", body: "notifications.msg.matchFound.body", enabled: "matchFound", action: { type: "openMatchmaking" } },
+  draftTurn: { title: "notifications.msg.draftTurn.title", body: "notifications.msg.draftTurn.body", enabled: "draftTurn", action: { type: "openTournamentDraft", payload: { tournamentId: "notification-test" } } },
   privateMessage: { title: "notifications.msg.privateMessage.title", enabled: "privateMessages", action: chat, image: "avatar" },
   mention: { title: "notifications.msg.mention.title", enabled: "mentions", action: chat, image: "avatar" },
   friendOnline: { title: "notifications.msg.friendOnline.title", body: "notifications.msg.friendOnline.body", enabled: "friendOnline", action: chat, image: "avatar" },
@@ -45,7 +46,7 @@ export function sampleNotification(kind: NotificationKind, id: string, scenario:
   const sample: Sample = NOTIFICATION_SAMPLES[kind];
   const player = t("notifications.test.player");
   const params = { login: player, host: player, sender: player, first: player, players: player,
-    title: t("notifications.test.game"), game: t("notifications.test.game"), name: t("notifications.test.game"), queue: "1v1", queues: "1 vs 1", count: 1, teamSize: 1, version: "0.0.0" };
+    title: t("notifications.test.game"), game: t("notifications.test.game"), name: t("notifications.test.game"), tournament: t("notifications.test.game"), queue: "1v1", queues: "1 vs 1", count: 1, teamSize: 1, version: "0.0.0" };
   const body = sample.body ? t(sample.body, params) : t("notifications.test.message");
   return { item: { id, kind, title: `[${t("notifications.test.badge")}] ${t(sample.title, params)}`,
     body: scenario === "long" ? Array.from({ length: 6 }, () => body).join(" ") : body,

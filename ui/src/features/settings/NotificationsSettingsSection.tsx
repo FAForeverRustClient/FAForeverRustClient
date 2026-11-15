@@ -482,6 +482,10 @@ export function NotificationsSettingsSection() {
             />
           </div>
         </SettingRow>
+        <SettingRow label={t("settings.notifications.draftTurn")} hint={t("settings.notifications.draftTurnHint")}>
+          <SoundChoice value={preferences.sounds.draftTurn} disabled={mute || !preferences.draftTurn} what={t("settings.notifications.draftTurn")} onChange={(draftTurn) => setSound({ draftTurn })} custom={choosableSounds} onAdd={addSound} />
+          <SettingsSwitch checked={preferences.draftTurn} disabled={!preferences.enabled} onChange={(draftTurn) => update({ draftTurn })} label={t("settings.notifications.draftTurn")} />
+        </SettingRow>
         <SettingRow label={t("settings.notifications.gameFull")}>
           <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.gameFull} disabled={!preferences.enabled} onChange={(gameFull) => update({ gameFull })} label={t("settings.notifications.gameFull")} />

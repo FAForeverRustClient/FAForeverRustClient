@@ -13,6 +13,7 @@ describe("which notifications leave the client", () => {
       "gameLaunched",
       "mapGenerated",
       "eventReminder",
+      "draftTurn",
       "gameFull",
       "queueOpponent",
       "privateMessage",

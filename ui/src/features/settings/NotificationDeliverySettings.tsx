@@ -15,6 +15,7 @@ type Update = (patch: NotificationPreferencesPatch) => void;
 
 const EVENTS: [NotificationKind, MessageKey][] = [
   ["matchFound", "settings.notifications.matchFound"],
+  ["draftTurn", "settings.notifications.draftTurn"],
   ["privateMessage", "settings.notifications.privateMessages"],
   ["mention", "settings.notifications.mentions"],
   ["friendOnline", "settings.notifications.friendOnline"],

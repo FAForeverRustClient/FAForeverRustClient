@@ -182,6 +182,7 @@ export function soundForKind(
     case "gameLaunched": return choices.gameLaunched;
     case "reviewReminder": return choices.reviewReminder;
     case "partyInvite": return choices.partyInvite;
+    case "draftTurn": return choices.draftTurn;
     default: return choices.other;
   }
 }

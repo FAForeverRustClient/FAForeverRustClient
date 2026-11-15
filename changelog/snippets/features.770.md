@@ -1,0 +1,1 @@
+- Optional draft-turn notifications open your tournament draft from the alert; enable them in Settings, Notifications, "Your turn to draft".

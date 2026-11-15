@@ -4,6 +4,7 @@ import { Icon } from "../../design-system/Icon";
 import type { ClientNotification } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
 import { requestSettingsSection } from "../settings/settingsNavigation";
+import { requestTournamentDraft } from "../../shared/tournamentNavigation";
 import { native } from "../../ipc/native";
 import { openHttpsUrl } from "../../shared/externalLinks";
 import { useClockPreference } from "../../shared/format/clock";
@@ -77,6 +78,10 @@ async function runAction(item: ClientNotification, openGame: (id: number) => voi
           kind: "Events",
           command: { type: "select", payload: { occurrenceId: action.payload.occurrenceId } },
         });
+        break;
+      case "openTournamentDraft":
+        requestTournamentDraft(action.payload.tournamentId);
+        await ipc.settle({ kind: "Nav", command: { type: "select", payload: { tab: "tournaments" } } });
         break;
       case "openStream":
         // Out to the browser rather than into a frame: this client is not a
@@ -212,7 +217,7 @@ export function NotificationCenter() {
       state: () => useAppStore.getState().state,
       report,
       showInside: (inside) => setToastIds((ids) => {
-        const immediate = inside.filter((item) => item.kind === "matchFound" || item.kind === "gameFull" || item.kind === "partyInvite").map((item) => item.id);
+        const immediate = inside.filter((item) => item.kind === "matchFound" || item.kind === "gameFull" || item.kind === "partyInvite" || item.kind === "draftTurn").map((item) => item.id);
         return [...new Set([...immediate, ...ids, ...inside.map((item) => item.id)])];
       }),
     }).catch((error: unknown) => {

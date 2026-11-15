@@ -149,7 +149,7 @@ async fn confirm_draft_turns(
     pending
 }
 
-fn is_my_draft_turn(event: &Tourney) -> bool {
+pub(super) fn is_my_draft_turn(event: &Tourney) -> bool {
     event.viewer.logged_in
         && event
             .draft_turn()

@@ -54,6 +54,35 @@ afterEach(() => {
 });
 
 describe("ChatRoomView polling, mounted", () => {
+  it("keeps the latest message visible after resizing without moving a history reader", () => {
+    let resize: () => void = () => undefined;
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: () => void) { resize = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    try {
+      render(room([]));
+      const log = screen.getByRole("log");
+      let height = 300;
+      let top = 700;
+      Object.defineProperties(log, {
+        scrollHeight: { configurable: true, get: () => 1000 },
+        clientHeight: { configurable: true, get: () => height },
+        scrollTop: { configurable: true, get: () => top, set: (value: number) => { top = Math.min(value, 1000 - height); } },
+      });
+      height = 200;
+      act(() => resize());
+      expect(top).toBe(800);
+      log.scrollTop = 100;
+      fireEvent.scroll(log);
+      height = 150;
+      act(() => resize());
+      expect(top).toBe(100);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("pauses during a game and refreshes after returning", () => {
     render(room([]));
     clearSentCommands();

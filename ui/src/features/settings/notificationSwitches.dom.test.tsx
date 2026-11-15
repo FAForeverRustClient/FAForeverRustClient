@@ -29,6 +29,7 @@ async function mountNotifications() {
 }
 
 it.each([
+  ["settings.notifications.draftTurn", "draftTurn"],
   ["settings.notifications.friendOnline", "friendOnline"],
   ["settings.notifications.friendOffline", "friendOffline"],
   ["settings.notifications.friendPlaying", "friendPlaying"],

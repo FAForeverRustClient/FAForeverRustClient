@@ -725,6 +725,7 @@ impl AppLoop {
         // And likewise: a calendar reminder is due at a moment, not in answer
         // to anything the user just did.
         services::events::spawn(ctx.clone(), self.sink.clone());
+        services::tourney::spawn_draft_notifications(ctx.clone(), self.sink.clone());
 
         // And a channel goes live when it goes live. Starts no task at all on a
         // build whose Twitch credentials are absent, which is most of them.

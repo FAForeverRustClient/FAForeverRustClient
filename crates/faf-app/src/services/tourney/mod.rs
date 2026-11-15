@@ -18,10 +18,13 @@
 //! - `writes`: every serialised write and the reload that ends it.
 
 mod chat;
+mod draft_notifications;
 mod eligibility;
 mod reads;
 mod site;
 mod writes;
+
+pub(crate) use draft_notifications::spawn as spawn_draft_notifications;
 
 use faf_domain::state::{TourneyCommand, TourneyEvent, TourneyRead};
 

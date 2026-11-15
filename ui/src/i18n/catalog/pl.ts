@@ -5936,4 +5936,9 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.pending.propDeclined": "Twoja propozycja została odrzucona",
   "tournaments.pending.propCameBack": "Twoja propozycja wróciła",
   "tournaments.pending.propGivenBack": "Twoja propozycja została oddana",
+  "settings.notifications.draftTurn": "Twoja kolej na wybór gracza",
+  "settings.notifications.draftTurnHint": "Powiadamia, gdy jako kapitan masz wybrać gracza podczas draftu turniejowego, także w innej karcie lub podczas gry.",
+  "notifications.msg.draftTurn.title": "Twoja kolej na wybór gracza",
+  "notifications.msg.draftTurn.body": "{tournament}: wybierz gracza do swojej drużyny.",
+  "notifications.action.openDraft": "Otwórz wybór graczy",
 };

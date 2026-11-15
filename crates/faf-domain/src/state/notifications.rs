@@ -21,6 +21,8 @@ pub enum NotificationKind {
     ReviewReminder,
     /// A calendar event the player asked to be reminded about is coming up.
     EventReminder,
+    /// The signed-in captain's next pick in a tournament draft.
+    DraftTurn,
     ReplayAvailable,
     PartyInvite,
     ReportSubmitted,
@@ -134,6 +136,7 @@ impl NotificationKind {
                 | Self::GameLaunched
                 | Self::MapGenerated
                 | Self::EventReminder
+                | Self::DraftTurn
                 | Self::GameFull
                 | Self::QueueOpponent
                 | Self::PrivateMessage
@@ -181,6 +184,9 @@ pub enum NotificationAction {
     #[serde(rename_all = "camelCase")]
     OpenEvent {
         occurrence_id: String,
+    },
+    OpenTournamentDraft {
+        tournament_id: String,
     },
     /// Open a live stream in the browser.
     ///
@@ -370,6 +376,7 @@ mod tests {
             NotificationKind::GameLaunched,
             NotificationKind::MapGenerated,
             NotificationKind::EventReminder,
+            NotificationKind::DraftTurn,
             NotificationKind::GameFull,
             NotificationKind::QueueOpponent,
             NotificationKind::PrivateMessage,

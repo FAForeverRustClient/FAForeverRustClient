@@ -48,7 +48,8 @@ it("covers all event kinds with translated local samples and local artwork", () 
 it("shows all three real card layouts and simulates dangerous actions without commands", async () => {
   render(<NotificationTestDialog onClose={vi.fn()} />);
   await flush();
-  expect(within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option")).toHaveLength(28);
+  const events = within(screen.getByRole("combobox", { name: text("notifications.test.event") })).getAllByRole("option");
+  expect(events.map((option) => option.getAttribute("value")).sort()).toEqual(Object.keys(NOTIFICATION_SAMPLES).sort());
   choose("notifications.test.event", "partyInvite");
   // The invite has an action button, which acts; the rest of the card dismisses.
   fireEvent.click(document.querySelector(".desktop-notification-action")!);
@@ -59,6 +60,15 @@ it("shows all three real card layouts and simulates dangerous actions without co
   expect(document.querySelector(".notification-test-gallery .notification-item")).not.toBeNull();
   expect(sentCommands()).toEqual([]);
   expect(bridge.showNotificationPopup).not.toHaveBeenCalled();
+});
+
+it("previews a draft-turn alert with its Open draft action without selecting a real tournament", async () => {
+  render(<NotificationTestDialog onClose={vi.fn()} />);
+  await flush();
+  choose("notifications.test.event", "draftTurn");
+  fireEvent.click(screen.getByRole("button", { name: text("notifications.action.openDraft") }));
+  expect(screen.getByRole("log").textContent).toContain(text("notifications.test.result.activated"));
+  expect(sentCommands()).toEqual([]);
 });
 
 it("delays a three-card native preview and removes only its owned previews on close", async () => {

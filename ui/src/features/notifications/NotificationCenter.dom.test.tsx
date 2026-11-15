@@ -8,6 +8,7 @@ import { playNotificationSound } from "./notificationSound";
 import { useAppStore } from "../../store/store";
 import type { ClientNotification } from "../../ipc/bindings";
 import { ipc } from "../../ipc/client";
+import { clearTournamentDraft, pendingTournamentDraft } from "../../shared/tournamentNavigation";
 
 vi.mock("../../ipc/client");
 const nativeMock = vi.hoisted(() => ({
@@ -65,6 +66,16 @@ it("checks again when a popup is clicked during an empty queue response", async 
     await first;
   });
   expect(nativeMock.nextNotificationActivation.mock.calls).toEqual([[], [], [item.id]]);
+});
+
+it("opens a draft requested by a desktop notification activation", async () => {
+  const item: ClientNotification = { id: "draft-alert", kind: "draftTurn", title: "Draft", body: "Your pick", action: { type: "openTournamentDraft", payload: { tournamentId: "cup" } }, text: null, read: false, createdAt: new Date().toISOString() };
+  nativeMock.nextNotificationActivation.mockResolvedValueOnce(item).mockResolvedValue(null);
+  seedStore((state) => ({ ...state, notifications: { items: [item] } }));
+  await act(async () => { render(<NotificationCenter />); await Promise.resolve(); });
+  expect(sentCommands()).toContainEqual({ kind: "Nav", command: { type: "select", payload: { tab: "tournaments" } } });
+  expect(pendingTournamentDraft()?.tournamentId).toBe("cup");
+  clearTournamentDraft(pendingTournamentDraft()!.nonce);
 });
 
 it("shows a desktop popup in the background without a duplicate in-client or system popup", async () => {
@@ -195,11 +206,11 @@ it("queues in-client bursts and gives the next card the full configured display 
   expect(view.container.querySelector(".notification-toast")).toBeNull();
 });
 
-it("shows an urgent match immediately while preserving the displaced in-client card", async () => {
+it.each(["matchFound", "draftTurn"] as const)("shows an urgent %s immediately while preserving the displaced in-client card", async (kind) => {
   vi.useFakeTimers();
   seedStore((state) => ({ ...state, settings: { ...state.settings, notifications: {
     ...state.settings.notifications, desktop: false, popup: true, enabled: true,
-    toastDurationSeconds: 12, repeatCooldownSeconds: 0,
+    toastDurationSeconds: 12, repeatCooldownSeconds: 0, draftTurn: true,
   } }, notifications: { items: Array.from({ length: 3 }, (_,index) => ({
     ...state.notifications.items[0], id: `message-${index}`, title: `Message ${index}`, kind: "friendOnline",
   })) } }));
@@ -208,12 +219,12 @@ it("shows an urgent match immediately while preserving the displaced in-client c
   act(() => {
     const state = useAppStore.getState().state;
     useAppStore.getState().hydrate({ ...state, notifications: { items: [{
-      ...state.notifications.items[0], id: "urgent", title: "Urgent match", kind: "matchFound",
+      ...state.notifications.items[0], id: "urgent", title: "Urgent pick or match", kind,
     }, ...state.notifications.items] } });
   });
   await act(async () => {});
   expect(view.container.querySelectorAll(".notification-toast")).toHaveLength(3);
-  expect(view.container.textContent).toContain("Urgent match");
+  expect(view.container.textContent).toContain("Urgent pick or match");
   expect(view.container.textContent).not.toContain("Message 2");
   await act(async () => { await vi.advanceTimersByTimeAsync(12000); });
   expect(view.container.textContent).toContain("Message 2");

@@ -38,6 +38,7 @@ const CHOICES: NotificationSoundChoices = {
   gameLaunched: "chime",
   reviewReminder: "soft",
   partyInvite: "alert",
+  draftTurn: "alert",
   other: "silent",
 };
 

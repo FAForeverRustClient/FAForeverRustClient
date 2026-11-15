@@ -17,6 +17,7 @@ const EXPIRING: readonly NotificationKind[] = [
   "gameLaunched",
   "mapGenerated",
   "eventReminder",
+  "draftTurn",
   "gameFull",
   "queueOpponent",
   "privateMessage",

@@ -869,6 +869,7 @@ export const INITIAL_STATE: AppState = {
         "gameLaunched": "chime",
         "reviewReminder": "chime",
         "partyInvite": "chime",
+        "draftTurn": "alert",
         "other": "chime"
       },
       "soundChoiceVersion": 3,
@@ -895,6 +896,7 @@ export const INITIAL_STATE: AppState = {
       "gameLaunched": true,
       "reviewReminder": true,
       "partyInvites": true,
+      "draftTurn": false,
       "streamLive": true,
       "mapGenerated": true,
       "queueOpponentQueues": [],
