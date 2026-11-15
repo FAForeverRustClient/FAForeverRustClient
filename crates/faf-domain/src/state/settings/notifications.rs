@@ -156,8 +156,8 @@ pub enum NotificationSound {
 /// UI. Everything without a switch of its own (server notices, errors, a
 /// finished map, a new client version) shares [`Self::other`].
 ///
-/// **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
-/// lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+/// **A found match, a filled lobby and a draft turn play
+/// [`NotificationSound::Alert`].** Everything else keeps the
 /// tone the client played before this existed, so installing an update changes
 /// those two sounds and not the rest.
 ///
@@ -197,6 +197,7 @@ pub struct NotificationSoundChoices {
     pub game_launched: NotificationSound,
     pub review_reminder: NotificationSound,
     pub party_invite: NotificationSound,
+    pub draft_turn: NotificationSound,
     /// Every kind without a switch of its own.
     pub other: NotificationSound,
 }
@@ -227,6 +228,7 @@ impl Default for NotificationSoundChoices {
             game_launched: NotificationSound::Chime,
             review_reminder: NotificationSound::Chime,
             party_invite: NotificationSound::Chime,
+            draft_turn: NotificationSound::Alert,
             other: NotificationSound::Chime,
         }
     }
@@ -258,6 +260,7 @@ impl<'de> Deserialize<'de> for NotificationSoundChoices {
             game_launched: Option<NotificationSound>,
             review_reminder: Option<NotificationSound>,
             party_invite: Option<NotificationSound>,
+            draft_turn: Option<NotificationSound>,
             other: Option<NotificationSound>,
         }
 
@@ -278,6 +281,7 @@ impl<'de> Deserialize<'de> for NotificationSoundChoices {
             game_launched: fields.game_launched.unwrap_or(defaults.game_launched),
             review_reminder: fields.review_reminder.unwrap_or(defaults.review_reminder),
             party_invite: fields.party_invite.unwrap_or(defaults.party_invite),
+            draft_turn: fields.draft_turn.unwrap_or(defaults.draft_turn),
             other: fields.other.unwrap_or(defaults.other),
         })
     }
@@ -328,7 +332,7 @@ pub struct NotificationPreferences {
     /// choice. Version zero is any file written before this field existed.
     ///
     /// It lives here rather than inside [`NotificationSoundChoices`] because
-    /// that struct is twelve fields of one type and several places walk it as
+    /// that struct contains only sounds and several places walk it as
     /// such; a `u8` among them would be a row that is not a sound.
     pub sound_choice_version: u8,
     pub notify_when_focused: bool,
@@ -363,6 +367,8 @@ pub struct NotificationPreferences {
     pub game_launched: bool,
     pub review_reminder: bool,
     pub party_invites: bool,
+    /// Opt-in alerts for the signed-in captain's tournament draft turns.
+    pub draft_turn: bool,
     /// Whether FAF's own Twitch and YouTube channels going live is announced.
     ///
     /// On, because it is the client telling people about the game the client is
@@ -439,6 +445,7 @@ impl Default for NotificationPreferences {
             game_launched: true,
             review_reminder: true,
             party_invites: true,
+            draft_turn: false,
             stream_live: true,
             map_generated: true,
             queue_opponent_queues: Vec::new(),
@@ -495,6 +502,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: bool,
             review_reminder: bool,
             party_invites: bool,
+            draft_turn: bool,
             stream_live: bool,
             map_generated: bool,
             queue_opponent_queues: Vec<String>,
@@ -541,6 +549,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     game_launched: defaults.game_launched,
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
+                    draft_turn: defaults.draft_turn,
                     stream_live: defaults.stream_live,
                     map_generated: defaults.map_generated,
                     queue_opponent_queues: defaults.queue_opponent_queues,
@@ -603,6 +612,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             game_launched: wire.game_launched,
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
+            draft_turn: wire.draft_turn,
             stream_live: wire.stream_live,
             map_generated: wire.map_generated,
             queue_opponent_queues: wire.queue_opponent_queues,
@@ -645,6 +655,7 @@ preference_patch! {
         game_launched: NotificationSound,
         review_reminder: NotificationSound,
         party_invite: NotificationSound,
+        draft_turn: NotificationSound,
         other: NotificationSound,
     }
 }
@@ -681,6 +692,7 @@ preference_patch! {
         game_launched: bool,
         review_reminder: bool,
         party_invites: bool,
+        draft_turn: bool,
         stream_live: bool,
         map_generated: bool,
         queue_opponent_queues: Vec<String>,
@@ -719,6 +731,7 @@ pub fn without_custom_sound(
         &mut next.game_launched,
         &mut next.review_reminder,
         &mut next.party_invite,
+        &mut next.draft_turn,
         &mut next.other,
     ] {
         if matches!(sound, NotificationSound::Custom(stored) if stored == name) {
@@ -755,6 +768,7 @@ pub fn refuse_new_custom_sounds(
         (&previous.game_launched, &mut next.game_launched),
         (&previous.review_reminder, &mut next.review_reminder),
         (&previous.party_invite, &mut next.party_invite),
+        (&previous.draft_turn, &mut next.draft_turn),
         (&previous.other, &mut next.other),
     ] {
         if after != before {
@@ -1074,5 +1088,40 @@ mod desktop_tests {
         let preferences = patch.apply_to(preferences).normalized();
         assert!(preferences.desktop_monitor.is_none());
         assert_eq!(preferences.toast_duration_seconds, 60);
+    }
+}
+
+#[cfg(test)]
+mod draft_turn_tests {
+    use super::*;
+
+    #[test]
+    fn draft_turn_settings_are_opt_in_and_preserve_the_saved_sound() {
+        let old: NotificationPreferences = serde_json::from_value(serde_json::json!({})).unwrap();
+        assert!(!old.draft_turn);
+        assert_eq!(old.sounds.draft_turn, NotificationSound::Alert);
+        let patch: NotificationPreferencesPatch = serde_json::from_value(serde_json::json!({
+            "draftTurn": true, "sounds": { "draftTurn": "ping" }
+        }))
+        .unwrap();
+        let changed = patch.apply_to(old);
+        assert!(changed.draft_turn);
+        assert_eq!(changed.sounds.draft_turn, NotificationSound::Ping);
+        let saved = serde_json::to_value(&changed).unwrap();
+        assert_eq!(
+            serde_json::from_value::<NotificationPreferences>(saved).unwrap(),
+            changed
+        );
+    }
+
+    #[test]
+    fn removing_a_custom_sound_resets_the_draft_turn_choice() {
+        let sounds = NotificationSoundChoices {
+            draft_turn: NotificationSound::Custom("draft.wav".into()),
+            ..Default::default()
+        };
+        let cleaned = without_custom_sound(&sounds, "draft.wav").unwrap();
+        assert_eq!(cleaned.draft_turn, NotificationSound::Chime);
+        assert_eq!(cleaned.match_found, sounds.match_found);
     }
 }

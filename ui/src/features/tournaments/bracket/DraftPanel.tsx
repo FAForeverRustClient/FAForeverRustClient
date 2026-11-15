@@ -22,6 +22,8 @@ import { Button } from "../../../design-system/Button";
 import type { CaptainMode, PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../../ipc/bindings";
 import type { OrganiserActions, TeamActions } from "../tourneyActions";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { useAppStore } from "../../../store/store";
+import { ipc } from "../../../ipc/client";
 import { PlayerChip } from "../PlayerChip";
 import { PlayerTable } from "../PlayerTable";
 import { TeamCard, TeamSection } from "../detail/TeamsPanel";
@@ -332,11 +334,25 @@ function LiveDraft(props: DraftPanelProps) {
               </Button>
             </div>
           )}
+          <DraftTurnAlerts />
         </section>
 
         <DraftRules event={event} />
       </aside>
     </div>
+  );
+}
+
+function DraftTurnAlerts() {
+  const { t } = useTranslation();
+  const enabled = useAppStore((store) => store.state.settings.notifications.draftTurn);
+  return (
+    <label className="tournament-check" title={t("settings.notifications.draftTurnHint")}>
+      <input type="checkbox" checked={enabled} onChange={(event) => {
+        ipc.send({ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { draftTurn: event.target.checked } } } });
+      }} />
+      {t("settings.notifications.draftTurn")}
+    </label>
   );
 }
 

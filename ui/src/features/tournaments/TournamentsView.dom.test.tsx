@@ -6,18 +6,23 @@
 // typed past, and a search still waiting to go out when its section closes.
 // What is on screen must always belong to what the reader is looking at now.
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerSummary, Tourney, TourneyCommand } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
-import { player, tourney } from "./fixtures";
+import { player, team, tourney } from "./fixtures";
 import { TournamentsView } from "./TournamentsView";
+import { clearTournamentDraft, pendingTournamentDraft, requestTournamentDraft } from "../../shared/tournamentNavigation";
 
 vi.mock("../../ipc/client");
 
 failOnConsoleError();
+afterEach(() => {
+  const pending = pendingTournamentDraft();
+  if (pending !== null) act(() => clearTournamentDraft(pending.nonce));
+});
 
 const spring = tourney({ id: "e1", name: "Spring Cup", status: "signup" });
 const autumn = tourney({ id: "e2", name: "Autumn Cup", status: "signup" });
@@ -45,6 +50,38 @@ function account(id: number, login: string): PlayerSummary {
 }
 
 describe("TournamentsView, mounted", () => {
+  it("opens the requested draft from another site page and accepts repeated requests", async () => {
+    const user = userEvent.setup();
+    mountWith([spring, autumn], spring);
+    await user.click(screen.getByRole("tab", { name: "Hall of Fame" }));
+    act(() => requestTournamentDraft(autumn.id));
+    expect(tourneyCommands("select").slice(-1)[0]).toEqual({ kind: "Tourney", command: { type: "select", payload: { tournamentId: autumn.id } } });
+    applyEvent({ kind: "Tourney", event: { type: "selected", payload: { tournamentId: autumn.id } } });
+    applyEvent({ kind: "Tourney", event: { type: "detailLoaded", payload: { event: {
+      ...autumn, teamSize: 2, formation: "draft", status: "draft", teams: [team()],
+      players: [player({ name: "Ada" }), player({ id: "p2", name: "Bob", teamId: null })],
+      draft: { order: ["t1"], current: 0, lastPick: null },
+    } } } });
+    expect(screen.getByRole("button", { name: "Teams", current: true })).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "Overview", current: false }));
+    act(() => requestTournamentDraft(autumn.id));
+    expect(screen.getByRole("button", { name: "Teams", current: true })).toBeDefined();
+    expect(pendingTournamentDraft()).toBeNull();
+  });
+
+  it("loads the catalogue before selecting a draft requested before the view mounts", async () => {
+    requestTournamentDraft(autumn.id);
+    const pending = pendingTournamentDraft()!;
+    render(<TournamentsView />);
+    expect(tourneyCommands("load")).toHaveLength(1);
+    await act(async () => {
+      applyEvent({ kind: "Tourney", event: { type: "loaded", payload: { events: [spring, autumn] } } });
+      await Promise.resolve();
+    });
+    expect(tourneyCommands("load")).toHaveLength(1);
+    expect(tourneyCommands("select").slice(-1)[0]).toEqual({ kind: "Tourney", command: { type: "select", payload: { tournamentId: autumn.id } } });
+    clearTournamentDraft(pending.nonce);
+  });
   it("offers a retry when the list fails to load, and the retry asks again", async () => {
     const user = userEvent.setup();
     render(<TournamentsView />);

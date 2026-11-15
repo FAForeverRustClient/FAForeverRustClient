@@ -4819,8 +4819,9 @@
    the chat. It was a 360-pixel box in the middle of an empty pane, scrolling
    inside itself while the space under it stayed blank (issue 367). */
 .tournament-section-body.is-fill {
-  flex: 1 1 0;
-  min-height: 420px;
+  height: var(--tournament-chat-height, 420px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* -- Manage as tiles ------------------------------------------------------
@@ -7696,8 +7697,8 @@
   min-height: 100vh;
 }
 
-/* Chat keeps the same minimum scroll range when switching sections. Stretch
-   its section within that height so only the message log scrolls internally. */
+/* Preserve the page's scroll range, while the chat section itself is sized
+   to the visible space by useTournamentChatViewport. */
 .tournament-body-row.is-fill {
   flex: 1 1 0;
   align-items: stretch;

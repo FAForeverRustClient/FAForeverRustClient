@@ -6292,4 +6292,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.pending.propDeclined": "Dein Vorschlag wurde abgelehnt",
   "tournaments.pending.propCameBack": "Dein Vorschlag ist zurückgekommen",
   "tournaments.pending.propGivenBack": "Dein Vorschlag wurde zurückgegeben",
+  "settings.notifications.draftTurn": "Du bist beim Draft dran",
+  "settings.notifications.draftTurnHint": "Benachrichtigt dich, wenn du als Kapitän wählen darfst, auch in einem anderen Tab oder während eines Spiels.",
+  "notifications.msg.draftTurn.title": "Du bist beim Draft dran",
+  "notifications.msg.draftTurn.body": "{tournament}: Wähle einen Spieler für dein Team.",
+  "notifications.action.openDraft": "Draft öffnen",
 };

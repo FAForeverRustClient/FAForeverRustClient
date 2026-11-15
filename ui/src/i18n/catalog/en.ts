@@ -6569,6 +6569,11 @@ export const en = {
   "tournaments.pending.propDeclined": "Your proposal was declined",
   "tournaments.pending.propCameBack": "Your proposal came back",
   "tournaments.pending.propGivenBack": "Your proposal was given back",
+  "settings.notifications.draftTurn": "Your turn to draft",
+  "settings.notifications.draftTurnHint": "Notify you when it is your turn to pick as captain, even while another tab or a game is open.",
+  "notifications.msg.draftTurn.title": "Your draft pick",
+  "notifications.msg.draftTurn.body": "{tournament}: choose a player for your team.",
+  "notifications.action.openDraft": "Open draft",
 } as const satisfies Record<string, Message>;
 
 export type MessageKey = keyof typeof en;

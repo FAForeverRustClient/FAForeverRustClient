@@ -22,6 +22,7 @@ use faf_domain::AppEvent;
 
 use crate::support;
 
+mod draft_alerts;
 mod pending;
 
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {

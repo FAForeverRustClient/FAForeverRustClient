@@ -6904,6 +6904,8 @@ export type NotificationAction = { type: "openChat"; payload: {
 /**  Open the calendar on one occurrence's detail panel. */
 { type: "openEvent"; payload: {
 	occurrenceId: string,
+} } | { type: "openTournamentDraft"; payload: {
+	tournamentId: string,
 } } |
 /**
  *  Open a live stream in the browser.
@@ -6973,7 +6975,9 @@ export type NotificationEvent = { type: "added"; payload: {
 
 export type NotificationKind = "matchFound" | "privateMessage" | "mention" | "friendOnline" | "friendOffline" | "friendPlaying" | "friendJoinedGame" | "newCustomGame" | "gameFull" | "gameLaunched" | "reviewReminder" |
 /**  A calendar event the player asked to be reminded about is coming up. */
-"eventReminder" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
+"eventReminder" |
+/**  The signed-in captain's next pick in a tournament draft. */
+"draftTurn" | "replayAvailable" | "partyInvite" | "reportSubmitted" |
 /**  An operational message authored by the FAF lobby server. */
 "serverNotice" |
 /**  A non-fatal server notice that still requires attention. */
@@ -7154,6 +7158,8 @@ export type NotificationPreferences = {
 	gameLaunched: boolean,
 	reviewReminder: boolean,
 	partyInvites: boolean,
+	/**  Opt-in alerts for the signed-in captain's tournament draft turns. */
+	draftTurn: boolean,
 	/**
 	 *  Whether FAF's own Twitch and YouTube channels going live is announced.
 	 *
@@ -7231,6 +7237,7 @@ export type NotificationPreferencesPatch = {
 	gameLaunched?: boolean,
 	reviewReminder?: boolean,
 	partyInvites?: boolean,
+	draftTurn?: boolean,
 	streamLive?: boolean,
 	mapGenerated?: boolean,
 	queueOpponentQueues?: string[],
@@ -7347,6 +7354,7 @@ export type NotificationSoundChoices = {
 	gameLaunched: NotificationSound,
 	reviewReminder: NotificationSound,
 	partyInvite: NotificationSound,
+	draftTurn: NotificationSound,
 	/**  Every kind without a switch of its own. */
 	other: NotificationSound,
 };
@@ -7365,6 +7373,7 @@ export type NotificationSoundChoicesPatch = {
 	gameLaunched?: NotificationSound,
 	reviewReminder?: NotificationSound,
 	partyInvite?: NotificationSound,
+	draftTurn?: NotificationSound,
 	other?: NotificationSound,
 };
 

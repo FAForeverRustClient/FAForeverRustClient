@@ -105,6 +105,7 @@ impl PopupQueue {
                     matches!(
                         item.kind,
                         NotificationKind::MatchFound
+                            | NotificationKind::DraftTurn
                             | NotificationKind::GameFull
                             | NotificationKind::PartyInvite
                     )
@@ -294,6 +295,7 @@ fn popup_notification_ids(
         .iter()
         .filter(|notification| {
             !notification.read
+                && (notification.kind != NotificationKind::DraftTurn || preferences.draft_turn)
                 && preferences
                     .delivery
                     .get(&notification.kind)
@@ -963,6 +965,25 @@ mod tests {
             action: None,
             text: None,
         }
+    }
+
+    #[test]
+    fn draft_alert_popup_respects_the_event_switch() {
+        let state = NotificationState {
+            items: vec![notice("draft", NotificationKind::DraftTurn)],
+        };
+        let mut preferences = NotificationPreferences::default();
+        assert!(popup_notification_ids(&state, &preferences).is_empty());
+        preferences.draft_turn = true;
+        assert_eq!(popup_notification_ids(&state, &preferences), vec!["draft"]);
+        preferences.delivery.insert(
+            NotificationKind::DraftTurn,
+            faf_domain::state::NotificationDelivery {
+                desktop: Some(false),
+                ..Default::default()
+            },
+        );
+        assert!(popup_notification_ids(&state, &preferences).is_empty());
     }
 
     #[test]

@@ -31,6 +31,7 @@ export function actionLabel(action: NotificationAction | null): string | null {
     case "openReview": return t("notifications.action.openReview");
     // Labelled: the click downloads the update and restarts the client.
     case "updateClient": return t("notifications.action.updateClient");
+    case "openTournamentDraft": return t("notifications.action.openDraft");
     case "openChat":
     case "openMatchmaking":
     case "openCustomGames":

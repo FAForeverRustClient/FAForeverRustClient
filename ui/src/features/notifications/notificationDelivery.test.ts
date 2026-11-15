@@ -3,6 +3,11 @@ import { useAppStore } from "../../store/store";
 import { deliveryFor } from "./notificationDelivery";
 
 describe("per-event delivery", () => {
+  it("keeps draft alerts opt-in even when desktop delivery is explicitly requested", () => {
+    const preferences = { ...useAppStore.getState().state.settings.notifications, draftTurn: false, delivery: { draftTurn: { sound: true, popup: true, desktop: true } } };
+    expect(deliveryFor("draftTurn", preferences)).toEqual({ sound: false, popup: false, desktop: false });
+    expect(deliveryFor("draftTurn", { ...preferences, draftTurn: true })).toEqual({ sound: true, popup: true, desktop: true });
+  });
   it("inherits the narrow desktop list while allowing an explicit event opt-in", () => {
     const preferences = useAppStore.getState().state.settings.notifications;
     expect(deliveryFor("matchFound", preferences).desktop).toBe(true);

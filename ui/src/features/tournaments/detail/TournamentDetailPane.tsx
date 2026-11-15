@@ -37,6 +37,7 @@ import { PublishBanner } from "./PublishBanner";
 import { ProposalBox } from "./ProposalBox";
 import { proposalHoldsPublishing } from "../proposals";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
+import { useTournamentChatViewport } from "./useTournamentChatViewport";
 import { PinButton, PinnedChat } from "./PinnedChat";
 import { swissShowsBracket } from "../bracket/swissPresentation";
 import {
@@ -222,6 +223,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     [showPlayers, streamer, shownMatchups, toggleMatchup],
   );
   const root = useRef<HTMLDivElement>(null);
+  const bodyRow = useRef<HTMLDivElement>(null);
+  useTournamentChatViewport(root, bodyRow, section === "chat");
 
   // The pinned room lets go of itself once its match is over, and says so:
   // a finished match's chat is read in the Chat tab, not kept beside it.
@@ -617,6 +620,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         </p>
       )}
       <div
+        ref={bodyRow}
         className={[
           "tournament-body-row",
           props.pinnedRoomId !== null ? "has-pin" : "",

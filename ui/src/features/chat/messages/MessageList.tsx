@@ -374,6 +374,18 @@ export const MessageList = memo(function MessageList({
     }
   }, [newestMessageId]);
 
+  // A tournament's visible chat height changes with its header and window.
+  // Keep the latest line visible on resize, while leaving history readers alone.
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (element === null || searchOpen) return;
+    const observer = new ResizeObserver(() => {
+      if (pinnedRef.current && prevScrollHeightRef.current === null) element.scrollTop = element.scrollHeight;
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [searchOpen]);
+
   const onScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
