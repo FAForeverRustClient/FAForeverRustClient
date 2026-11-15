@@ -80,8 +80,6 @@ function channelContext(channel: ChatChannel | undefined, status: ChatStatus): s
   return channel.users.length;
 }
 
-const connect = (username: string) =>
-  ipc.send({ kind: "Chat", command: { type: "connect", payload: { username } } });
 const sendMessage = (channel: string, content: string, replyTo = "") =>
   ipc.send({
     kind: "Chat",
@@ -123,23 +121,14 @@ export function ChatView() {
   const mapVault = useAppStore((s) => s.state.maps.vault);
   const chatPreferences = useAppStore((s) => s.state.settings.chat);
   // The party's room, so the strip can refuse to close it: it belongs to the
-  // party's lifecycle, not to this tab. `AppShell` owns the joining and the
-  // parting, and computes the name the same way.
+  // party's lifecycle, not to this tab. The backend owns joining and parting;
+  // this name is only used to present and protect the automatic room.
   const party = useAppStore((s) => s.state.lobby.party);
   const partyChannel = partyChatChannel(party, social, player);
   const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   const [searchRequest, setSearchRequest] = useState(0);
   const [gameLinkNotice, setGameLinkNotice] = useState("");
   const [rosterWidth, setRosterWidth] = useState(() => clampRosterWidth(chatPreferences.rosterWidth));
-
-  // Fallback for a very early tab mount; deliberately not keyed on status, so
-  // a user-initiated disconnect doesn't reconnect.
-  useEffect(() => {
-    const s = useAppStore.getState().state;
-    if (s.chat.status === "disconnected" && s.auth.player) {
-      void connect(s.auth.player.name);
-    }
-  }, []);
 
   // The roster's game badges resolve their map art through `maps.vault`, but
   // nothing here was asking for it: the vault is loaded by the Play, Maps and

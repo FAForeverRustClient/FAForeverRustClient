@@ -327,7 +327,7 @@ pub(super) async fn handle_update<'a>(
                 // whatever caused the kick: signed in from another client,
                 // the two would take the session from each other every few
                 // seconds. A later explicit Connect arms the watchdog again.
-                ctx.lobby.auto_reconnect.disarm();
+                ctx.lifecycle.stop_lobby();
                 ctx.ports.lobby.disconnect();
             }
         }
@@ -349,8 +349,8 @@ pub(super) async fn handle_update<'a>(
             );
             // The session change cancels both sockets. The watchdog must
             // also leave them alone until the user signs in again.
-            ctx.lobby.auto_reconnect.disarm();
-            ctx.chat.disarm_reconnect();
+            ctx.lifecycle.stop_lobby();
+            ctx.lifecycle.stop_chat();
         }
         LobbyUpdate::ConnectionRejected { reason } => {
             notifications::add_required_text(

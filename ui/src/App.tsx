@@ -43,7 +43,6 @@ export function App() {
   const hydrated = useAppStore((s) => s.hydrated);
   const authStatus = auth.status;
   const sessionStatus = useAppStore((s) => s.state.session.status);
-  const playerName = auth.player?.name;
   const theme = useAppStore((s) => s.state.settings.theme);
   const appearance = useAppStore((s) => s.state.settings.appearance);
   const browsing = useAppStore((s) => s.state.settings.browsing);
@@ -200,17 +199,6 @@ export function App() {
       mirror?.dispose();
     };
   }, []);
-
-  // The reference clients establish lobby and chat sessions as part of account
-  // login, rather than waiting for the user to open those tabs. The fake
-  // lobby also starts here so Play can honor an explicit disconnect.
-  useEffect(() => {
-    if (!hydrated || auth.status !== "loggedIn" || auth.mode === "offline" || !playerName) return;
-    ipc.send({ kind: "Lobby", command: { type: "connect" } });
-    if (auth.mode === "account") {
-      ipc.send({ kind: "Chat", command: { type: "connect", payload: { username: playerName } } });
-    }
-  }, [auth.mode, auth.status, hydrated, playerName]);
 
   if (startupError) return <StartupView error={startupError} />;
   const content = !hydrated

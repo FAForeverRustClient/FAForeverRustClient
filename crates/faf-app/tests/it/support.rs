@@ -9,7 +9,8 @@
 use std::time::Duration;
 
 use faf_app::{App, Ports};
-use faf_domain::AppState;
+use faf_domain::{AppEvent, AppState};
+use tokio::sync::broadcast;
 use tokio::sync::broadcast::error::RecvError;
 use tokio::time::Instant;
 
@@ -104,4 +105,104 @@ pub async fn happens(patience: Duration, mut done: impl FnMut() -> bool) -> bool
 /// never does.
 pub async fn eventually(what: &str, done: impl FnMut() -> bool) {
     assert!(happens(PATIENCE, done).await, "never happened: {what}");
+}
+
+/// Read the next event in the selected stream, ignoring other features.
+/// Select the feature, not the expected variant: assertions must still catch
+/// missing or reordered events within the feature under test. Subscribe before
+/// dispatching. Event loss is a failure, since order can no longer be checked.
+pub async fn next_event<T>(
+    events: &mut broadcast::Receiver<AppEvent>,
+    what: &str,
+    select: impl Fn(AppEvent) -> Option<T>,
+) -> T {
+    tokio::time::timeout(PATIENCE, async {
+        loop {
+            let event = events
+                .recv()
+                .await
+                .unwrap_or_else(|error| panic!("cannot observe {what}: {error}"));
+            if let Some(event) = select(event) {
+                return event;
+            }
+        }
+    })
+    .await
+    .unwrap_or_else(|_| panic!("never saw {what} within {PATIENCE:?}"))
+}
+
+#[cfg(test)]
+mod event_wait_tests {
+    use super::*;
+    use faf_domain::state::{AuthEvent, ChatEvent, ReportingEvent};
+
+    fn reporting(event: AppEvent) -> Option<ReportingEvent> {
+        match event {
+            AppEvent::Reporting(event) => Some(event),
+            _ => None,
+        }
+    }
+
+    #[tokio::test]
+    async fn next_event_preserves_feature_order_amid_background_events() {
+        let (tx, mut events) = broadcast::channel(8);
+        for event in [
+            AppEvent::Auth(AuthEvent::LoginStarted),
+            AppEvent::Reporting(ReportingEvent::Submitting),
+            AppEvent::Chat(ChatEvent::Connecting),
+            AppEvent::Reporting(ReportingEvent::Submitted),
+        ] {
+            tx.send(event).unwrap();
+        }
+        assert!(matches!(
+            next_event(&mut events, "reporting", reporting).await,
+            ReportingEvent::Submitting
+        ));
+        assert!(matches!(
+            next_event(&mut events, "reporting", reporting).await,
+            ReportingEvent::Submitted
+        ));
+    }
+
+    #[tokio::test]
+    async fn next_event_returns_an_unexpected_feature_event_for_the_assertion() {
+        let (tx, mut events) = broadcast::channel(2);
+        tx.send(AppEvent::Reporting(ReportingEvent::Failed {
+            reason: "refused".into(),
+        }))
+        .unwrap();
+        tx.send(AppEvent::Reporting(ReportingEvent::Submitted))
+            .unwrap();
+        assert!(matches!(
+            next_event(&mut events, "reporting", reporting).await,
+            ReportingEvent::Failed { .. }
+        ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    #[should_panic(expected = "never saw reporting within")]
+    async fn next_event_times_out_when_only_unrelated_events_arrive() {
+        let (tx, mut events) = broadcast::channel(2);
+        tx.send(AppEvent::Chat(ChatEvent::Connecting)).unwrap();
+        next_event(&mut events, "reporting", reporting).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "cannot observe reporting: channel lagged by")]
+    async fn next_event_rejects_lag_instead_of_skipping_lost_events() {
+        let (tx, mut events) = broadcast::channel(1);
+        tx.send(AppEvent::Reporting(ReportingEvent::Submitting))
+            .unwrap();
+        tx.send(AppEvent::Reporting(ReportingEvent::Submitted))
+            .unwrap();
+        next_event(&mut events, "reporting", reporting).await;
+    }
+
+    #[tokio::test]
+    #[should_panic(expected = "cannot observe reporting: channel closed")]
+    async fn next_event_rejects_a_closed_stream_without_spinning() {
+        let (tx, mut events) = broadcast::channel(1);
+        drop(tx);
+        next_event(&mut events, "reporting", reporting).await;
+    }
 }

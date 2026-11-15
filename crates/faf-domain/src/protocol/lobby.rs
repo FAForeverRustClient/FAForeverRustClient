@@ -27,6 +27,7 @@ mod client;
 mod game;
 mod matchmaker;
 mod notice;
+mod party;
 mod player;
 mod server;
 #[cfg(test)]
@@ -35,6 +36,7 @@ mod tests;
 pub use client::ClientMessage;
 pub use game::{average_game_rating, games_in, GameInfo, PlayerRatings};
 pub use notice::{Notice, ServerNoticeStyle};
+pub use party::party_chat_channel;
 pub use player::{PlayerEntry, SocialLists};
 pub use server::ServerMessage;
 

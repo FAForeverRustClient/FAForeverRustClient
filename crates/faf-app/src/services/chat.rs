@@ -23,17 +23,10 @@ use faf_domain::state::{
 };
 
 use crate::ports::ChatUpdate;
-use crate::runtime::{
-    account::AccountConnection, AutoReconnect, EventSink, LatestRequest, ServiceCtx,
-};
+use crate::runtime::{account::AccountConnection, EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
 
-/// The chat connection's operational context: its single-flight guard,
-/// whether it should come back after a drop, and the throttles on what the
-/// composer and the read markers send.
-///
-/// Owned by this service. The reconnect service asks whether the connection
-/// should come back through [`Self::auto_reconnect_armed`].
+/// The chat connection's single-flight guard and composer/read-marker throttles.
 #[derive(Default)]
 pub struct ChatContext {
     /// Single-flight guard for the chat connection while `Connect` owns an
@@ -41,10 +34,6 @@ pub struct ChatContext {
     /// redundant request is dropped, so overlapping connections cannot race
     /// and clobber each other's state.
     active: AccountConnection,
-    /// Whether [`reconnect`](crate::services::reconnect) should bring this
-    /// socket back after an unexpected drop, so a user who hung up stays hung
-    /// up while a laptop resume does not.
-    auto_reconnect: AutoReconnect,
     /// When a composing notice was last sent per channel, so the composer can
     /// report on every keystroke while the wire sees one line every few
     /// seconds.
@@ -54,27 +43,12 @@ pub struct ChatContext {
     read_marker_persist_generation: LatestRequest,
 }
 
-impl ChatContext {
-    /// Keep chat down: the watchdog will not bring it back after the next
-    /// drop. For an account the lobby server has refused for good (#488).
-    pub(crate) fn disarm_reconnect(&self) {
-        self.auto_reconnect.disarm();
-    }
-
-    /// Whether an explicit `Connect` armed the chat connection to come back
-    /// after an unexpected drop. Read by
-    /// [`reconnect`](crate::services::reconnect).
-    pub fn auto_reconnect_armed(&self) -> bool {
-        self.auto_reconnect.armed()
-    }
-}
-
 pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
     match cmd {
         ChatCommand::Connect { username } => {
             // Armed before the guard, so asking for a connection while one
             // is already in flight still re-arms the watchdog.
-            ctx.chat.auto_reconnect.arm();
+            ctx.lifecycle.request_chat();
             // Beside the connection rather than before it: the roster can
             // show the channel while the moderators are still being asked for.
             futures_util::join!(load_staff(ctx, out), connect(username, ctx, out, false));
@@ -171,7 +145,7 @@ pub async fn handle(cmd: ChatCommand, ctx: &ServiceCtx, out: &EventSink) {
         ChatCommand::Disconnect => {
             // Hanging up is a decision, not a fault: the watchdog must not
             // undo it on its next tick.
-            ctx.chat.auto_reconnect.disarm();
+            ctx.lifecycle.stop_chat();
             ctx.chat.read_marker_persist_generation.invalidate();
             ctx.ports.chat.disconnect();
             crate::services::settings::persist(ctx, out).await;
@@ -203,6 +177,38 @@ pub async fn reconnect(username: String, ctx: &ServiceCtx, out: &EventSink) {
     connect(username, ctx, out, true).await;
 }
 
+/// Initial account connection. Like a retry, it must not undo a Disconnect
+/// accepted after sign-in but before this task was scheduled.
+pub(crate) async fn start_account(username: String, ctx: &ServiceCtx, out: &EventSink) {
+    futures_util::join!(load_staff(ctx, out), connect(username, ctx, out, true));
+}
+
+pub(crate) fn sync_party_channel(
+    ctx: &ServiceCtx,
+    session: &tokio_util::sync::CancellationToken,
+    epoch: u64,
+    previous: Option<&str>,
+    current: Option<&str>,
+) -> bool {
+    ctx.chat
+        .active
+        .with_current(session, || {
+            if !ctx.lifecycle.chat_wanted() || ctx.lifecycle.chat_epoch() != epoch {
+                return false;
+            }
+            if let Some(channel) = previous {
+                ctx.ports
+                    .chat
+                    .leave_channel(channel.to_owned(), String::new());
+            }
+            if let Some(channel) = current {
+                ctx.ports.chat.join_channel(channel.to_owned());
+            }
+            true
+        })
+        .unwrap_or(false)
+}
+
 async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     let out = out.scoped_to_account();
     let session = out.account_token();
@@ -211,7 +217,7 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
     };
     // Read once the guard is held, the last moment a Disconnect could have
     // landed between the watchdog's tick and this retry.
-    if only_if_armed && !ctx.chat.auto_reconnect.armed() {
+    if only_if_armed && !ctx.lifecycle.chat_wanted() {
         return;
     }
     if out.with_state(|state| {
