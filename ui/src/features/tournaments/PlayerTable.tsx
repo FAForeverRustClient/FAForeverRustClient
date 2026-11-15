@@ -9,6 +9,7 @@ import type { ReactNode } from "react";
 import type { PlayerSummary, Tourney, TourneyPlayer, TourneyTeam } from "../../ipc/bindings";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
+import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
 import { EntrantName } from "./EntrantName";
 import { rankedEntrants } from "./tourneyPresentation";
 import { profileOf } from "../../shared/rules/tourneyRules";
@@ -41,6 +42,7 @@ export function PlayerTable({
   action,
 }: PlayerTableProps) {
   const { t } = useTranslation();
+  const { openPlayerMenu, playerMenu, playerMenuTarget } = usePlayerMenu();
   // Sent only to organisers and to people signed up here, so a match can be
   // arranged without a round trip through the chat. A column of its own,
   // drawn only when somebody has one: beside the name it read as part of it.
@@ -80,7 +82,18 @@ export function PlayerTable({
             const team = teamOf(player);
             const mine = team !== null && team.id === event.viewer.memberTeamId;
             return (
-              <tr key={player.id} className={mine ? "is-mine" : undefined}>
+              <tr
+                key={player.id}
+                className={`${mine ? "is-mine" : ""}${playerMenuTarget === (profile?.login ?? player.name) ? " is-menu-target" : ""}`.trim() || undefined}
+                onContextMenu={(event) => {
+                  if (event.defaultPrevented) return;
+                  openPlayerMenu(
+                    profile?.login ?? player.name,
+                    event,
+                    profile ? { account: { id: profile.id, login: profile.login } } : undefined,
+                  );
+                }}
+              >
                 {/* Row position in this ranking, not a seed: the seed is the
                     organiser's decision and has its own column. */}
                 <td className="mono muted">{index + 1}</td>
@@ -164,6 +177,7 @@ export function PlayerTable({
           })}
         </tbody>
       </table>
+      {playerMenu}
     </div>
   );
 }
