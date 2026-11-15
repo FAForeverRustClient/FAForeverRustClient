@@ -5903,7 +5903,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.pending.propCameBack": "Votre proposition est revenue",
   "tournaments.pending.propGivenBack": "Votre proposition vous a été rendue",
   "settings.notifications.draftTurn": "Votre tour de choisir un joueur",
-  "settings.notifications.draftTurnHint": "Vous avertit lorsque vous devez choisir en tant que capitaine, même dans un autre onglet ou pendant une partie.",
+  "settings.notifications.draftTurnHint": "Vous avertit lorsque vous devez choisir un joueur en tant que capitaine lors du draft d'un tournoi, même dans un autre onglet ou pendant une partie.",
   "notifications.msg.draftTurn.title": "À vous de choisir un joueur",
   "notifications.msg.draftTurn.body": "{tournament} : choisissez un joueur pour votre équipe.",
   "notifications.action.openDraft": "Ouvrir la sélection",

@@ -7123,7 +7123,7 @@ export type NotificationPreferences = {
 	 *  choice. Version zero is any file written before this field existed.
 	 *
 	 *  It lives here rather than inside [`NotificationSoundChoices`] because
-	 *  that struct is twelve fields of one type and several places walk it as
+	 *  that struct contains only sounds and several places walk it as
 	 *  such; a `u8` among them would be a row that is not a sound.
 	 */
 	soundChoiceVersion: number,
@@ -7314,8 +7314,8 @@ export type NotificationSound =
  *  UI. Everything without a switch of its own (server notices, errors, a
  *  finished map, a new client version) shares [`Self::other`].
  *
- *  **Two rows are not [`NotificationSound::Chime`]: a found match and a filled
- *  lobby both play [`NotificationSound::Alert`].** Everything else keeps the
+ *  **A found match, a filled lobby and a draft turn play
+ *  [`NotificationSound::Alert`].** Everything else keeps the
  *  tone the client played before this existed, so installing an update changes
  *  those two sounds and not the rest.
  *

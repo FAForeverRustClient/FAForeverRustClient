@@ -6281,7 +6281,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.pending.propCameBack": "Ваше предложение вернулось",
   "tournaments.pending.propGivenBack": "Ваше предложение вам вернули",
   "settings.notifications.draftTurn": "Ваша очередь выбирать игрока",
-  "settings.notifications.draftTurnHint": "Уведомляет, когда вам как капитану пора выбирать, даже в другой вкладке или во время игры.",
+  "settings.notifications.draftTurnHint": "Уведомляет, когда вам как капитану пора выбирать игрока на драфте турнира, даже в другой вкладке или во время игры.",
   "notifications.msg.draftTurn.title": "Ваша очередь выбирать игрока",
   "notifications.msg.draftTurn.body": "{tournament}: выберите игрока для своей команды.",
   "notifications.action.openDraft": "Открыть выбор игроков",
