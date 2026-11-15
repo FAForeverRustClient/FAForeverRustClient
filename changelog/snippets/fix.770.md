@@ -1,0 +1,2 @@
+- Tournament Chat messages, scrollbar and message field no longer extend below the visible workspace.
+- Chat keeps the newest message visible when its area shrinks, without moving readers of older messages.
