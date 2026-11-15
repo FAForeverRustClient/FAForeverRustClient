@@ -9,7 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Tourney } from "../../ipc/bindings";
 import { applyEvent, seedStore, sentCommands } from "../../testing/mounted";
-import { tourney } from "./fixtures";
+import { player, team, tourney } from "./fixtures";
 import { TournamentEventDetail } from "./TournamentEventDetail";
 
 vi.mock("../../ipc/client");
@@ -86,5 +86,32 @@ describe("TournamentEventDetail, mounted", () => {
     await user.click(within(sections).getByRole("button", { name: "Overview" }));
     await user.click(within(sections).getByRole("button", { name: /^Chat/ }));
     expect(loads()).toHaveLength(1);
+  });
+
+  it("prompts a captain to pick, and not once they are in the draft", async () => {
+    const user = userEvent.setup();
+    mountDetail(
+      tourney({
+        id: "e1a2b",
+        name: "Captains Cup",
+        status: "draft",
+        formation: "draft",
+        teamSize: 2,
+        players: [
+          player({ id: "p1", name: "Ada", teamId: "t1" }),
+          player({ id: "p2", name: "Bob", teamId: "t2" }),
+          player({ id: "p3", name: "Cid", teamId: null }),
+        ],
+        teams: [
+          team({ id: "t1", captainId: "p1", playerIds: ["p1"] }),
+          team({ id: "t2", captainId: "p2", playerIds: ["p2"] }),
+        ],
+        draft: { order: ["t1", "t2"], current: 0, lastPick: null },
+        viewer: { ...tourney().viewer, signedUpPlayerId: "p1", memberTeamId: "t1" },
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Go to the draft" }));
+    expect(screen.getByRole("button", { name: "Teams", current: true })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Go to the draft" })).toBeNull();
   });
 });

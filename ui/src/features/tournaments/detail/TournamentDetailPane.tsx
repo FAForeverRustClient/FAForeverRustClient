@@ -583,8 +583,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       )}
 
       {/* The one thing waiting on this account, above whichever section is
-          open: the section it points at is usually not that one. */}
-      {turn !== null && (
+          open: the section it points at is usually not that one. When it is,
+          the section itself is the prompt, and a banner offering to go where
+          the reader already is only takes room. */}
+      {turn !== null && turn.section !== section && (
         <div className="tournament-turn-banner" role="status">
           <span className="tournament-turn-dot" aria-hidden="true" />
           <span className="tournament-turn-text">{turn.text}</span>
