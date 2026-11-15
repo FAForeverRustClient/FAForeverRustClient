@@ -31,6 +31,9 @@ use crate::runtime::{EventSink, LatestRequest, NewestAnswer, ServiceCtx};
 /// Owned by this service.
 #[derive(Default)]
 pub struct TourneyContext {
+    /// Pending polls and the refresh after a draft pick must not restore an
+    /// older turn after a newer answer has already cleared it.
+    pending_answers: NewestAnswer<()>,
     /// Only the newest detail response may land: opening three events in a row
     /// must not leave the first one's bracket on screen because it answered
     /// last.

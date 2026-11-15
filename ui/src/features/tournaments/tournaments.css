@@ -1875,6 +1875,8 @@
   border-bottom-color: transparent;
   /* No scrollbar gutter: a strip of tabs scrolls sideways only when a bracket has more match rooms than fit, and a reserved strip would lift every tab off the underline. */
   overflow-x: auto;
+  /* Horizontal overflow otherwise makes the vertical axis scrollable too. */
+  overflow-y: hidden;
 }
 
 .tournament-chat-tabs button {
@@ -7689,17 +7691,17 @@
 /* At least a window tall under the tabs, so a short section (News, say)
    opened while the page is scrolled down a little leaves the page where it
    was. Shorter, the page could not stay scrolled that far, snapped back, and
-   the title slid down into view on every switch. The chat sizes its own row. */
+   the title slid down into view on every switch. */
 .tournament-body-row:not(.is-fill) {
   min-height: 100vh;
 }
 
-/* The chat's row: as tall as the pane leaves it, its section stretched to that
-   height so the log inside can fill it. */
+/* Chat keeps the same minimum scroll range when switching sections. Stretch
+   its section within that height so only the message log scrolls internally. */
 .tournament-body-row.is-fill {
   flex: 1 1 0;
   align-items: stretch;
-  min-height: 420px;
+  min-height: max(420px, 100vh);
 }
 
 .tournament-pinned-chat {

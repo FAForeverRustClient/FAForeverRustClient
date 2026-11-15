@@ -22,6 +22,8 @@ use faf_domain::AppEvent;
 
 use crate::support;
 
+mod pending;
+
 fn team_points(team_id: &str, points: i32) -> faf_domain::state::TeamPoints {
     faf_domain::state::TeamPoints {
         team_id: team_id.into(),

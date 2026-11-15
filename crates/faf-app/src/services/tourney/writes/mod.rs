@@ -401,6 +401,7 @@ async fn write_selecting(
         action: action.clone(),
     });
 
+    let drafting = matches!(action, TourneyAction::Drafting);
     match operation.await {
         Ok(select) => {
             out.emit(TourneyEvent::ActionSucceeded {
@@ -414,6 +415,9 @@ async fn write_selecting(
             let open = select.or_else(|| selected_id(out));
             if let Some(tournament_id) = open {
                 load_detail(&tournament_id, ctx, out).await;
+            }
+            if drafting {
+                super::site::load_site(faf_domain::state::SiteRead::Pending, ctx, out).await;
             }
         }
         Err(error) => out.emit(failed(action, &error)),
