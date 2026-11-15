@@ -246,7 +246,7 @@ export function archiveByYear(events: Tourney[]): { year: number | null; events:
     .map((year) => ({ year, events: byYear.get(year) ?? [] }));
 }
 
-export type TurnSection = "bracket" | "players" | "teams" | "draft" | "chat" | "vetoes";
+export type TurnSection = "bracket" | "players" | "teams" | "chat" | "vetoes";
 
 export interface TurnInfo {
   text: string;
@@ -332,7 +332,7 @@ export function turnInfo(event: Tourney, t: Translate): TurnInfo | null {
   }
 
   if (event.status === "draft" && event.draft !== null && mayPick(event) && !viewer.organiser) {
-    return { text: t("tournaments.turn.draftPick"), cta: "tournaments.turn.goToDraft", section: "draft" };
+    return { text: t("tournaments.turn.draftPick"), cta: "tournaments.turn.goToDraft", section: "teams" };
   }
 
   if (event.myMentionCount > 0) {

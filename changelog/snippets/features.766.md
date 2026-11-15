@@ -1,0 +1,2 @@
+- In a draft tournament the Teams section is now the captains draft, laid out like every other Teams section: the available players ranked by rating, a player's card from their name, and every team's roster, combined and average rating and open places, with who picks next.
+- The tournament chat tab opens the event's global chat straight away.

@@ -59,7 +59,7 @@ import { EventToolsSlot } from "./eventToolsSlot";
 import "../../../design-system/section-tabs.css";
 import { BracketView } from "../bracket/BracketView";
 import { ChatPanel } from "./ChatPanel";
-import { DraftPanel } from "../bracket/DraftPanel";
+import { DraftPanel, showsDraft } from "../bracket/DraftPanel";
 import { EntrantsPanel } from "./EntrantsPanel";
 import { TeamsPanel } from "./TeamsPanel";
 import { ManagePanel } from "../manage/ManagePanel";
@@ -90,7 +90,6 @@ type Section =
   | "news"
   | "players"
   | "teams"
-  | "draft"
   | "bracket"
   | "matches"
   | "stats"
@@ -106,7 +105,6 @@ const SECTION_LABELS: Record<Section, MessageKey> = {
   news: "tournaments.section.news",
   players: "tournaments.section.players",
   teams: "tournaments.section.teams",
-  draft: "tournaments.section.draft",
   bracket: "tournaments.section.bracket",
   matches: "tournaments.section.matches",
   stats: "tournaments.section.stats",
@@ -323,7 +321,9 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
 
   useEffect(() => {
     if (props.jump == null) return;
-    const wanted = props.jump.section as Section;
+    // The draft was a section of its own before it became the Teams section
+    // of a draft event; a jump still naming it lands there.
+    const wanted = (props.jump.section === "draft" ? "teams" : props.jump.section) as Section;
     if (wanted in SECTION_LABELS) openSection(wanted);
     // Only a new jump opens a section; everything else the reader chose.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -493,18 +493,11 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
             (candidate) =>
               candidate !== "log" || (event.viewer.organiser && event.auditLog.length > 0),
           )
+          // A draft event's Teams section is the draft, so it is there for an
+          // organiser choosing the captains before any team exists.
           .filter(
             (candidate) =>
-              candidate !== "teams" || selfOrganised(event) || event.teams.length > 0,
-          )
-          // The draft is a section only where there is one: a draft-formation
-          // event before it starts, or one running. Everywhere else it would be
-          // a tab that opens on nothing.
-          .filter(
-            (candidate) =>
-              candidate !== "draft" ||
-              event.draft !== null ||
-              (event.viewer.organiser && event.formation === "draft"),
+              candidate !== "teams" || selfOrganised(event) || event.teams.length > 0 || showsDraft(event),
           )
           // Standings exist once there is something to stand on: a drawn
           // bracket, or an import that arrived with its own final table. Before
@@ -590,8 +583,10 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       )}
 
       {/* The one thing waiting on this account, above whichever section is
-          open: the section it points at is usually not that one. */}
-      {turn !== null && (
+          open: the section it points at is usually not that one. When it is,
+          the section itself is the prompt, and a banner offering to go where
+          the reader already is only takes room. */}
+      {turn !== null && turn.section !== section && (
         <div className="tournament-turn-banner" role="status">
           <span className="tournament-turn-dot" aria-hidden="true" />
           <span className="tournament-turn-text">{turn.text}</span>
@@ -687,7 +682,20 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
         />
       )}
 
-      {section === "teams" && (
+      {/* A draft event's teams are the draft's: its Teams section is the
+          draft until the bracket is drawn, and the two used to be separate
+          sections drawing the same teams twice. */}
+      {section === "teams" && showsDraft(event) && (
+        <DraftPanel
+          event={event}
+          profiles={props.profiles}
+          busy={busy}
+          teams={actions.teams}
+          organiser={actions.organiser}
+        />
+      )}
+
+      {section === "teams" && !showsDraft(event) && (
         <TeamsPanel
           event={event}
           profiles={props.profiles}
@@ -724,16 +732,6 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           matches={actions.matches}
           onAdmin={actions.organiser.admin}
           onAssignPool={actions.maps.assignPool}
-        />
-      )}
-
-      {section === "draft" && (
-        <DraftPanel
-          event={event}
-          profiles={props.profiles}
-          busy={busy}
-          teams={actions.teams}
-          organiser={actions.organiser}
         />
       )}
 

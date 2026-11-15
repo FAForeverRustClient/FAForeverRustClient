@@ -443,7 +443,7 @@ function byStanding(event: Tourney, streamer: boolean) {
  * it, the right-hand tools if there are any, one line of what the group means,
  * and the teams.
  */
-function TeamSection({
+export function TeamSection({
   title,
   count,
   hint,
@@ -536,15 +536,28 @@ function FieldPanel({
  * The combined rating against the event's team limit, as a thin bar. Nothing
  * at all for a team where nobody has a rating: "0 combined" reads as a fact.
  */
-function RatingMeter({ event, team }: { event: Tourney; team: TourneyTeam }) {
+function RatingMeter({ event, team, also }: { event: Tourney; team: TourneyTeam; also?: string }) {
   const { t } = useTranslation();
+  // A figure that belongs with the combined rating, such as a drafting team's
+  // average, set right after it rather than across the card. The dot is an
+  // item of its own, so the line's gap stands on both sides of it.
+  const after =
+    also === undefined ? null : (
+      <>
+        <span className="tournament-team-rating-also" aria-hidden>
+          ·
+        </span>
+        <span className="tournament-team-rating-also">{also}</span>
+      </>
+    );
   const combined = teamRating(event, team);
   const max = event.rating.maxTeam;
   if (teamMembers(event, team).every((member) => member.rating === null)) return null;
   if (max === null || max <= 0) {
     return (
       <span className="tournament-team-rating mono" title={t("tournaments.teams.combinedTitle")}>
-        {t("tournaments.teams.combined", { rating: combined })}
+        <span>{t("tournaments.teams.combined", { rating: combined })}</span>
+        {after}
       </span>
     );
   }
@@ -556,6 +569,7 @@ function RatingMeter({ event, team }: { event: Tourney; team: TourneyTeam }) {
       title={t("tournaments.teams.combinedOfMax")}
     >
       <span className="mono">{t("tournaments.teams.ratingOfMax", { rating: combined, max })}</span>
+      {after}
       <span className="tournament-team-rating-bar" aria-hidden>
         <span style={{ width: `${Math.round(share * 100)}%` }} />
       </span>
@@ -572,11 +586,14 @@ function Roster({
   team,
   profiles,
   showOpen,
+  compact = false,
 }: {
   event: Tourney;
   team: TourneyTeam;
   profiles: PlayerSummary[];
   showOpen: boolean;
+  /** One line per member: see `MemberLine`. */
+  compact?: boolean;
 }) {
   const { t } = useTranslation();
   const members = teamMembers(event, team);
@@ -584,7 +601,7 @@ function Roster({
   return (
     <ul className="tournament-roster">
       {members.map((member) => (
-        <MemberLine key={member.id} event={event} member={member} team={team} profiles={profiles} />
+        <MemberLine key={member.id} event={event} member={member} team={team} profiles={profiles} compact={compact} />
       ))}
       {Array.from({ length: openSlots }, (_, index) => (
         <li className="tournament-roster-row is-open" key={`open-${index}`}>
@@ -596,20 +613,46 @@ function Roster({
   );
 }
 
-/** A member's line: name, captaincy, where to reach them, and rating. */
+/**
+ * A member's line: name, captaincy, where to reach them, and rating.
+ *
+ * Compact in a running draft, where the cards are read side by side and pick
+ * by pick: one line each, the captaincy a crown beside the name, and only the
+ * rating the event goes by. The account's own rating beside the name was a
+ * second number on every line, and the Discord handle a second line on some.
+ */
 function MemberLine({
   event,
   member,
   team,
   profiles,
+  compact,
 }: {
   event: Tourney;
   member: TourneyPlayer;
   team: TourneyTeam;
   profiles: PlayerSummary[];
+  compact: boolean;
 }) {
   const { t } = useTranslation();
   const captain = team.captainId === member.id && event.teamSize > 1;
+  if (compact) {
+    return (
+      <li className={captain ? "tournament-roster-row is-compact is-captain" : "tournament-roster-row is-compact"}>
+        <span className="tournament-roster-who">
+          <span className="tournament-entrant-name">
+            <EntrantName name={member.name} fafId={member.fafId} profile={profileOf(profiles, member)} />
+          </span>
+          {captain && (
+            <span className="tournament-roster-crown" title={t("tournaments.teams.captain")} aria-label={t("tournaments.teams.captain")}>
+              <Icon name="crown" size={13} />
+            </span>
+          )}
+        </span>
+        <span className="tournament-roster-rating mono">{member.rating ?? "–"}</span>
+      </li>
+    );
+  }
   // The entry's own name wins over the account's: the tournament service owns
   // the entry, FAF owns the player, and an organiser's substitute label must
   // survive the lookup.
@@ -758,7 +801,7 @@ function YourTeam({ event, team, name, profiles, busy, captain, now, ...on }: Yo
   );
 }
 
-interface TeamCardProps {
+export interface TeamCardProps {
   event: Tourney;
   team: TourneyTeam;
   name: string;
@@ -770,12 +813,19 @@ interface TeamCardProps {
   asked: boolean;
   overCap: boolean;
   extra?: ReactNode;
+  /**
+   * The card in a running captains draft: marked while the team is on the
+   * clock, with its open places and how many it has against how many it
+   * wants. The average rather than only the sum, as teams of different sizes
+   * are weighed against each other mid-draft.
+   */
+  draft?: { onClock: boolean };
   teams: Pick<TeamActions, "requestJoin" | "cancelJoin" | "respondJoin" | "disband" | "rename">;
   onChangeCaptain: () => void;
   onAdmin: (change: TourneyAdmin) => void;
 }
 
-function TeamCard(props: TeamCardProps) {
+export function TeamCard(props: TeamCardProps) {
   const { t } = useTranslation();
   const display = useTourneyDisplay();
   const { event, team, busy } = props;
@@ -838,7 +888,7 @@ function TeamCard(props: TeamCardProps) {
     );
   // An organiser may rename and disband any team; a captain only their own,
   // and renaming only once.
-  if (mayRename(event, team) && !ownToolsAbove)
+  if (mayRename(event, team) && !ownToolsAbove && props.draft === undefined)
     actions.push(
       <Button
         key="rename"
@@ -872,6 +922,8 @@ function TeamCard(props: TeamCardProps) {
         "tournament-team-card",
         props.isMine ? "is-mine" : "",
         full ? "is-full" : "",
+        props.draft !== undefined ? "is-drafting" : "",
+        props.draft?.onClock ? "is-on-clock" : "",
         // Streamer mode keeps who is out off screen too.
         eliminated ? "is-eliminated" : "",
       ]
@@ -894,13 +946,42 @@ function TeamCard(props: TeamCardProps) {
           {open && full && team.checkedIn && (
             <span className="tournament-badge is-ok">{t("tournaments.entrants.checkedIn")}</span>
           )}
+          {props.draft?.onClock && <span className="tournament-badge is-running">{t("tournaments.draft.picking")}</span>}
+          {/* In the draft the name is the one tool on a card, so it sits by
+              the name rather than as a row of its own under every roster. */}
+          {props.draft !== undefined && mayRename(event, team) && (
+            <button
+              type="button"
+              className="tournaments-icon-button tournament-team-rename"
+              disabled={busy}
+              title={t("tournaments.teams.rename")}
+              aria-label={t("tournaments.teams.rename")}
+              onClick={() => {
+                askText(t("tournaments.teams.renamePrompt"), team.name, (renamed) => props.teams.rename(team.id, renamed), {
+                  maxLength: 30,
+                });
+              }}
+            >
+              <Icon name="edit" size={14} />
+            </button>
+          )}
         </div>
         <div className="tournament-team-card-sub">
-          <RatingMeter event={event} team={team} />
+          {props.draft === undefined ? (
+            <RatingMeter event={event} team={team} />
+          ) : (
+            <DraftFigures event={event} team={team} />
+          )}
         </div>
       </div>
 
-      <Roster event={event} team={team} profiles={props.profiles} showOpen={open} />
+      <Roster
+        event={event}
+        team={team}
+        profiles={props.profiles}
+        showOpen={open || props.draft !== undefined}
+        compact={props.draft !== undefined}
+      />
 
       {/* Requests are the captain's to answer, or an organiser's. A captain
           answers their own team's in the Your team card, with its other tools. */}
@@ -910,6 +991,24 @@ function TeamCard(props: TeamCardProps) {
 
       {actions.length > 0 && <div className="tournament-team-card-actions">{actions}</div>}
     </li>
+  );
+}
+
+/**
+ * A drafting team's combined rating (against the event's cap, where it has
+ * one), with its average right after it: what a pick is weighed against. How
+ * full the team is, the open slots in its roster already say.
+ */
+function DraftFigures({ event, team }: { event: Tourney; team: TourneyTeam }) {
+  const { t } = useTranslation();
+  const rated = teamMembers(event, team).flatMap((member) => (member.rating === null ? [] : [member.rating]));
+  const average = rated.length > 0 ? Math.round(rated.reduce((sum, rating) => sum + rating, 0) / rated.length) : null;
+  return (
+    <RatingMeter
+      event={event}
+      team={team}
+      also={average === null ? undefined : t("tournaments.draft.average", { rating: average })}
+    />
   );
 }
 
