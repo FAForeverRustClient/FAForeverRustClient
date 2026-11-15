@@ -8,6 +8,10 @@ import { ipc } from "../../ipc/client";
 export const send = (command: TourneyCommand) =>
   ipc.send({ kind: "Tourney", command } satisfies AppCommand);
 
+/** Wait for a read to finish, so periodic refreshes cannot overlap. */
+export const settle = (command: TourneyCommand) =>
+  ipc.settle({ kind: "Tourney", command } satisfies AppCommand);
+
 /**
  * Reload what the tab shows.
  *

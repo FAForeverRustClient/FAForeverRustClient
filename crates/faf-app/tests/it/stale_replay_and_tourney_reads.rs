@@ -1027,7 +1027,7 @@ async fn with_gated_players() -> (Arc<App>, Gates) {
     (app, gates)
 }
 
-/// The entrants' accounts are read after the detail, under the detail's
+/// The entrants' accounts are read after the detail, under their own
 /// generation. Event A's accounts still out when event B is opened must not
 /// put A's faces on B's entrants: the reducer cannot tell, because a list of
 /// accounts does not say which event it was for.
@@ -1067,6 +1067,46 @@ async fn a_late_entrant_lookup_never_lands_on_the_next_event() {
         "the accounts of {RUNNING}'s entrants landed on {SIGNUP}"
     );
     assert_eq!(shown, expected);
+}
+
+#[tokio::test]
+async fn a_draft_refresh_does_not_discard_the_open_events_pending_profiles() {
+    let (app, gates) = with_gated_players().await;
+    gates.hold(PROFILES_KEY, false);
+    let opening = spawn_command(&app, select(RUNNING));
+    gates.wait_entered(PROFILES_KEY).await;
+
+    run(
+        &app,
+        TourneyRead::RefreshDetail {
+            tournament_id: RUNNING.into(),
+        },
+    )
+    .await;
+    gates.release(PROFILES_KEY);
+    finish(opening).await;
+
+    let tourney = app.snapshot().tourney;
+    let mut expected: Vec<i32> = tourney
+        .detail
+        .unwrap()
+        .players
+        .iter()
+        .filter_map(|player| player.faf_id)
+        .collect();
+    expected.sort_unstable();
+    expected.dedup();
+    let mut shown: Vec<i32> = tourney
+        .entrant_profiles
+        .iter()
+        .map(|profile| profile.id)
+        .collect();
+    shown.sort_unstable();
+    assert!(!expected.is_empty(), "the fixture must need FAF profiles");
+    assert_eq!(
+        shown, expected,
+        "a background draft poll must not cancel the avatar lookup"
+    );
 }
 
 fn search(query: &str) -> TourneyRead {

@@ -38,6 +38,9 @@ pub struct TourneyContext {
     /// must not leave the first one's bracket on screen because it answered
     /// last.
     detail_generation: LatestRequest,
+    /// A silent draft refresh must not discard the open event's FAF profiles
+    /// while their separate lookup is still running.
+    entrant_profiles_generation: LatestRequest,
     /// The same, for opening a chat room: its loading state and its refusal
     /// are the open room's pane, and a refusal names no room the reducer
     /// could screen it by.

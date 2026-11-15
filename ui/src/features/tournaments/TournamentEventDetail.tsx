@@ -17,6 +17,7 @@ import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import type { MapImport } from "./manage/MapImportDialog";
 import type { SitePage } from "./site/sitePages";
 import { createTourneyActions } from "./tourneyActions";
+import { useTourneyDraftRefresh } from "./useTourneyDraftRefresh";
 
 interface Props {
   /** A section the pending bar asked the detail to open. */
@@ -74,6 +75,7 @@ export function TournamentEventDetail({ jump, onOpenPage, onSignUp, onReport }: 
   const busyMatch = busyMatchId(pending);
 
   const tournamentId = open?.id ?? null;
+  useTourneyDraftRefresh(open?.status === "draft" ? open.id : null);
   const actions = useMemo(
     () =>
       tournamentId === null
