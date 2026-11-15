@@ -1765,7 +1765,8 @@
   text-transform: uppercase;
 }
 
-.tournament-entrants tbody tr:hover td {
+.tournament-entrants tbody tr:hover td,
+.tournament-entrants tbody tr.is-menu-target td {
   background: var(--color-surface-hover);
 }
 
@@ -5202,7 +5203,9 @@
 }
 
 .tournament-entrant-link:hover .player-chip-name,
-.tournament-entrant-link:hover .tournament-entrant-link-text {
+.tournament-entrant-link:hover .tournament-entrant-link-text,
+.tournament-entrant-link.is-menu-target .player-chip-name,
+.tournament-entrant-link.is-menu-target .tournament-entrant-link-text {
   text-decoration: underline;
 }
 

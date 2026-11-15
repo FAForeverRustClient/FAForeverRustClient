@@ -36,6 +36,8 @@ import { joinGame as joinLobbyGame } from "../joinGame";
 export interface PlayerMenuContext {
   /** The game the name was shown in, which "Report" fills in for the user. */
   gameId?: number;
+  /** An account already resolved by the source list, including offline players. */
+  account?: AccountRef;
 }
 
 /**
@@ -129,21 +131,27 @@ export function usePlayerMenu(options: PlayerMenuOptions = {}): {
   const openPlayerMenu = useCallback<PlayerMenuOpener>((nickname, event, context) => {
     // Replace the webview's own context menu, which offers "Reload"/"Inspect".
     event.preventDefault();
-    setMenuContext(context ?? {});
     const social = useAppStore.getState().state.social;
+    const profile = context?.account
+      ? social.players.find((player) => player.id === context.account?.id)
+      : findPlayer(social, nickname);
+    const login = context?.account ? profile?.login ?? context.account.login : nickname;
+    setMenuContext(context?.account
+      ? { ...context, account: { id: context.account.id, login } }
+      : context ?? {});
     const name = event.currentTarget.getBoundingClientRect();
     const { left, right, top, bottom } = name;
     setMenu({
-      nickname,
-      profile: findPlayer(social, nickname),
+      nickname: login,
+      profile,
       ...menuPoint(event, name),
       anchor: { left, right, top, bottom },
     });
     // Somebody offline: the online list has no id for them, and friend, foe,
     // note and report all address the account by id. Asked once per name;
     // the menu offers those entries greyed out until the answer is in.
-    if (accountFor(social, nickname) === undefined) {
-      ipc.send({ kind: "Social", command: { type: "lookUpLogin", payload: { login: nickname } } });
+    if (!context?.account && accountFor(social, login) === undefined) {
+      ipc.send({ kind: "Social", command: { type: "lookUpLogin", payload: { login } } });
     }
   }, []);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -212,7 +220,7 @@ function PlayerMenuLayer({ menu, menuContext, noteTarget, options, onCloseMenu, 
     : undefined;
   const menuIsMuted = !!menu && includesName(chatPreferences.mutedPlayers, menu.nickname);
   // Read on every render, so the lookup's answer lands in the open menu.
-  const menuAccount = menu ? accountFor(social, menu.nickname) : undefined;
+  const menuAccount = menu ? menuContext.account ?? accountFor(social, menu.nickname) : undefined;
 
   return (
     <>
