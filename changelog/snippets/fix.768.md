@@ -1,0 +1,3 @@
+- Tournament draft alerts no longer claim it is your pick when another captain is on the clock.
+- Tournament chat room tabs no longer scroll vertically.
+- Opening tournament Chat no longer shifts the page's scroll position.
