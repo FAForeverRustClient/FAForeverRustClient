@@ -1,0 +1,2 @@
+- Other captains' draft picks appear automatically without switching tournament tabs.
+- Tournament avatars still load when the event refreshes in the background.

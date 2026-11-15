@@ -84,6 +84,7 @@ fn rank(status: faf_domain::state::TourneyStatus) -> u8 {
 
 pub(super) async fn load_detail(tournament_id: &str, ctx: &ServiceCtx, out: &EventSink) {
     let generation = ctx.tourney.detail_generation.begin();
+    let profiles_generation = ctx.tourney.entrant_profiles_generation.begin();
     out.emit(TourneyEvent::DetailLoading);
 
     let loaded = ctx.ports.tourney_read.detail(tournament_id).await;
@@ -102,7 +103,7 @@ pub(super) async fn load_detail(tournament_id: &str, ctx: &ServiceCtx, out: &Eve
             out.emit(TourneyEvent::DetailLoaded {
                 event: Box::new(event),
             });
-            load_entrant_profiles(&accounts, generation, ctx, out).await;
+            load_entrant_profiles(&accounts, profiles_generation, ctx, out).await;
         }
         Err(error) => out.emit(TourneyEvent::DetailLoadFailed {
             reason: error.to_string(),
@@ -144,7 +145,11 @@ async fn load_entrant_profiles(
     }
     match ctx.ports.player_card.players_by_id(accounts).await {
         Ok(profiles) => {
-            if ctx.tourney.detail_generation.is_current(generation) {
+            if ctx
+                .tourney
+                .entrant_profiles_generation
+                .is_current(generation)
+            {
                 out.emit(TourneyEvent::EntrantProfilesLoaded { profiles });
             }
         }
