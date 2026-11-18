@@ -1635,6 +1635,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.connectivity.connectivityAdapterHint": "Dynamique utilise l'adaptateur de l'hôte : Go pour un salon avec [go-adapter] dans son titre, Exp Java pour un salon avec [exp-java-adapter], Java pour tout le reste. S'applique dès la prochaine partie.",
   "settings.connectivity.hostAdapter": "Héberger avec",
   "settings.connectivity.hostAdapterHint": "Héberger avec Go ou Exp Java ajoute [go-adapter] ou [exp-java-adapter] au titre de votre partie : les joueurs en Dynamique dans ce client rejoignent alors avec le même adaptateur d'eux-mêmes, les autres doivent en changer. S'applique dès la prochaine partie.",
+  "settings.connectivity.allowIpv6": "Autoriser l'adaptateur ICE à utiliser IPv6",
+  "settings.connectivity.allowIpv6Hint": "IPv6 cause des problèmes de connexion chez certains joueurs. Ne l'activez que si vous n'avez aucun problème de connexion avec IPv6. Java et Exp Java uniquement ; s'applique dès la prochaine partie.",
   "settings.connectivity.dynamic": "Dynamique (suit l'hôte, recommandé)",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.expJava": "Exp Java (faf-ice-adapter 4.0.1, expérimental)",

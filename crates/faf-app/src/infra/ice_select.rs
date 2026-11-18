@@ -148,6 +148,12 @@ impl IcePort for SelectableIce {
         self.go.set_debug_windows(windows);
     }
 
+    /// The same: both Java adapters are ice4j, and either may be next.
+    fn set_allow_ipv6(&self, allow: bool) {
+        self.java.set_allow_ipv6(allow);
+        self.exp_java.set_allow_ipv6(allow);
+    }
+
     /// Asked of whichever backend is running. Pioneer has no status call, and
     /// saying so is more use than an empty table that looks like no peers.
     async fn relay_status(&self) -> RelayStatus {

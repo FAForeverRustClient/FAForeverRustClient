@@ -1968,6 +1968,8 @@ export const en = {
   "settings.connectivity.connectivityAdapterHint": "Dynamic uses whatever adapter the host uses: Go for a lobby with [go-adapter] in its title, Exp Java for one with [exp-java-adapter], Java for everything else. Applies from your next game.",
   "settings.connectivity.hostAdapter": "Hosting games",
   "settings.connectivity.hostAdapterHint": "Hosting on Go or Exp Java adds [go-adapter] or [exp-java-adapter] to your game's title: players on Dynamic in this client then join on the same adapter by themselves, everybody else has to switch to it. Applies from your next game.",
+  "settings.connectivity.allowIpv6": "Allow the ICE adapter to use IPv6",
+  "settings.connectivity.allowIpv6Hint": "IPv6 causes connection issues for some players. Turn this on only if you have no IPv6 issues with connections. Java and Exp Java only; applies from your next game.",
   "settings.connectivity.dynamic": "Dynamic (follows the host, recommended)",
   "settings.discord.richPresence": "Rich Presence",
   "settings.discord.richPresenceHint": "Show the game you host or play on your Discord profile.",

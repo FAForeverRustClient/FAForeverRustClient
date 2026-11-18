@@ -1506,6 +1506,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.connectivity.connectivityAdapterHint": "Dynamiczny używa adaptera hosta: Go dla lobby z [go-adapter] w tytule, Exp Java dla lobby z [exp-java-adapter], Java dla wszystkich pozostałych. Działa od następnej gry.",
   "settings.connectivity.hostAdapter": "Hostowanie przez",
   "settings.connectivity.hostAdapterHint": "Hostowanie z Go lub Exp Java dodaje [go-adapter] lub [exp-java-adapter] do tytułu gry: gracze w trybie Dynamiczny w tym kliencie dołączą wtedy sami z tym samym adapterem, pozostali muszą go zmienić. Działa od następnej gry.",
+  "settings.connectivity.allowIpv6": "Zezwól adapterowi ICE na IPv6",
+  "settings.connectivity.allowIpv6Hint": "IPv6 powoduje u niektórych graczy problemy z połączeniem. Włącz tylko, jeśli nie masz problemów z połączeniami przez IPv6. Tylko Java i Exp Java; działa od następnej gry.",
   "settings.connectivity.dynamic": "Dynamiczny (jak u hosta, zalecany)",
   "settings.discord.richPresence": "Rich Presence",
   "settings.discord.richPresenceHint": "Pokaż w profilu Discord grę, którą hostujesz lub w którą grasz.",

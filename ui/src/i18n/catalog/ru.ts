@@ -1709,6 +1709,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.connectivity.connectivityAdapterHint": "Режим «Динамический» выбирает адаптер по хосту: Go для лобби с [go-adapter] в названии, Exp Java для лобби с [exp-java-adapter], иначе Java. Действует со следующей игры.",
   "settings.connectivity.hostAdapter": "Хостинг через",
   "settings.connectivity.hostAdapterHint": "При хостинге через Go или Exp Java добавляется [go-adapter] или [exp-java-adapter]. Игроки с режимом «Динамический» в этом клиенте подключатся через тот же адаптер; остальным нужно выбрать его. Действует со следующей игры.",
+  "settings.connectivity.allowIpv6": "Разрешить ICE-адаптеру использовать IPv6",
+  "settings.connectivity.allowIpv6Hint": "У некоторых игроков IPv6 вызывает проблемы с подключением. Включайте, только если у вас нет проблем с подключением по IPv6. Только Java и Exp Java; действует со следующей игры.",
   "settings.connectivity.dynamic": "Динамический (как у хоста, рекомендуется)",
   "settings.connectivity.java": "Java (faf-ice-adapter)",
   "settings.connectivity.expJava": "Exp Java (faf-ice-adapter 4.0.1, экспериментальный)",

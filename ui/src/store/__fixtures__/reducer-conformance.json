@@ -6502,6 +6502,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -69503,6 +69504,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -69824,6 +69826,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70155,6 +70158,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70490,6 +70494,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70817,6 +70822,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71155,6 +71161,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71507,6 +71514,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71851,6 +71859,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -72205,6 +72214,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -72638,6 +72648,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -73078,6 +73089,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -73471,6 +73483,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -73866,6 +73879,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -74430,6 +74444,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -91950,6 +91965,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -92294,6 +92310,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -92675,6 +92692,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93076,6 +93094,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93442,6 +93461,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93639,6 +93659,7 @@
               "payload": {
                 "preferences": {
                   "adapter": "go",
+                  "allowIpv6": false,
                   "hostAdapter": "java",
                   "selectionVersion": 2
                 }
@@ -93786,6 +93807,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93955,6 +93977,7 @@
               "field": "connectivity",
               "value": {
                 "adapter": "go",
+                "allowIpv6": false,
                 "hostAdapter": "java",
                 "selectionVersion": 2
               }
@@ -94118,6 +94141,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -94477,6 +94501,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -94829,6 +94854,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95170,6 +95196,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95513,6 +95540,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95832,6 +95860,7 @@
                   },
                   "connectivity": {
                     "adapter": "dynamic",
+                    "allowIpv6": false,
                     "hostAdapter": "java",
                     "selectionVersion": 2
                   },
@@ -96140,6 +96169,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -96446,6 +96476,7 @@
                 },
                 "connectivity": {
                   "adapter": "dynamic",
+                  "allowIpv6": false,
                   "hostAdapter": "java",
                   "selectionVersion": 2
                 },
@@ -138730,6 +138761,7 @@
       },
       "connectivity": {
         "adapter": "dynamic",
+        "allowIpv6": false,
         "hostAdapter": "java",
         "selectionVersion": 2
       },

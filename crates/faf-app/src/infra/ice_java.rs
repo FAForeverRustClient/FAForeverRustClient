@@ -171,6 +171,19 @@ fn env_or(key: &str, fallback: impl Into<String>) -> String {
 /// Off unless somebody is debugging a connection. `--info-window` is the
 /// smaller of the two; the Java client offers exactly this pair. The console
 /// is not a flag: it is decided when the process is spawned.
+/// The JVM's own options, which go before `-jar`.
+///
+/// ice4j gathers IPv6 candidates unless told not to, and the Java client tells
+/// it not to unless the player allowed IPv6 (`IceAdapterImpl`): some players'
+/// connections fail on them (#771).
+fn jvm_args(allow_ipv6: bool) -> Vec<String> {
+    if allow_ipv6 {
+        Vec::new()
+    } else {
+        vec!["-Dorg.ice4j.ipv6.DISABLED=true".to_string()]
+    }
+}
+
 fn window_args(windows: IceDebugWindows) -> Vec<String> {
     let mut args = Vec::new();
     if windows.debug {
@@ -191,6 +204,9 @@ pub struct JavaAdapter {
     /// Pushed by the settings service. Read at launch rather than at
     /// construction so a switch flipped mid-session applies to the next game.
     debug_windows: Arc<Mutex<IceDebugWindows>>,
+    /// The connectivity setting of the same name, read at launch like
+    /// `debug_windows`.
+    allow_ipv6: Arc<AtomicBool>,
     /// Where the relay URLs of each session go, for the connectivity check.
     memory: IceSessionMemory,
     /// The `forceRelay` of the last session, which the next adapter is
@@ -213,6 +229,7 @@ impl JavaAdapter {
             child: Arc::new(Mutex::new(None)),
             rpc: Arc::new(Mutex::new(None)),
             debug_windows: Arc::new(Mutex::new(IceDebugWindows::default())),
+            allow_ipv6: Arc::new(AtomicBool::new(false)),
             memory: IceSessionMemory::default(),
             force_relay_seen: Arc::new(AtomicBool::new(false)),
             bring_up: Mutex::new(None),
@@ -254,6 +271,8 @@ struct AdapterProcess {
     child: Arc<Mutex<Option<Child>>>,
     /// Read once per launch: a switch flipped mid-game applies to the next.
     windows: IceDebugWindows,
+    /// Read once per launch too.
+    allow_ipv6: bool,
 }
 
 impl AdapterProcess {
@@ -268,7 +287,8 @@ impl AdapterProcess {
         rpc_port: u16,
         gpg_port: u16,
     ) -> Result<(JsonRpcClient, mpsc::Receiver<RpcNotification>), String> {
-        let mut args: Vec<String> = vec![
+        let mut args = jvm_args(self.allow_ipv6);
+        args.extend([
             "-jar".into(),
             self.config.jar_path.clone(),
             "--id".into(),
@@ -281,7 +301,7 @@ impl AdapterProcess {
             rpc_port.to_string(),
             "--gpgnet-port".into(),
             gpg_port.to_string(),
-        ];
+        ]);
         if force_relay {
             args.push("--force-relay".into());
         }
@@ -831,6 +851,7 @@ impl IcePort for JavaAdapter {
                 config: self.config.clone(),
                 child: self.child.clone(),
                 windows: *self.debug_windows.lock().unwrap(),
+                allow_ipv6: self.allow_ipv6.load(Ordering::Relaxed),
             },
             params,
             asked,
@@ -872,6 +893,10 @@ impl IcePort for JavaAdapter {
 
     fn set_debug_windows(&self, windows: IceDebugWindows) {
         *self.debug_windows.lock().unwrap() = windows;
+    }
+
+    fn set_allow_ipv6(&self, allow: bool) {
+        self.allow_ipv6.store(allow, Ordering::Relaxed);
     }
 
     /// The adapter's `status` call, read into the live relay view. The Python
@@ -1186,6 +1211,14 @@ fn rpc_call_for(msg: &RelayMsg) -> Option<(String, Vec<Value>)> {
 #[cfg(test)]
 mod tests {
     use crate::ports::IceDebugWindows;
+
+    /// #771: IPv6 off unless allowed, as the Java client starts it, and the
+    /// property is a JVM option, so it must not follow `-jar`.
+    #[test]
+    fn ipv6_is_off_unless_allowed() {
+        assert_eq!(super::jvm_args(false), ["-Dorg.ice4j.ipv6.DISABLED=true"]);
+        assert!(super::jvm_args(true).is_empty());
+    }
 
     #[test]
     fn no_windows_are_requested_by_default() {

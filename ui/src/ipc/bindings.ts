@@ -2328,6 +2328,15 @@ export type ConnectivityPreferences = {
 	 *  to `Dynamic`, which behaves the same for every unmarked game.
 	 */
 	selectionVersion: number,
+	/**
+	 *  Whether the Java adapters may gather IPv6 candidates (#771).
+	 *
+	 *  Off by default, as in the Java client ("Allow the ICE adapter to use
+	 *  IPv6"): IPv6 causes connection issues for some players, and the
+	 *  adapter is then started with `-Dorg.ice4j.ipv6.DISABLED=true`. This
+	 *  client used to start it without, so IPv6 was always on.
+	 */
+	allowIpv6: boolean,
 };
 
 /**  A change to [`ConnectivityPreferences`]. */
@@ -2335,6 +2344,7 @@ export type ConnectivityPreferencesPatch = {
 	adapter?: IceAdapter,
 	hostAdapter?: IceAdapter,
 	selectionVersion?: number,
+	allowIpv6?: boolean,
 };
 
 export type ConnectivityState = {
