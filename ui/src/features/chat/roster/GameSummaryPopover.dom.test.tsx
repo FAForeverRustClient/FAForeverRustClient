@@ -81,8 +81,9 @@ describe("GameSummaryPopover hover panels, mounted", () => {
   it("waits for the delay on a cold hover, then opens the next one at once and closes the first", () => {
     render(<Badges />);
 
+    // The default opening delay, a second since #778.
     fireEvent.mouseEnter(badge("First lobby"));
-    advance(499);
+    advance(999);
     expect(screen.queryByRole("tooltip")).toBeNull();
     advance(1);
     expect(screen.getAllByRole("tooltip")).toHaveLength(1);
@@ -134,7 +135,7 @@ describe("GameSummaryPopover hover panels, mounted", () => {
     advance(1_000);
     fireEvent.mouseEnter(badge("First lobby"));
     expect(screen.queryByRole("tooltip")).toBeNull();
-    advance(500);
+    advance(1_000);
     expect(screen.getAllByRole("tooltip")).toHaveLength(1);
 
     add.mockRestore();

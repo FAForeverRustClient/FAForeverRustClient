@@ -98,7 +98,8 @@ impl Resources {
             return None;
         }
         let table = read_at(file, pe + 24 + u64::from(optional_size), section_count * 40)?;
-        for header in table.chunks_exact(40) {
+        for index in 0..section_count {
+            let header = table.get(index * 40..index * 40 + 40)?;
             let rva = u32_at(header, 12)?;
             let raw_size = u32_at(header, 16)?;
             let raw_at = u32_at(header, 20)?;
@@ -246,7 +247,7 @@ fn product_name_in(info: &[u8]) -> Option<String> {
 #[cfg(test)]
 pub(super) fn test_executable(product: Option<&str>, wide: bool) -> Vec<u8> {
     fn pad4(bytes: &mut Vec<u8>) {
-        while bytes.len() % 4 != 0 {
+        while !bytes.len().is_multiple_of(4) {
             bytes.push(0);
         }
     }
