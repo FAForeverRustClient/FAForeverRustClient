@@ -42,30 +42,19 @@ pub(super) async fn handle_update<'a>(
         // nobody needed to see into a visible one.
         LobbyUpdate::Reconnecting => out.emit(LobbyEvent::Connecting),
         LobbyUpdate::Games(games) => {
-            let (preferences, player_name, friends) = out.with_state(|state| {
+            let (preferences, friends) = out.with_state(|state| {
                 (
                     state.settings.notifications.clone(),
-                    state.auth.player.as_ref().map(|player| player.name.clone()),
                     state.social.friends.clone(),
                 )
             });
             for signal in
                 game_notifications.friends_joined(&games, &friends, preferences.new_custom_games)
             {
-                notify_game_signal(
-                    out,
-                    &preferences,
-                    signal,
-                    ctx.ports.process.supports_game_attention(),
-                );
+                notify_game_signal(out, &preferences, signal);
             }
-            for signal in game_notifications.observe_open(&games, player_name.as_deref()) {
-                notify_game_signal(
-                    out,
-                    &preferences,
-                    signal,
-                    ctx.ports.process.supports_game_attention(),
-                );
+            for signal in game_notifications.observe_open(&games) {
+                notify_game_signal(out, &preferences, signal);
             }
             out.emit(LobbyEvent::GamesUpdated { games });
         }
@@ -79,12 +68,7 @@ pub(super) async fn handle_update<'a>(
             });
             for signal in game_notifications.observe_live(&games, &friends, player_name.as_deref())
             {
-                notify_game_signal(
-                    out,
-                    &preferences,
-                    signal,
-                    ctx.ports.process.supports_game_attention(),
-                );
+                notify_game_signal(out, &preferences, signal);
             }
             out.emit(LobbyEvent::LiveGamesUpdated { games })
         }
@@ -92,10 +76,9 @@ pub(super) async fn handle_update<'a>(
             // Only the two fields the signals need, and only when there is a
             // signal to work out: this runs on the lobby's hottest frame.
             if !upserted.is_empty() || !removed.is_empty() {
-                let (preferences, player_name, friends) = out.with_state(|state| {
+                let (preferences, friends) = out.with_state(|state| {
                     (
                         state.settings.notifications.clone(),
-                        state.auth.player.as_ref().map(|player| player.name.clone()),
                         state.social.friends.clone(),
                     )
                 });
@@ -104,24 +87,10 @@ pub(super) async fn handle_update<'a>(
                     &friends,
                     preferences.new_custom_games,
                 ) {
-                    notify_game_signal(
-                        out,
-                        &preferences,
-                        signal,
-                        ctx.ports.process.supports_game_attention(),
-                    );
+                    notify_game_signal(out, &preferences, signal);
                 }
-                for signal in game_notifications.observe_open_delta(
-                    &upserted,
-                    &removed,
-                    player_name.as_deref(),
-                ) {
-                    notify_game_signal(
-                        out,
-                        &preferences,
-                        signal,
-                        ctx.ports.process.supports_game_attention(),
-                    );
+                for signal in game_notifications.observe_open_delta(&upserted, &removed) {
+                    notify_game_signal(out, &preferences, signal);
                 }
             }
             out.emit(LobbyEvent::GamesChanged { upserted, removed });
@@ -141,12 +110,7 @@ pub(super) async fn handle_update<'a>(
                     &friends,
                     player_name.as_deref(),
                 ) {
-                    notify_game_signal(
-                        out,
-                        &preferences,
-                        signal,
-                        ctx.ports.process.supports_game_attention(),
-                    );
+                    notify_game_signal(out, &preferences, signal);
                 }
             }
             out.emit(LobbyEvent::LiveGamesChanged { upserted, removed });

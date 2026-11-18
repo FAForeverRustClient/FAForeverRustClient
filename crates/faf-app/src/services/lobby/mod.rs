@@ -42,6 +42,7 @@ use crate::runtime::{
 };
 
 pub use connection::reconnect;
+pub(crate) use game_notifications::{notify_lobby_full, LobbyFullAnnouncer};
 
 /// A game this client asked the server to host, as the launch order that
 /// answers the request needs to know it.
