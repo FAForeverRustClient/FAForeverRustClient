@@ -839,7 +839,7 @@ export const INITIAL_STATE: AppState = {
       "gameTileColumns": 0,
       "sidebarWidth": 224,
       "hoverPanels": true,
-      "hoverOpenDelayMs": 500,
+      "hoverOpenDelayMs": 1000,
       "hoverCloseDelayMs": 160,
       "replayFlags": false,
       "backgroundImage": "",
