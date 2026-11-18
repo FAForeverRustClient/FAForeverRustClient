@@ -43,6 +43,7 @@ mod checksums;
 mod content_store;
 mod install;
 mod maps;
+mod rebuilt_engine;
 mod replay_version;
 #[cfg(test)]
 mod test_support;
