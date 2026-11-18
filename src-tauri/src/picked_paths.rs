@@ -94,6 +94,14 @@ pub(crate) async fn pick_path(
     window: tauri::Window,
     picked: tauri::State<'_, PickedPaths>,
 ) -> Result<Option<String>, String> {
+    // Android's dialog has no folder picker. There the app's own import
+    // chooses Supreme Commander's folder and the app owns the game's
+    // folders, so a request for a folder is refused rather than answered
+    // with a file.
+    #[cfg(mobile)]
+    if request.directory {
+        return Err("folders cannot be picked on Android".into());
+    }
     let mut dialog = window.dialog().file();
     #[cfg(any(windows, target_os = "macos"))]
     {
@@ -124,13 +132,14 @@ pub(crate) async fn pick_path(
     // On a blocking thread, as `confirm_launch_change` does: the dialog
     // waits for the player, and an async worker held that long slowed the
     // lobby connection, ICE and event forwarding until it closed.
+    #[cfg(desktop)]
     let directory = request.directory;
     let chosen = tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(desktop)]
         if directory {
-            dialog.blocking_pick_folder()
-        } else {
-            dialog.blocking_pick_file()
+            return dialog.blocking_pick_folder();
         }
+        dialog.blocking_pick_file()
     })
     .await
     .map_err(|error| format!("the file dialog stopped: {error}"))?;

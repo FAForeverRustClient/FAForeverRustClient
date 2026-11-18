@@ -25,6 +25,7 @@ mod navigation;
 mod notification_popup;
 mod picked_paths;
 mod startup;
+#[cfg(desktop)]
 mod tray;
 #[cfg(windows)]
 mod webview_recovery;
@@ -38,6 +39,7 @@ const EVENT_CHANNEL: &str = "app://event";
 /// Managed state: the shared application core.
 struct Core(Arc<App>);
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Before anything else: this process may be the Steam status helper the
     // launcher starts beside a game, which is not a client. It must not open a
@@ -56,66 +58,76 @@ pub fn run() {
         );
     }
 
-    tauri::Builder::default()
-        // First, and the order is not cosmetic: this is what decides whether
-        // this process is the client or a messenger for one that is already
-        // running, and everything below assumes it is the client.
-        //
-        // A second start is not an error to report. Double-clicking a
-        // `.fafreplay` is how most people will open one, and the shell starts
-        // a whole new process for it: the useful answer is to hand the path to
-        // the client that is already up, raise its window, and exit quietly.
-        // Anything else means two clients fighting over one lobby connection.
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            // Shown again (and so no longer closing after the game), the way
-            // the tray's Open does it, a window being rebuilt included.
-            // `set_focus` on a minimised window raises nothing on Windows,
-            // which is why that unminimises before it focuses.
-            tray::restore_main_window(app);
-            if let Some(path) = startup::replay_argument(&argv) {
-                startup::open_replay_from_argument(app, path);
-            }
-            if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&argv) {
-                startup::open_link_from_argument(app, url);
-            }
-        }))
+    let builder = tauri::Builder::default();
+    // First, and the order is not cosmetic: this is what decides whether
+    // this process is the client or a messenger for one that is already
+    // running, and everything below assumes it is the client.
+    //
+    // A second start is not an error to report. Double-clicking a
+    // `.fafreplay` is how most people will open one, and the shell starts
+    // a whole new process for it: the useful answer is to hand the path to
+    // the client that is already up, raise its window, and exit quietly.
+    // Anything else means two clients fighting over one lobby connection.
+    //
+    // Desktop only: Android starts an app once and hands a second launch to
+    // the running activity itself.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        // Shown again (and so no longer closing after the game), the way
+        // the tray's Open does it, a window being rebuilt included.
+        // `set_focus` on a minimised window raises nothing on Windows,
+        // which is why that unminimises before it focuses.
+        tray::restore_main_window(app);
+        if let Some(path) = startup::replay_argument(&argv) {
+            startup::open_replay_from_argument(app, path);
+        }
+        if let Some(url) = faf_domain::protocol::deep_link::deep_link_argument(&argv) {
+            startup::open_link_from_argument(app, url);
+        }
+    }));
+    let builder = builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_opener::init())
-        // Where the window was, how big, on which monitor, and whether it was
-        // maximised. Restored on the next start, and it belongs here rather
-        // than in the settings store: it is a property of the shell, not of the
-        // account, and this file is the only place that knows about windows.
-        //
-        // Three flags, not `all()`. `VISIBLE` would faithfully restore a client
-        // that was hidden to the tray when it last exited, which is a client
-        // that starts invisible; `DECORATIONS` and `FULLSCREEN` are not states
-        // this client puts a window into.
-        //
-        // The plugin is also what makes the "if they're still valid" half of
-        // this work: it only restores a position that some currently attached
-        // monitor still covers, and otherwise leaves the placement to the OS.
-        // A monitor that was unplugged therefore costs the position and nothing
-        // else, rather than opening the window somewhere nobody can see.
-        //
-        // Only the window a start opens. One built again after a crash
-        // (`main-2` and on, `webview_recovery`) takes the crashed window's
-        // place itself, and its label comes back at the next crash of a later
-        // run: the plugin would restore whatever that earlier `main-2` was
-        // left as, maximising included, which shows and activates the window
-        // mid-game. Not tracking it costs only this: a start after a recovery
-        // opens where the window was when it crashed, not where the rebuilt
-        // one was left.
-        .plugin(
-            tauri_plugin_window_state::Builder::default()
-                .with_state_flags(
-                    tauri_plugin_window_state::StateFlags::SIZE
-                        | tauri_plugin_window_state::StateFlags::POSITION
-                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
-                )
-                .with_filter(|label| label == window::MAIN_LABEL)
-                .build(),
-        )
+        .plugin(tauri_plugin_opener::init());
+    // Where the window was, how big, on which monitor, and whether it was
+    // maximised. Restored on the next start, and it belongs here rather
+    // than in the settings store: it is a property of the shell, not of the
+    // account, and this file is the only place that knows about windows.
+    //
+    // Three flags, not `all()`. `VISIBLE` would faithfully restore a client
+    // that was hidden to the tray when it last exited, which is a client
+    // that starts invisible; `DECORATIONS` and `FULLSCREEN` are not states
+    // this client puts a window into.
+    //
+    // The plugin is also what makes the "if they're still valid" half of
+    // this work: it only restores a position that some currently attached
+    // monitor still covers, and otherwise leaves the placement to the OS.
+    // A monitor that was unplugged therefore costs the position and nothing
+    // else, rather than opening the window somewhere nobody can see.
+    //
+    // Only the window a start opens. One built again after a crash
+    // (`main-2` and on, `webview_recovery`) takes the crashed window's
+    // place itself, and its label comes back at the next crash of a later
+    // run: the plugin would restore whatever that earlier `main-2` was
+    // left as, maximising included, which shows and activates the window
+    // mid-game. Not tracking it costs only this: a start after a recovery
+    // opens where the window was when it crashed, not where the rebuilt
+    // one was left.
+    //
+    // Desktop only, like the single-instance check: on Android the system
+    // places the activity's one window.
+    #[cfg(desktop)]
+    let builder = builder.plugin(
+        tauri_plugin_window_state::Builder::default()
+            .with_state_flags(
+                tauri_plugin_window_state::StateFlags::SIZE
+                    | tauri_plugin_window_state::StateFlags::POSITION
+                    | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+            )
+            .with_filter(|label| label == window::MAIN_LABEL)
+            .build(),
+    );
+    builder
         .on_window_event(window::on_window_event)
         .register_asynchronous_uri_scheme_protocol(
             commands::UNIT_ICON_SCHEME,
@@ -168,6 +180,7 @@ pub fn run() {
             let main_window = window::build_main(app.handle(), window::Build::First)?;
             #[cfg(windows)]
             webview_recovery::watch(&main_window);
+            #[cfg(desktop)]
             tray::build(app)?;
             Ok(())
         })
