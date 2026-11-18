@@ -189,9 +189,25 @@ rather than a client release:
 |---|---|
 | `"mirrorTournaments": true` | Mirror them anyway. For a server whose tournaments are not registered with the service, and which would otherwise lose them. |
 | `"rules": [{ "match": "…", "skip": true }]` | Do not mirror an event whose name contains this. The escape hatch for a duplicate no link betrays. |
+| `"onlyTagged": "[FAF]"` | Mirror only the events whose name or description contains this text, and take it off what the calendar shows. |
 
 A `skip` rule that names no category leaves the category alone, so it can sit in
 the same list as the colour rules.
+
+### What it does not publish: what its organisers did not mark
+
+A server's scheduled events are everything its members organise there: a
+weekly training group as much as the night meant for everybody. Mirroring all
+of them put one person's daily sessions over the whole calendar (#780), and a
+`skip` rule per series leaves the choice with whoever maintains this file.
+
+`onlyTagged` hands it to the server's own organisers instead. With it set, an
+event reaches the calendar only when its name or description contains that
+text (`[FAF]`, say), and the bot takes the marker off the title and summary
+players see. Writing it into an event takes the server's own Manage Events
+permission, so nobody outside the server's organisers can put an entry on every
+player's calendar. Without `onlyTagged` a source mirrors everything, as before;
+the run summary counts what was left out unmarked.
 
 The run summary counts them: `FAF Dojo: 1 of 6 events, 5 already in the
 Tournaments tab`. An organiser who cannot find tonight's tournament on the

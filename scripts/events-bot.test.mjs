@@ -6,6 +6,7 @@ import {
   mergeCalendar,
   recurrenceOf,
   summaryOf,
+  taggedFor,
 } from "./events-bot.mjs";
 
 /** The Dojo, as a source would be configured. */
@@ -244,5 +245,35 @@ describe("merging into the published document", () => {
       { id: "discord-1-a", startsAt: "2026-01-01T00:00:00+00:00" },
     ]);
     expect(merged.events.map((event) => event.id)).toEqual(["discord-1-a", "discord-1-b"]);
+  });
+});
+
+describe("a source that mirrors only what its organisers marked (#780)", () => {
+  const marked = { ...dojo, onlyTagged: "[FAF]" };
+
+  it("mirrors everything when no marker is set, as before", () => {
+    expect(taggedFor(scheduled(), dojo).through).toBe(true);
+    expect(entryOf(scheduled({ name: "Wilson's therapy group" }), dojo)).not.toBeNull();
+  });
+
+  it("leaves out an event without the marker", () => {
+    expect(entryOf(scheduled({ name: "Wilson's therapy group", description: "Daily coaching." }), marked)).toBeNull();
+  });
+
+  it("takes the marker from the name or the description, in any case", () => {
+    expect(entryOf(scheduled({ name: "[FAF] Dojo 1v1 Night" }), marked)?.title).toBe("Dojo 1v1 Night");
+    const described = entryOf(scheduled({ description: "Casual 1v1s, all ratings welcome. [faf]" }), marked);
+    expect(described?.title).toBe("Dojo 1v1 Night");
+    expect(described?.summary).toBe("Casual 1v1s, all ratings welcome.");
+  });
+
+  it("never shows the marker to players", () => {
+    const entry = entryOf(scheduled({ name: "Dojo [FAF] 1v1 Night", description: "[FAF] All ratings." }), marked);
+    expect(entry?.title).toBe("Dojo 1v1 Night");
+    expect(entry?.summary).toBe("All ratings.");
+  });
+
+  it("does not take a marker that is only whitespace as one", () => {
+    expect(taggedFor(scheduled(), { ...dojo, onlyTagged: "  " }).through).toBe(true);
   });
 });
