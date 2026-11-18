@@ -4372,6 +4372,7 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.searchEmpty": "В хранилище нет подходящих карт. Карту, которую никогда не загружали, всё равно можно добавить вручную.",
   "tournaments.maps.vaultLoading": "Загрузка хранилища карт...",
   "tournaments.maps.players": { one: "{count} игрок", few: "{count} игрока", many: "{count} игроков", other: "{count} игрока" },
+  "tournaments.maps.version": "Версия {version}",
   "tournaments.maps.alreadyAdded": "уже добавлена",
   "tournaments.maps.addPicked": { one: "Добавить {count} карту", few: "Добавить {count} карты", many: "Добавить {count} карт", other: "Добавить {count} карты" },
   "tournaments.maps.heading": "База карт",

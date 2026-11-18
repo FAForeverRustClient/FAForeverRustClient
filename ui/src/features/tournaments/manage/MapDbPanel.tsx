@@ -225,7 +225,11 @@ export function MapDbPanel(props: MapDbPanelProps) {
                 id: "",
                 name,
                 description: "",
-                published: true,
+                // Hidden until the organiser publishes it (#772): building a
+                // pool is not announcing it, and the row's Publish button is
+                // there for the moment it should be seen. The row says
+                // "Hidden" meanwhile, with what that means on hover.
+                published: false,
                 // The picked map's size, chosen for the organiser the way the
                 // editor's select would offer it; spawns are theirs to add.
                 spec: withKnownSize(null, name, vault),

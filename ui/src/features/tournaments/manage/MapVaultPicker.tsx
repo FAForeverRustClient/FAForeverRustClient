@@ -108,7 +108,12 @@ export function MapVaultPicker(props: MapVaultPickerProps) {
         <p className="muted">{t("tournaments.maps.searchHint", { count: String(vault.length) })}</p>
       )}
 
-      <div className="tournament-map-grid">
+      {/* Its own tile classes (#772). It used to share `tournament-map-tile`
+          with the read-only map tiles of the Maps tab, whose rules come later
+          in the stylesheet and are square with nothing overflowing: every
+          result was a bare picture, the name and size cut away, and maps that
+          differ only in version could not be told apart. */}
+      <div className="tournament-vault-grid">
         {results.map((map) => {
           const already = takenKeys.has(mapKey(map.displayName));
           const chosen = picked.includes(map.displayName);
@@ -116,17 +121,16 @@ export function MapVaultPicker(props: MapVaultPickerProps) {
             <button
               type="button"
               key={map.folderName}
-              className={
-                chosen
-                  ? "tournament-map-tile surface-panel is-picked"
-                  : "tournament-map-tile surface-panel"
-              }
+              className={chosen ? "tournament-vault-pick surface-panel is-picked" : "tournament-vault-pick surface-panel"}
               disabled={busy || already}
               aria-pressed={chosen}
               onClick={() => toggle(map.displayName)}
             >
               <MapPreview map={map} />
-              <span className="tournament-map-tile-name">{map.displayName}</span>
+              <span className="tournament-vault-pick-name">{map.displayName}</span>
+              {map.version !== "" && (
+                <span className="muted">{t("tournaments.maps.version", { version: String(map.version) })}</span>
+              )}
               <span className="muted">
                 {sizeLabel(map)} · {t("tournaments.maps.players", { count: String(map.maxPlayers) })}
               </span>

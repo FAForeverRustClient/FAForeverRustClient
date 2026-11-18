@@ -4071,6 +4071,7 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.searchEmpty": "Keine Karte im Vault passt dazu. Eine nie hochgeladene Karte lässt sich weiterhin von Hand eintragen.",
   "tournaments.maps.vaultLoading": "Map-Vault wird geladen...",
   "tournaments.maps.players": { "one": "{count} Spieler", "other": "{count} Spieler" },
+  "tournaments.maps.version": "Version {version}",
   "tournaments.maps.alreadyAdded": "bereits eingetragen",
   "tournaments.maps.addPicked": { "one": "{count} Karte hinzufügen", "other": "{count} Karten hinzufügen" },
   "tournaments.maps.heading": "Kartendatenbank",

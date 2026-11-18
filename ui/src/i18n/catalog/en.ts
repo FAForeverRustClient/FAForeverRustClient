@@ -4512,6 +4512,7 @@ export const en = {
   "tournaments.maps.searchEmpty": "No map in the vault matches that. A map that was never uploaded can still be added by hand.",
   "tournaments.maps.vaultLoading": "Loading the map vault...",
   "tournaments.maps.players": { "one": "{count} player", "other": "{count} players" },
+  "tournaments.maps.version": "Version {version}",
   "tournaments.maps.alreadyAdded": "already added",
   "tournaments.maps.addPicked": { "one": "Add {count} map", "other": "Add {count} maps" },
   "tournaments.maps.heading": "Map database",

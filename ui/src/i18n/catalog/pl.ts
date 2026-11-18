@@ -3942,6 +3942,7 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.searchEmpty": "Żadna mapa w skarbcu nie pasuje. Mapę, której nigdy nie wysłano, wciąż można dodać ręcznie.",
   "tournaments.maps.vaultLoading": "Wczytywanie skarbca map...",
   "tournaments.maps.players": { one: "{count} gracz", few: "{count} graczy", many: "{count} graczy", other: "{count} gracza" },
+  "tournaments.maps.version": "Wersja {version}",
   "tournaments.maps.alreadyAdded": "już dodana",
   "tournaments.maps.addPicked": { one: "Dodaj {count} mapę", few: "Dodaj {count} mapy", many: "Dodaj {count} map", other: "Dodaj {count} mapy" },
   "tournaments.maps.heading": "Baza map",

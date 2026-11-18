@@ -3908,6 +3908,7 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.searchEmpty": "Aucune carte du vault ne correspond. Une carte jamais envoyée peut quand même être ajoutée à la main.",
   "tournaments.maps.vaultLoading": "Chargement du vault de cartes...",
   "tournaments.maps.players": { one: "{count} joueur", other: "{count} joueurs" },
+  "tournaments.maps.version": "Version {version}",
   "tournaments.maps.alreadyAdded": "déjà ajoutée",
   "tournaments.maps.addPicked": { one: "Ajouter {count} carte", other: "Ajouter {count} cartes" },
   "tournaments.maps.heading": "Base de cartes",

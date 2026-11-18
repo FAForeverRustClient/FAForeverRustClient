@@ -3908,6 +3908,7 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "tournaments.maps.searchEmpty": "Ningún mapa de la bóveda coincide con eso. Un mapa que nunca se subió se puede añadir igualmente a mano.",
   "tournaments.maps.vaultLoading": "Cargando la bóveda de mapas...",
   "tournaments.maps.players": { one: "{count} jugador", other: "{count} jugadores" },
+  "tournaments.maps.version": "Versión {version}",
   "tournaments.maps.alreadyAdded": "ya añadido",
   "tournaments.maps.addPicked": { one: "Añadir {count} mapa", other: "Añadir {count} mapas" },
   "tournaments.maps.heading": "Base de mapas",

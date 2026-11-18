@@ -2942,7 +2942,7 @@
   padding: var(--space-3);
 }
 
-.tournament-map-grid {
+.tournament-vault-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: var(--space-2);
@@ -2951,7 +2951,7 @@
   scrollbar-gutter: stable;
 }
 
-.tournament-map-tile {
+.tournament-vault-pick {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -2966,28 +2966,29 @@
   font-size: 12px;
 }
 
-.tournament-map-tile:hover:not(:disabled, .is-static) {
+.tournament-vault-pick:hover:not(:disabled, .is-static) {
   border-color: var(--color-border-strong);
   background: var(--color-surface-hover);
 }
 
-.tournament-map-tile.is-picked {
+.tournament-vault-pick.is-picked {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 1px var(--color-accent-glow);
 }
 
-.tournament-map-tile:disabled {
+.tournament-vault-pick:disabled {
   opacity: 0.45;
   cursor: default;
 }
 
-.tournament-map-tile-name {
+.tournament-vault-pick-name {
   font-weight: 600;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
-.tournament-map-tile .map-vault-thumb,
-.tournament-map-tile .map-vault-preview-empty {
+.tournament-vault-pick .map-vault-thumb,
+.tournament-vault-pick .map-vault-preview-empty {
   display: flex;
   align-items: center;
   justify-content: center;
