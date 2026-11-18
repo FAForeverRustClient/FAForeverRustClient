@@ -143,15 +143,16 @@ describe("GameSummaryPopover hover panels, mounted", () => {
   });
 
   it("runs the game clock to the second while the card is open", () => {
-    // On a whole second, so the hover delay below cannot cross into the next.
+    // On a whole second, so the one-second hover delay below lands exactly
+    // on the next: the card opens 312 seconds into the game.
     vi.setSystemTime(Math.ceil(Date.now() / 1000) * 1000);
     const now = Math.floor(Date.now() / 1000);
     const live = presence(3, "Live game");
     live.status = "playing";
-    live.game.launchedAt = now - 312;
+    live.game.launchedAt = now - 311;
     render(<GameSummaryPopover presence={live} social={social} vault={[]} />);
     fireEvent.mouseEnter(badge("Live game"));
-    advance(500);
+    advance(1_000);
     const clock = () => cardOf("Live game")?.querySelector(".chat-game-elapsed")?.textContent ?? "";
     expect(clock()).toContain("5m 12s");
     advance(1_000);
