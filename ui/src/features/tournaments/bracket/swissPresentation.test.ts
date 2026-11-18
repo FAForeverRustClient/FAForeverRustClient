@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { team, tourney } from "../fixtures";
+import { match, team, tourney } from "../fixtures";
 import type { PickPhase } from "../../../ipc/bindings";
-import { clockText, isFullBracket, pickRecord, pickSeed, swissShowsBracket } from "./swissPresentation";
+import {
+  clockText,
+  isFullBracket,
+  pickRecord,
+  pickSeed,
+  swissDivisionEvent,
+  swissDivisions,
+  swissShowsBracket,
+} from "./swissPresentation";
 import { openingPairs, pairingProblems } from "./RoundOneEditor";
 
 const phase = (over: Partial<PickPhase> = {}): PickPhase => ({
@@ -70,5 +78,49 @@ describe("round 1 by hand", () => {
     expect(pairingProblems(event, [["a", "b"], ["a", "c"]])).toEqual({ twice: ["a"], missing: [] });
     const even = { ...event, teams: [...event.teams, team({ id: "d", seed: 4 })] };
     expect(pairingProblems(even, [["a", "b"]]).missing).toEqual(["c", "d"]);
+  });
+});
+
+describe("a Swiss in divisions (#773)", () => {
+  const event = tourney({
+    bracketKind: "swiss",
+    competition: "team",
+    divisions: 2,
+    teams: [
+      team({ id: "k1", division: 1, seed: 1 }),
+      team({ id: "k2", division: 1, seed: 2 }),
+      team({ id: "p1", division: 2, seed: 1 }),
+      team({ id: "p2", division: 2, seed: 2 }),
+    ],
+    matches: [
+      match({ id: "k-r1", bracket: "swiss", division: 1, team1: "k1", team2: "k2", status: "done", winner: "k2", loser: "k1", score1: 0, score2: 2 }),
+      match({ id: "p-r1", bracket: "swiss", division: 2, team1: "p1", team2: "p2", status: "done", winner: "p1", loser: "p2", score1: 2, score2: 1 }),
+      match({ id: "p-gf", bracket: "grandFinal", division: 2, team1: "p1", team2: "p2", status: "done", winner: "p2", loser: "p1" }),
+    ],
+  });
+
+  it("is only a Swiss between teams with two or more divisions", () => {
+    expect(swissDivisions(event)).toEqual([1, 2]);
+    expect(swissDivisions({ ...event, divisions: 0 })).toEqual([]);
+    expect(swissDivisions({ ...event, bracketKind: "single" })).toEqual([]);
+    expect(swissDivisions({ ...event, competition: "freeForAll" })).toEqual([]);
+  });
+
+  it("keeps each division's teams and matches to itself", () => {
+    const prince = swissDivisionEvent(event, 2);
+    expect(prince.teams.map((held) => held.id)).toEqual(["p1", "p2"]);
+    expect(prince.matches.map((held) => held.id)).toEqual(["p-r1", "p-gf"]);
+  });
+
+  it("crowns a division by its own final", () => {
+    expect(swissDivisionEvent(event, 2).championTeamId).toBe("p2");
+    // The King division has no final in this event and is not over yet.
+    expect(swissDivisionEvent(event, 1).championTeamId).toBeNull();
+  });
+
+  it("crowns a division without a final by its table once the event is over", () => {
+    const finished = { ...event, status: "finished" as const, championTeamId: null, matches: event.matches.slice(0, 2) };
+    expect(swissDivisionEvent(finished, 1).championTeamId).toBe("k2");
+    expect(swissDivisionEvent(finished, 2).championTeamId).toBe("p1");
   });
 });

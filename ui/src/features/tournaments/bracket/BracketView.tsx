@@ -50,7 +50,7 @@ import { SwissRounds } from "./SwissRounds";
 import { PickPhasePanel } from "./PickPhasePanel";
 import { RoundOneEditor } from "./RoundOneEditor";
 import type { MatchActions as MatchCommands } from "../tourneyActions";
-import { playoffOrigin } from "./swissPresentation";
+import { playoffOrigin, swissDivisionEvent, swissDivisions } from "./swissPresentation";
 import { hasVeto } from "./vetoPresentation";
 import { BRACKET_LABELS, myTeamId } from "../tourneyPresentation";
 import {
@@ -316,6 +316,22 @@ export const BracketView = memo(function BracketView({
   // A Swiss stage is a list of rounds, not a tree: see `SwissRounds`. What is
   // left for the columns is a playoff bracket, where the stage feeds one.
   const swissStage = event.bracketKind === "swiss" && event.competition !== "freeForAll";
+  // A Swiss in divisions plays one Swiss per division (#773), shown one at a
+  // time as the website's King rounds and Prince rounds tabs do: two
+  // divisions' round 1 merged into one list would pair teams that never meet.
+  // The player's own division first.
+  const swissDivisionList = swissStage ? swissDivisions(event) : [];
+  const ownDivision = event.teams.find((team) => team.id === event.viewer.memberTeamId)?.division ?? 0;
+  const [chosenDivision, setChosenDivision] = useState<number | null>(null);
+  const shownDivision =
+    swissDivisionList.length === 0
+      ? 0
+      : swissDivisionList.includes(chosenDivision ?? 0)
+        ? (chosenDivision as number)
+        : swissDivisionList.includes(ownDivision)
+          ? ownDivision
+          : 1;
+  const swissEvent = shownDivision > 0 ? swissDivisionEvent(event, shownDivision) : event;
   const playoffs = event.matches.filter(
     (entry) => entry.bracket === "winners" || entry.bracket === "losers",
   );
@@ -632,8 +648,24 @@ export const BracketView = memo(function BracketView({
         <>
           {sides.length > 0 && <h4>{t("tournaments.swiss.stage")}</h4>}
           {roundOneEditor}
+          {swissDivisionList.length > 0 && (
+            <nav className="tournament-round-nav tournament-division-nav" aria-label={t("tournaments.swiss.divisionNav")}>
+              {swissDivisionList.map((division) => (
+                <button
+                  type="button"
+                  key={division}
+                  className={shownDivision === division ? "is-active" : undefined}
+                  aria-pressed={shownDivision === division}
+                  onClick={() => setChosenDivision(division)}
+                >
+                  {divisionLabel(division, t)}
+                </button>
+              ))}
+            </nav>
+          )}
           <SwissRounds
-            event={event}
+            key={shownDivision}
+            event={swissEvent}
             profiles={profiles}
             busyMatchId={busyMatchId}
             withFinal={playoffs.length === 0}
