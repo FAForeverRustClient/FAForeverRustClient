@@ -27,7 +27,7 @@ import { requestPlayerCardTab } from "../../../shared/playerCardTabIntent";
 import { EMPTY_REPLAY_QUERY } from "../../../shared/replayQuery";
 import { requestReplaySearch } from "../../../shared/replaySearchIntent";
 import { useAppStore } from "../../../store/store";
-import { outcomeLabel, teamOutcome, type OutcomeKind } from "../../../shared/gameOutcome";
+import { gameTeamOutcomes, outcomeLabel, type OutcomeKind } from "../../../shared/gameOutcome";
 
 /** One game from the point of view of the player it was loaded for. */
 export interface RecentGameSide {
@@ -35,7 +35,8 @@ export interface RecentGameSide {
   /**
    * How the game ended for this player's team. The team's result, not the
    * player's own army: the server stores a defeat for a player whose
-   * commander died in a game the team went on to win (#589).
+   * commander died in a game the team went on to win (#589), and a defeat for
+   * everybody in a game that was drawn (#776).
    */
   outcome: OutcomeKind;
   /** `1v1`, `2v2`: players per team as they actually played. */
@@ -49,7 +50,7 @@ export function recentGameSide(replay: VaultReplay, playerName: string): RecentG
   const me = own?.players.find((player) => player.name.toLocaleLowerCase() === name) ?? null;
   const others = replay.teams.filter((team) => team !== own);
   const perTeam = own?.players.length ?? replay.teams[0]?.players.length ?? 0;
-  const outcome = own ? teamOutcome(own.players) : "unknown";
+  const outcome = own ? gameTeamOutcomes(replay.teams)[replay.teams.indexOf(own)] : "unknown";
   return {
     me,
     outcome: outcome === "unknown" ? "" : outcome,

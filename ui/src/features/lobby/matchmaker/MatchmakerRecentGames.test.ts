@@ -61,4 +61,16 @@ describe("a recent game from the player's side", () => {
     const side = recentGameSide(replay([[player("Ada", "DEFEAT")], [player("Bob", "VICTORY")]]), "Ada");
     expect(side.outcome).toBe("defeat");
   });
+
+  it("says a game where everybody was defeated was drawn (#776)", () => {
+    // Both commanders died: each army reported its defeat, and the server
+    // rated the game as a draw.
+    const side = recentGameSide(replay([[player("Ada", "DEFEAT", 7)], [player("Bob", "DEFEAT", -7)]]), "Ada");
+    expect(side.outcome).toBe("draw");
+  });
+
+  it("does not call a game with an unknown result a draw", () => {
+    const side = recentGameSide(replay([[player("Ada", "DEFEAT")], [player("Bob", "UNKNOWN")]]), "Ada");
+    expect(side.outcome).toBe("defeat");
+  });
 });
