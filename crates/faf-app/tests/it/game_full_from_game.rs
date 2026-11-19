@@ -17,8 +17,9 @@ use faf_app::ports::{
     ProcessPort, RelayMsg,
 };
 use faf_app::{App, Ports};
+use faf_domain::state::settings::NotificationPreferencesPatch;
 use faf_domain::state::{
-    AuthCommand, GameLaunch, LobbyCommand, LobbyEvent, NotificationKind, Player,
+    AuthCommand, GameLaunch, LobbyCommand, LobbyEvent, NotificationKind, Player, SettingsCommand,
 };
 use faf_domain::AppEvent;
 use tokio::sync::{broadcast, mpsc, Notify};
@@ -178,12 +179,10 @@ fn game_full_notices(app: &App) -> Vec<String> {
         .collect()
 }
 
-#[tokio::test]
-async fn a_lobby_the_game_calls_full_is_announced_though_the_list_has_room() {
-    let (app, lobby, ice, mut events) = connected().await;
-    // "Sandbox" is 2 of 12 in the list: the host closed the other slots,
-    // which the server's numbers never show.
-    support::until(&app, "the game list", |state| {
+/// In the game that "Sandbox" is: 2 of 12 in the list, because the host
+/// closed the other slots, which the server's numbers never show.
+async fn in_sandbox(app: &App, events: &mut broadcast::Receiver<AppEvent>) {
+    support::until(app, "the game list", |state| {
         state
             .lobby
             .games
@@ -201,27 +200,55 @@ async fn a_lobby_the_game_calls_full_is_announced_though_the_list_has_room() {
     )
     .await
     .unwrap();
-    until_lobby(&mut events, "the game starting", |event| {
+    until_lobby(events, "the game starting", |event| {
         matches!(event, LobbyEvent::InGame)
     })
     .await;
+}
 
+/// The game says its lobby is full, and the message reaches the server.
+async fn game_full(lobby: &FakeLobby, ice: &GameVoice, times: usize) {
     ice.says("GameFull").await;
     support::eventually("the game's message reaching the server", || {
-        relayed(&lobby, "GameFull") == 1
+        relayed(lobby, "GameFull") == times
     })
     .await;
+}
+
+#[tokio::test]
+async fn a_lobby_the_game_calls_full_is_announced_though_the_list_has_room() {
+    let (app, lobby, ice, mut events) = connected().await;
+    in_sandbox(&app, &mut events).await;
+
+    game_full(&lobby, &ice, 1).await;
     let notices = game_full_notices(&app);
     assert_eq!(notices.len(), 1, "{notices:?}");
     assert!(notices[0].contains("Sandbox"), "{notices:?}");
 
-    // Somebody leaves and the slot is filled again: the lobby was announced
-    // a moment ago, so it is not announced again.
-    ice.says("GameFull").await;
-    support::eventually("the second message reaching the server", || {
-        relayed(&lobby, "GameFull") == 2
-    })
-    .await;
+    // Somebody leaves and the slot is filled again: the lobby is about to
+    // launch again, and by default that is announced too.
+    game_full(&lobby, &ice, 2).await;
+    assert_eq!(game_full_notices(&app).len(), 2);
+}
+
+#[tokio::test]
+async fn with_repeats_off_a_lobby_filling_again_is_announced_once() {
+    let (app, lobby, ice, mut events) = connected().await;
+    app.dispatch_and_wait(
+        SettingsCommand::PatchNotifications {
+            patch: Box::new(NotificationPreferencesPatch {
+                game_full_repeats: Some(false),
+                ..Default::default()
+            }),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+    in_sandbox(&app, &mut events).await;
+
+    game_full(&lobby, &ice, 1).await;
+    game_full(&lobby, &ice, 2).await;
     assert_eq!(game_full_notices(&app).len(), 1);
 }
 

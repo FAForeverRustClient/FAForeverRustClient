@@ -490,6 +490,12 @@ export function NotificationsSettingsSection() {
           <SoundChoice value={preferences.sounds.gameFull} disabled={mute || !preferences.gameFull} what={t("settings.notifications.gameFull")} onChange={(gameFull) => setSound({ gameFull })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.gameFull} disabled={!preferences.enabled} onChange={(gameFull) => update({ gameFull })} label={t("settings.notifications.gameFull")} />
         </SettingRow>
+        {/* On by default (#777): a lobby that fills again after somebody left
+            is about to launch again. Off is the quiet minute #382 asked for. */}
+        <SettingRow label={t("settings.notifications.gameFullRepeats")}
+          hint={t("settings.notifications.gameFullRepeatsHint")}>
+          <SettingsSwitch checked={preferences.gameFullRepeats} disabled={!preferences.enabled || !preferences.gameFull} onChange={(gameFullRepeats) => update({ gameFullRepeats })} label={t("settings.notifications.gameFullRepeats")} />
+        </SettingRow>
         <SettingRow label={t("settings.notifications.gameLaunched")}>
           <SoundChoice value={preferences.sounds.gameLaunched} disabled={mute || !preferences.gameLaunched} what={t("settings.notifications.gameLaunched")} onChange={(gameLaunched) => setSound({ gameLaunched })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.gameLaunched} disabled={!preferences.enabled} onChange={(gameLaunched) => update({ gameLaunched })} label={t("settings.notifications.gameLaunched")} />

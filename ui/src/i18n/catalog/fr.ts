@@ -1371,6 +1371,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Parties d'amis uniquement",
   "settings.notifications.friendsGamesOnlyHint": "Limiter ces notifications aux parties hébergées par des joueurs de votre liste d'amis.",
   "settings.notifications.gameFull": "Partie complète",
+  "settings.notifications.gameFullRepeats": "À nouveau quand un salon se remplit encore",
+  "settings.notifications.gameFullRepeatsHint": "Quand quelqu’un part et que sa place est reprise. Désactivé : un salon annoncé dans la dernière minute reste silencieux, pour les joueurs qui passent des places aux observateurs.",
   "settings.notifications.queueOpponent": "Adversaire dans votre plage de classement",
   "settings.notifications.queueOpponentHint": "Alerter quand quelqu'un dont la plage de classement inclut la vôtre rejoint une file de matchmaking où vous ne cherchez pas. Choisissez les files à surveiller.",
   "settings.notifications.queueOpponentOff": "Désactivé",
