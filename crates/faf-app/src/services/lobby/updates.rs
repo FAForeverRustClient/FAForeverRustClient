@@ -59,6 +59,7 @@ pub(super) async fn handle_update<'a>(
                     ctx.ports.process.supports_game_attention(),
                 );
             }
+            game_notifications.set_full_repeats(preferences.game_full_repeats);
             for signal in game_notifications.observe_open(&games, player_name.as_deref()) {
                 notify_game_signal(
                     out,
@@ -111,6 +112,7 @@ pub(super) async fn handle_update<'a>(
                         ctx.ports.process.supports_game_attention(),
                     );
                 }
+                game_notifications.set_full_repeats(preferences.game_full_repeats);
                 for signal in game_notifications.observe_open_delta(
                     &upserted,
                     &removed,

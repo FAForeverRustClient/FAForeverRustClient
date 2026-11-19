@@ -7155,6 +7155,17 @@ export type NotificationPreferences = {
 	newCustomGames: boolean,
 	newCustomGamesFriendsOnly: boolean,
 	gameFull: boolean,
+	/**
+	 *  Whether a lobby that fills again is announced again, every time (#777).
+	 *
+	 *  On by default: somebody leaving and a new player taking the seat is a
+	 *  lobby about to launch again, and the alert is for coming back to it.
+	 *  Off keeps a lobby quiet for a minute after it was announced, for
+	 *  lobbies where people keep moving between the slots and the observers
+	 *  (#382). The game list and the player's own game report the same
+	 *  fill-up only once either way.
+	 */
+	gameFullRepeats: boolean,
 	gameLaunched: boolean,
 	reviewReminder: boolean,
 	partyInvites: boolean,
@@ -7234,6 +7245,7 @@ export type NotificationPreferencesPatch = {
 	newCustomGames?: boolean,
 	newCustomGamesFriendsOnly?: boolean,
 	gameFull?: boolean,
+	gameFullRepeats?: boolean,
 	gameLaunched?: boolean,
 	reviewReminder?: boolean,
 	partyInvites?: boolean,

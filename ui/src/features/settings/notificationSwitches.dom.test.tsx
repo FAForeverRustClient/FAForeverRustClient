@@ -73,6 +73,22 @@ it("keeps the new-game and friends-only descriptions visible when notifications 
   expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { newCustomGamesFriendsOnly: false } } } }]);
 });
 
+it("announces a lobby filling again by default, and can be switched off with full-lobby alerts on", async () => {
+  await mountNotifications();
+  const user = userEvent.setup();
+  const repeats = screen.getByRole<HTMLInputElement>("checkbox", { name: en["settings.notifications.gameFullRepeats"] });
+  expect(repeats.checked).toBe(true);
+  expect(repeats.disabled).toBe(false);
+  expect(screen.getByText(en["settings.notifications.gameFullRepeatsHint"])).toBeTruthy();
+  await user.click(repeats);
+  expect(sentCommands()).toEqual([{ kind: "Settings", command: { type: "patchNotifications", payload: { patch: { gameFullRepeats: false } } } }]);
+  applyEvent({ kind: "Settings", event: { field: "notifications", value: {
+    ...useAppStore.getState().state.settings.notifications, gameFullRepeats: false, gameFull: false,
+  } } });
+  expect(repeats.checked).toBe(false);
+  expect(repeats.disabled).toBe(true);
+});
+
 it("offers one shared popup duration control and saves a longer display time", async () => {
   await mountNotifications();
   const duration = screen.getByRole<HTMLInputElement>("spinbutton", { name: en["settings.notifications.duration"] });

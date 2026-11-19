@@ -48,6 +48,7 @@ mod discord_presence;
 mod failure_paths;
 mod galactic_war_cancellation;
 mod game_cache_port;
+mod game_full_from_game;
 mod generated_map_on_launch;
 mod guides;
 mod host_content_updates;
