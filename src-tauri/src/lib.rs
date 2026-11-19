@@ -121,6 +121,10 @@ pub fn run() {
             commands::UNIT_ICON_SCHEME,
             commands::unit_icon_request,
         )
+        .register_asynchronous_uri_scheme_protocol(
+            commands::OFFICIAL_MAP_SCHEME,
+            commands::official_map_request,
+        )
         .setup(|app| {
             let log_dir = app.path().app_log_dir()?;
             app.manage(diagnostics::init(&log_dir)?);

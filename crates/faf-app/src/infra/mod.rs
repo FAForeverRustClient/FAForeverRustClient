@@ -37,7 +37,8 @@
 //! * **Files on disk**: `settings_file`, `paths`, `vault_install` (archives),
 //!   `game_updater` and `updater` (patching; `updater` holds the port impl,
 //!   `game_updater` its cache and manifest logic), `game_logs`, `scmap`,
-//!   `faf_content`, `notification_sounds`. `registry` reads the Windows
+//!   `faf_content`, `notification_sounds`, `official_map_preview` (a
+//!   base-game map's picture out of the original game). `registry` reads the Windows
 //!   registry values the original game's discovery needs.
 //! * **Fakes with no real counterpart in the same file**: `lobby_fake`,
 //!   `chat_fake`, `settings_fake`, `tourney_fake`. The other fakes sit at the
@@ -111,6 +112,7 @@ mod metadata_file;
 pub mod mods;
 pub mod notification_sounds;
 pub mod oauth;
+pub mod official_map_preview;
 pub mod paths;
 pub mod player_card;
 pub mod png;
