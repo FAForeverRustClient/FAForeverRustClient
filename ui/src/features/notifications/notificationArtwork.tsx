@@ -1,6 +1,7 @@
 import type { AppState, ClientNotification } from "../../ipc/bindings";
 import { mapPresentation } from "../../shared/mapPresentation";
 import { RecoverableImage } from "../../shared/components/RecoverableImage";
+import { isOfficialMapPreviewUrl } from "../../ipc/native";
 
 /** Use the same already-announced avatar/map artwork as the regular lists. */
 export function notificationArtwork(item: ClientNotification, state: AppState): string | null {
@@ -11,7 +12,10 @@ export function notificationArtwork(item: ClientNotification, state: AppState): 
   } else {
     const map = action?.type === "openGame" ? state.lobby.games.find((g) => g.id === action.payload.gameId)?.map
       : action?.type === "watchLive" || action?.type === "watchLiveWhenReady" ? action.payload.target.map : undefined;
-    if (map) image = mapPresentation(state.maps.vault, map, state.coop.missions).thumbnailUrl;
+    // Past the shell's own picture of a base-game map (`official-map`), which
+    // leads a tile's candidates but is not a picture this passes on: the
+    // preview service's art for the same map follows it.
+    if (map) image = mapPresentation(state.maps.vault, map, state.coop.missions).thumbnailUrls.find((url) => !isOfficialMapPreviewUrl(url));
   }
   if (!image) return null;
   if (image.startsWith("/assets/") && !image.includes("\\")) return image;

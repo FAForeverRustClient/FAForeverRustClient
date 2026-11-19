@@ -3,6 +3,7 @@ import { t } from "../i18n";
 import { plainError } from "./plainError";
 import { useAppStore } from "../store/store";
 import { mapThumbnailUrl } from "./mapCatalogue";
+import { native } from "../ipc/native";
 
 /** Preview used when a generated map has no rendered map image yet. */
 export const GENERATED_MAP_PLACEHOLDER_URL = "/assets/mapgen-placeholder.png";
@@ -140,8 +141,11 @@ type VaultMapLookup = {
 
 const VAULT_MAP_LOOKUPS = new WeakMap<MapSummary[], VaultMapLookup>();
 
+// Remote art goes over https whatever the record says. The shell's own
+// schemes are the exception: on Windows they are served as
+// `http://<scheme>.localhost`, and upgraded they no longer resolve.
 function secureUrl(url: string): string {
-  return url.trim().replace(/^http:\/\//i, "https://");
+  return url.trim().replace(/^http:\/\/(?![^/?#]*\.localhost(?:[/:?#]|$))/i, "https://");
 }
 
 function uniqueUrls(urls: Array<string | undefined>): string[] {
@@ -401,6 +405,14 @@ export function mapThumbnailCandidates(
   // base-game one, and its art is then a picture of a different map entirely --
   // shown, in the Play tab, beside the base-game map's name.
   const canonicalFirst = preferCanonicalPreview || officialKey !== undefined;
+  // And ahead of that, the same terrain out of the original game's own files
+  // (`native.officialMapPreviewUrl`): the preview service's small art for
+  // these maps is 100 pixels, blown up on every game tile, where this is 256
+  // and needs no download. A large request keeps the service's art, which
+  // draws the mass, hydro and spawn markers a detail view is for. Where the
+  // game or the map is missing the shell answers 404, and the walk moves on
+  // to the service as before.
+  const originalGamePreview = officialKey && !large ? native.officialMapPreviewUrl(officialKey) : null;
   // The caller's own URL leads only when it is art of the size being asked
   // for. A replay listing carries `mapVersion.thumbnailUrlSmall`, and leading
   // with that for a `large` request is why an enlarged replay preview was a
@@ -409,6 +421,7 @@ export function mapThumbnailCandidates(
   // last, because for a map neither the preview service nor the vault knows it
   // is the only art there is.
   return uniqueUrls([
+    originalGamePreview ?? undefined,
     ...(large ? [] : [customUrl]),
     ...(canonicalFirst ? canonicalPreviewUrls : []),
     ...coopPreviewUrls,

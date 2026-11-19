@@ -5,10 +5,12 @@
 // feature for it, which also meant the styles only existed once the vault had
 // been opened.
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "../../design-system/Icon";
 import { useTranslation } from "../../i18n/useTranslation";
+import { native } from "../../ipc/native";
 import { mapThumbnailUrl, type MapUrlSource } from "../mapCatalogue";
+import { isOfficialMap } from "../mapPresentation";
 import "./map-preview.css";
 
 export type PreviewableMap = MapUrlSource & {
@@ -24,24 +26,23 @@ export function MapPreview({ map, large = false }: { map: PreviewableMap; large?
   const primaryUrl = large
     ? (largeUrl || smallUrl || map.previewUrl)
     : (smallUrl || map.previewUrl || largeUrl);
-  const [currentUrl, setCurrentUrl] = useState<string | null>(primaryUrl || cdnFallback);
-  const [failed, setFailed] = useState(false);
+  // A base-game map's thumbnail from the original game first, 256 pixels
+  // where the preview service has 100 (`native.officialMapPreviewUrl`).
+  const originalGameUrl = !large && isOfficialMap(map.folderName)
+    ? native.officialMapPreviewUrl(map.folderName)
+    : null;
+  // Then the record's own art, then the standard FAF CDN, then the icon.
+  const candidates = useMemo(
+    () => [...new Set([originalGameUrl, primaryUrl, cdnFallback].filter((url): url is string => Boolean(url)))],
+    [originalGameUrl, primaryUrl, cdnFallback],
+  );
+  // The step reached, for the candidates it was reached in: another map starts
+  // its own walk in the same render, as `MapThumbnail`'s does.
+  const [walk, setWalk] = useState({ candidates, index: 0 });
+  const index = walk.candidates === candidates ? walk.index : 0;
+  const currentUrl = candidates[index];
 
-  useEffect(() => {
-    setCurrentUrl(primaryUrl || cdnFallback);
-    setFailed(false);
-  }, [primaryUrl, cdnFallback]);
-
-  const handleError = () => {
-    if (currentUrl && currentUrl !== cdnFallback) {
-      // Try the standard FAF CDN fallback before failing to the placeholder icon
-      setCurrentUrl(cdnFallback);
-    } else {
-      setFailed(true);
-    }
-  };
-
-  if (!currentUrl || failed) {
+  if (!currentUrl) {
     return (
       <span
         className={
@@ -57,12 +58,13 @@ export function MapPreview({ map, large = false }: { map: PreviewableMap; large?
   }
   return (
     <img
+      key={currentUrl}
       className={large ? "map-vault-preview" : "map-vault-thumb"}
       src={currentUrl}
       alt={t("common.mapPreview", { name: map.displayName || map.folderName })}
       loading="lazy"
       decoding="async"
-      onError={handleError}
+      onError={() => setWalk({ candidates, index: index + 1 })}
     />
   );
 }

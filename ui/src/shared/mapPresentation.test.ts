@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { VaultMap } from "../ipc/bindings";
 import {
   GENERATED_MAP_PLACEHOLDER_URL,
@@ -12,6 +12,16 @@ import {
   mapSizeOf,
   mapThumbnailCandidates,
 } from "./mapPresentation";
+
+// Inside the desktop shell or not, per test. Outside, which is every test that
+// does not ask, `native.officialMapPreviewUrl` has no scheme to offer.
+const shell = vi.hoisted(() => ({ inside: false }));
+vi.mock("@tauri-apps/api/core", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tauri-apps/api/core")>()),
+  isTauri: () => shell.inside,
+  // What Tauri answers on Windows.
+  convertFileSrc: (path: string, scheme = "asset") => `http://${scheme}.localhost/${encodeURIComponent(path)}`,
+}));
 
 describe("mapPresentation", () => {
   it("recognizes generated map names in snake_case and formatted variants", () => {
@@ -270,5 +280,57 @@ describe("findVaultMapByFolder", () => {
   it("does not fall through to a title match", () => {
     const record = { folderName: "lena_river.v0009", displayName: "Lena river" } as VaultMap;
     expect(findVaultMapByFolder([record], "Lena river")).toBeUndefined();
+  });
+});
+
+describe("a base-game map's picture from the original game", () => {
+  const ORIGINAL_GAME = "http://official-map.localhost/scmp_009";
+  const SERVICE_SMALL = "https://content.faforever.com/maps/previews/small/scmp_009.png";
+  const SERVICE_LARGE = "https://content.faforever.com/maps/previews/large/scmp_009.png";
+
+  beforeEach(() => {
+    shell.inside = true;
+  });
+  afterEach(() => {
+    shell.inside = false;
+  });
+
+  it("leads a thumbnail, with the preview service's small art behind it", () => {
+    const candidates = mapThumbnailCandidates([], "scmp_009");
+    expect(candidates.slice(0, 2)).toEqual([ORIGINAL_GAME, SERVICE_SMALL]);
+    // Found by its title and its upper-case folder alike.
+    expect(mapThumbnailCandidates([], "Seton's Clutch")[0]).toBe(ORIGINAL_GAME);
+    expect(mapThumbnailCandidates([], "SCMP_009")[0]).toBe(ORIGINAL_GAME);
+    expect(mapPresentation([], "scmp_009").thumbnailUrl).toBe(ORIGINAL_GAME);
+  });
+
+  it("leads even a caller's own small thumbnail and the canonical preference", () => {
+    expect(mapThumbnailCandidates([], "scmp_009", false, undefined, undefined, SERVICE_SMALL)[0]).toBe(ORIGINAL_GAME);
+    expect(mapThumbnailCandidates([], "scmp_009", false, undefined, undefined, undefined, true)[0]).toBe(ORIGINAL_GAME);
+  });
+
+  it("is not asked for at detail size, where the service's art carries the markers", () => {
+    const candidates = mapThumbnailCandidates([], "scmp_009", true);
+    expect(candidates[0]).toBe(SERVICE_LARGE);
+    expect(candidates).not.toContain(ORIGINAL_GAME);
+  });
+
+  it("is not asked for a vault map, nor for a vault version of a base-game folder name", () => {
+    expect(mapThumbnailCandidates([], "setons_clutch.v0002").some((url) => url.includes("official-map"))).toBe(false);
+    expect(mapThumbnailCandidates([], "x1mp_013").some((url) => url.includes("official-map"))).toBe(false);
+  });
+
+  it("keeps its own http address when a caller hands it back", () => {
+    // A live replay row passes the presentation's first picture back in as
+    // its own. It must stay the shell's address, once, not become an https
+    // one that resolves nowhere.
+    const candidates = mapThumbnailCandidates([], "scmp_009", false, undefined, undefined, ORIGINAL_GAME);
+    expect(candidates.filter((url) => url.includes("official-map"))).toEqual([ORIGINAL_GAME]);
+    expect(candidates).toContain(SERVICE_SMALL);
+  });
+
+  it("is left out outside the desktop shell", () => {
+    shell.inside = false;
+    expect(mapThumbnailCandidates([], "scmp_009")[0]).toBe(SERVICE_SMALL);
   });
 });
