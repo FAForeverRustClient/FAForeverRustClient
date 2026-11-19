@@ -16,7 +16,7 @@
 
 import type { ClientNotification } from "../../ipc/bindings";
 import { isMessageKey, t, type MessageKey, type MessageValues } from "../../i18n";
-import { plainError } from "../../shared/plainError";
+import { causeText, plainError } from "../../shared/plainError";
 
 function values(params: Record<string, string>): MessageValues {
   // Plural forms select on a number, and every value is a string on the wire.
@@ -66,7 +66,9 @@ export function notificationTitle(item: ClientNotification): string {
 export function notificationBody(item: ClientNotification): string {
   const reason = markedReason(item);
   if (reason !== null && item.text) {
-    const plain = plainError(reason);
+    // A cause the backend named is said as such; only an unnamed reason is
+    // read for what it might mean.
+    const plain = item.text.cause ? causeText(item.text.cause) : plainError(reason);
     const key = `${item.text.key}.body`;
     return isMessageKey(key) ? bodyAround(key, values(item.text.params), plain) : plain;
   }

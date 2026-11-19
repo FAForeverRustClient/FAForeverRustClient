@@ -13,6 +13,7 @@
 // The original text is not thrown away: callers show it as the tooltip, so a
 // bug report can still quote it.
 
+import type { FailureCause } from "../ipc/bindings";
 import { t, type MessageKey } from "../i18n";
 
 /** A recognised cause, and what gives it away. Checked in order. */
@@ -26,14 +27,28 @@ const CAUSES: { key: MessageKey; pattern: RegExp }[] = [
   // Windows 2 and 3, POSIX 2.
   { key: "errors.cause.missing", pattern: /os error (2|3)\b|cannot find the (file|path)|no such file or directory/i },
   { key: "errors.cause.signIn", pattern: /not logged in|not signed in|no (access )?token/i },
-  { key: "errors.cause.lobbyDisconnected", pattern: /^The FAF lobby is disconnected\. Reconnect and try again\.$/ },
-  { key: "errors.cause.lobbySendBusy", pattern: /^The FAF lobby send queue is full\. Wait a moment and try again\.$/ },
   { key: "errors.cause.timeout", pattern: /timed? ?out|os error (10060|110)\b/i },
   {
     key: "errors.cause.offline",
     pattern: /error sending request|connection refused|connection reset|dns error|failed to lookup|network is unreachable|os error (10061|10065|11001|111|113)\b/i,
   },
 ];
+
+/**
+ * The sentence for each cause the backend names outright (`FailureCause`).
+ * It knows those for certain, so they are said without reading the reason:
+ * matching the English the backend wrote broke whenever either side reworded
+ * it.
+ */
+const CAUSE_KEYS: Record<FailureCause, MessageKey> = {
+  lobbyDisconnected: "errors.cause.lobbyDisconnected",
+  lobbySendBusy: "errors.cause.lobbySendBusy",
+};
+
+/** One plain sentence for a cause the backend named, in the client's language. */
+export function causeText(cause: FailureCause): string {
+  return t(CAUSE_KEYS[cause]);
+}
 
 /** The HTTP status in a reason, when it carries one. */
 function httpStatus(reason: string): number | null {

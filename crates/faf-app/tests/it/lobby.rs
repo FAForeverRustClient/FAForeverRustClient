@@ -818,8 +818,11 @@ async fn refused_lobby_requests_report_failure_and_keep_only_accepted_work() {
                 .notifications
                 .items
                 .iter()
-                .any(|item| item.title == title && item.body.contains("send queue is full")),
-            "missing send refusal for {title}"
+                .any(|item| item.title == title
+                    && item.body.contains("send queue is full")
+                    && item.text.as_ref().and_then(|text| text.cause)
+                        == Some(faf_domain::state::FailureCause::LobbySendBusy)),
+            "missing send refusal, with its cause, for {title}"
         );
     }
 

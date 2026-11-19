@@ -296,7 +296,8 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
                         });
                         notifications::add_required_failure(
                             out,
-                            notifications::Text::new("notifications.msg.hostFailed"),
+                            notifications::Text::new("notifications.msg.hostFailed")
+                                .with_cause(error.cause()),
                             "Could not host game",
                             reason,
                             None,

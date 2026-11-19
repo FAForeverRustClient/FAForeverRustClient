@@ -74,7 +74,7 @@ pub use events::{
     CalendarEvent, CalendarView, EventCatalogue, EventCategory, EventLink, EventOrigin,
     EventsCommand, EventsEvent, EventsQuery, EventsSource, EventsState, EventsStatus, Recurrence,
 };
-pub use failure::RequestFailureKind;
+pub use failure::{FailureCause, RequestFailureKind};
 pub use galactic_war::{
     ClientVersions, GalacticWarAlltime, GalacticWarCommand, GalacticWarEvent, GalacticWarFaction,
     GalacticWarPlayerFaction, GalacticWarSeason, GalacticWarState, GalacticWarStatistics,
