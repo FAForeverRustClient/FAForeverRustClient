@@ -102,9 +102,10 @@ async fn pass_through(
         // The adapter never came up; the launcher stops the game for that.
         return;
     };
+    let waited_for_the_adapter_ms = connected.elapsed().as_millis() as u64;
     tracing::info!(
         milliseconds = opened.elapsed().as_millis() as u64,
-        waited_for_the_adapter_ms = connected.elapsed().as_millis() as u64,
+        waited_for_the_adapter_ms,
         "the game connected to GPGNet"
     );
     let mut adapter = match TcpStream::connect(("127.0.0.1", port)).await {
@@ -117,6 +118,22 @@ async fn pass_through(
     // GPGNet is a handful of small messages, each of which someone waits on.
     let _ = game.set_nodelay(true);
     let _ = adapter.set_nodelay(true);
+    // When the game connects before the adapter's GPGNet port is bound,
+    // its initial handshake message (`GameState Idle`) has already been buffered
+    // in the socket. The Java ICE adapter (`faf-ice-adapter`) leaks `this` by
+    // starting its virtual reader thread inside `GPGNetClient.<init>` before
+    // publishing the new client to `GPGNetServer.INSTANCE.currentClient`.
+    // If the buffered packet is forwarded immediately upon TCP connect, the reader
+    // consumes it in microseconds and invokes `Debug.debug().gameStateChanged()`,
+    // which fails with `IllegalStateException: gameState must not change to null`
+    // because `currentClient` is still null. That uncaught exception terminates the
+    // reader thread, closes the socket, and causes the game to hang on "Connecting...".
+    //
+    // A brief delay before starting bidirectional forwarding gives Java's `acceptThread`
+    // sufficient time to complete construction and publish `currentClient`.
+    if waited_for_the_adapter_ms > 0 {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
     if let Err(error) = tokio::io::copy_bidirectional(&mut game, &mut adapter).await {
         tracing::debug!(%error, "the GPGNet connection ended");
     }
