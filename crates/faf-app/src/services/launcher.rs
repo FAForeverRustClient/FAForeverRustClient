@@ -229,8 +229,18 @@ pub async fn start(
 
     // 4. Pump adapter → lobby. The reverse direction is driven by the lobby loop
     //    via `forward_to_adapter`.
+    //    The game's own `GameFull` is read on the way past: it is the one
+    //    account of a full lobby that counts closed slots and AIs (#777).
     let lobby = ctx.ports.lobby.clone();
     let mut to_lobby = session.to_lobby;
+    let full_report = (init_mode == 0).then(|| {
+        ctx.lobby.game_full_report(
+            out,
+            launch.uid,
+            launch.name.clone(),
+            ctx.ports.process.supports_game_attention(),
+        )
+    });
     tokio::spawn(async move {
         tracing::debug!("launcher: adapter->lobby pump started");
         while let Some(msg) = to_lobby.recv().await {
@@ -238,6 +248,12 @@ pub async fn start(
             if msg.command == "GameState" {
                 let state = msg.args.first().and_then(Value::as_str).unwrap_or("?");
                 tracing::info!(state, "game -> server: game state");
+            }
+            if msg.command == "GameFull" {
+                tracing::info!("game -> server: the lobby is full");
+                if let Some(report) = &full_report {
+                    report.game_full();
+                }
             }
             lobby.send_game_relay(msg.command, msg.args);
         }

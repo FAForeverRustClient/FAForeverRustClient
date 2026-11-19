@@ -63,7 +63,7 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
         launch.session = kept;
     }
     let mut background = Background::default();
-    let mut game_notifications = GameNotificationTracker::default();
+    let mut game_notifications = GameNotificationTracker::new(ctx.lobby.full_announced.clone());
 
     loop {
         // The launch and the search's warm-up run here, beside the updates,

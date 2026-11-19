@@ -4,6 +4,7 @@
 //! notifications those signals raise.
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use faf_domain::state::{
@@ -33,28 +34,112 @@ pub(super) struct GameNotificationTracker {
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
     pub(super) queue_opponents: QueueOpponentTracker,
-    /// When each game was last announced as full, so a lobby that fills,
-    /// loses a player to the observers and fills again is announced once
-    /// rather than on every move (#382).
-    full_announced: HashMap<i32, Instant>,
+    /// When each game was last announced as full. Shared with the player's
+    /// own game, which reports a full lobby too; see [`FullAnnouncements`].
+    full_announced: FullAnnouncements,
 }
 
 /// How long a game stays announced as full. People move between the slots
 /// and the observers for the whole of a lobby's setup.
 const GAME_FULL_COOLDOWN: Duration = Duration::from_secs(5 * 60);
 
-/// Whether a game that just filled up should be announced, and if so, record
-/// that it was. See [`GameNotificationTracker::full_announced`].
-fn announce_full(announced: &mut HashMap<i32, Instant>, game_id: i32) -> bool {
-    let now = Instant::now();
-    if announced
-        .get(&game_id)
-        .is_some_and(|at| now.duration_since(*at) < GAME_FULL_COOLDOWN)
-    {
-        return false;
+/// When each game was last announced as full, so a lobby that fills, loses a
+/// player to the observers and fills again is announced once rather than on
+/// every move (#382).
+///
+/// Two places can tell that a lobby is full, and they share this record so
+/// that the one lobby is announced once between them: the game list the
+/// server sends ([`GameNotificationTracker`]) and the player's own game
+/// ([`GameFullReport`]). Kept by the lobby context rather than by one
+/// connection, because the game's report arrives from a task that outlives it.
+#[derive(Debug, Clone, Default)]
+pub struct FullAnnouncements(Arc<Mutex<HashMap<i32, Instant>>>);
+
+impl FullAnnouncements {
+    /// Whether a game that just filled up should be announced, and if so,
+    /// record that it was.
+    fn announce(&self, game_id: i32, now: Instant) -> bool {
+        let mut announced = self.0.lock().unwrap();
+        if announced
+            .get(&game_id)
+            .is_some_and(|at| now.duration_since(*at) < GAME_FULL_COOLDOWN)
+        {
+            return false;
+        }
+        announced.insert(game_id, now);
+        true
     }
-    announced.insert(game_id, now);
-    true
+
+    fn forget(&self, game_id: i32) {
+        self.0.lock().unwrap().remove(&game_id);
+    }
+}
+
+/// The player's own game saying its lobby is full (#777).
+///
+/// The game list cannot always tell. The server's `max_players` is the map's
+/// number of start positions (the lobby sends `GameOption Slots` with the
+/// map's army count and nothing else), so a host who closes slots leaves a
+/// lobby that is full for everybody in it and short of full in the list. The
+/// list also counts only the people connected to the lobby, so a slot taken
+/// by an AI is an empty one there. The game knows both: its lobby sends
+/// `GameFull` over GPGNet when no open slot is left without a player
+/// (`PossiblyAnnounceGameFull` in the game's `lobby.lua`), and it sends it to
+/// every player in the lobby, not only the host.
+///
+/// Made by the launcher for a custom game only: a matchmaker game fills
+/// itself and launches on its own, so there is nothing to come back for.
+pub struct GameFullReport {
+    out: EventSink,
+    announced: FullAnnouncements,
+    game_id: i32,
+    /// The launch order's title, for when the game is not in the list.
+    title: String,
+    game_attention: bool,
+}
+
+impl GameFullReport {
+    pub(super) fn new(
+        out: EventSink,
+        announced: FullAnnouncements,
+        game_id: i32,
+        title: String,
+        game_attention: bool,
+    ) -> Self {
+        Self {
+            out,
+            announced,
+            game_id,
+            title,
+            game_attention,
+        }
+    }
+
+    /// The game sent `GameFull`.
+    pub fn game_full(&self) {
+        let (preferences, listed_title) = self.out.with_state(|state| {
+            (
+                state.settings.notifications.clone(),
+                state
+                    .lobby
+                    .games
+                    .iter()
+                    .find(|game| game.id == self.game_id)
+                    .map(|game| game.title.clone()),
+            )
+        });
+        if !self.announced.announce(self.game_id, Instant::now()) {
+            return;
+        }
+        if preferences.game_full {
+            notify_game_full(
+                &self.out,
+                self.game_id,
+                listed_title.as_deref().unwrap_or(&self.title),
+                self.game_attention,
+            );
+        }
+    }
 }
 
 /// How long a queue keeps quiet after announcing an opponent.
@@ -227,6 +312,15 @@ fn match_reach(deviation: f64, expansion: f64) -> f64 {
 }
 
 impl GameNotificationTracker {
+    /// A tracker for one lobby connection, announcing full lobbies into the
+    /// session's shared record.
+    pub(super) fn new(full_announced: FullAnnouncements) -> Self {
+        Self {
+            full_announced,
+            ..Self::default()
+        }
+    }
+
     /// Friends who are in a lobby they were not in at the last update.
     ///
     /// A friend hosting a lobby is also in it. When `hosts_announced`
@@ -314,7 +408,7 @@ impl GameNotificationTracker {
                 Some(old) => {
                     if let Some(player_name) = player_name {
                         if filled_up(&old, game, player_name)
-                            && announce_full(&mut self.full_announced, game.id)
+                            && self.full_announced.announce(game.id, Instant::now())
                         {
                             signals.push(GameNotificationSignal::GameFull(game.clone()));
                         }
@@ -324,7 +418,7 @@ impl GameNotificationTracker {
         }
         for id in removed {
             index.remove(id);
-            self.full_announced.remove(id);
+            self.full_announced.forget(*id);
         }
         signals
     }
@@ -403,7 +497,7 @@ impl GameNotificationTracker {
             }
             if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
                 if filled_up(old, game, player_name)
-                    && announce_full(&mut self.full_announced, game.id)
+                    && self.full_announced.announce(game.id, Instant::now())
                 {
                     signals.push(GameNotificationSignal::GameFull(game.clone()));
                 }
@@ -499,6 +593,21 @@ fn friends_playing_text(logins: &[String], game_title: &str) -> notifications::T
     text.with("game", game_title)
 }
 
+fn notify_game_full(out: &EventSink, game_id: i32, title: &str, game_attention: bool) {
+    notifications::add_text(
+        out,
+        NotificationKind::GameFull,
+        notifications::Text::new("notifications.msg.gameFull").with("title", title),
+        "Game full",
+        format!("{title} is full and ready to launch."),
+        Some(if game_attention {
+            NotificationAction::FocusGame
+        } else {
+            NotificationAction::OpenGame { game_id }
+        }),
+    );
+}
+
 pub(super) fn notify_game_signal(
     out: &EventSink,
     preferences: &NotificationPreferences,
@@ -524,18 +633,9 @@ pub(super) fn notify_game_signal(
                 );
             }
         }
-        GameNotificationSignal::GameFull(game) if preferences.game_full => notifications::add_text(
-            out,
-            NotificationKind::GameFull,
-            notifications::Text::new("notifications.msg.gameFull").with("title", &game.title),
-            "Game full",
-            format!("{} is full and ready to launch.", game.title),
-            Some(if game_attention {
-                NotificationAction::FocusGame
-            } else {
-                NotificationAction::OpenGame { game_id: game.id }
-            }),
-        ),
+        GameNotificationSignal::GameFull(game) if preferences.game_full => {
+            notify_game_full(out, game.id, &game.title, game_attention)
+        }
         GameNotificationSignal::FriendsPlaying { logins, game } => {
             if preferences.friend_playing {
                 notifications::add_text(
@@ -964,6 +1064,41 @@ mod tests {
         assert_eq!(full(&mut tracker), 1);
         tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
         assert_eq!(full(&mut tracker), 0);
+    }
+
+    /// The game list and the player's own game both see a lobby filling
+    /// (#777), and between them it is announced once, whichever is first.
+    #[test]
+    fn the_game_list_and_the_game_share_one_announcement() {
+        let announced = FullAnnouncements::default();
+        let mut tracker = GameNotificationTracker::new(announced.clone());
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        // The game said so first.
+        assert!(announced.announce(1, Instant::now()));
+        let signals = tracker.observe_open(&[game(1, "Me", &["Me", "Other"], 2, 2)], Some("me"));
+        assert!(!signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::GameFull(_))));
+
+        // The list said so first.
+        tracker.observe_open(&[game(2, "Me", &["Me"], 1, 2)], Some("me"));
+        let signals = tracker.observe_open(&[game(2, "Me", &["Me", "Other"], 2, 2)], Some("me"));
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 2)
+        ));
+        assert!(!announced.announce(2, Instant::now()));
+    }
+
+    /// A lobby gone from the list is forgotten, now that the record lives as
+    /// long as the session rather than one connection.
+    #[test]
+    fn a_game_leaving_the_list_forgets_its_announcement() {
+        let announced = FullAnnouncements::default();
+        let mut tracker = GameNotificationTracker::new(announced.clone());
+        tracker.observe_open(&[], None);
+        assert!(announced.announce(1, Instant::now()));
+        tracker.observe_open_delta(&[], &[1], None);
+        assert!(announced.announce(1, Instant::now()));
     }
 
     #[test]
