@@ -627,6 +627,27 @@ pub(crate) fn find_rel_resource<'a>(
     doc.included.iter().find(|r| r.id == id)
 }
 
+/// The player a relationship names: their id, and their login where the
+/// player resource was included.
+///
+/// The id comes from the relationship's own linkage, so ownership does not
+/// depend on the player having been included: it is in the linkage either way.
+/// A map's `author` and a mod's `uploader` are read this way.
+pub(crate) fn linked_player<'a>(
+    doc: &'a JsonApiDoc,
+    index: &ResourceIndex<'a>,
+    relationships: &Value,
+    name: &str,
+) -> (Option<i32>, Option<String>) {
+    let rel = rel_target(relationships, name);
+    let id = rel.as_ref().and_then(|(_, id)| id.parse::<i32>().ok());
+    let login = find_rel_resource(doc, index, rel)
+        .and_then(|player| player.attributes.get("login"))
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    (id, login)
+}
+
 pub(crate) fn rel_many(resource: &JsonApiResource, name: &str) -> Vec<(String, String)> {
     rel_targets(&resource.relationships, name)
 }
