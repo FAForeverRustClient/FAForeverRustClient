@@ -1,0 +1,3 @@
+- No visible changes: game preparation is serialized per app instead of per process, and its tests run in the shared test binary.
+- No visible changes: lobby send refusals name their cause, so their notification no longer depends on matching the backend's wording.
+- No visible changes: the map and mod vaults share their listing's rating and uploader parsing.
