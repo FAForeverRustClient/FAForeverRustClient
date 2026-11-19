@@ -117,5 +117,5 @@ as before.
 | `faf-app/src/ports/web_link.rs` | `WebLinkPort`: one connection as a pair of channels. |
 | `faf-app/src/infra/web_link.rs` | The WebSocket (`FAF_WEB_LINK_URL` overrides the address; `wss://` only, or `ws://` to this machine). |
 | `faf-app/src/services/web_link.rs` | The loop: connect while wanted, publish, answer, report, reconnect. Started next to Rich Presence. |
-| `faf-app/tests/web_link.rs` | The loop against a scripted socket and lobby. |
+| `faf-app/tests/it/web_link.rs` | The loop against a scripted socket and lobby. |
 | `ui/src/features/settings/WebLinkSettingsSection.tsx` | The switch. |

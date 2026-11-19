@@ -16,19 +16,14 @@
 //! [`support`] starts the app and waits for it; a new file takes those from
 //! there instead of writing its own.
 //!
-//! Two files stay beside this folder as binaries of their own, because the
-//! tests in a binary share one process and theirs lean on something the
-//! process has only one of:
-//!
-//! - `replay_install.rs` names its stand-in for the retail game through the
-//!   `FAF_GAME_INSTALL_DIR` environment variable, which every other test in
-//!   the process would read as well;
-//! - `updater_cancellation.rs` holds the launcher's preparation lock, one for
-//!   the whole process, across whole tests, and every test here that prepares
-//!   a launch would wait behind it.
+//! One file stays beside this folder as a binary of its own, because the
+//! tests in a binary share one process and its tests lean on something the
+//! process has only one of: `replay_install.rs` names its stand-in for the
+//! retail game through the `FAF_GAME_INSTALL_DIR` environment variable,
+//! which every other test in the process would read as well.
 //!
 //! A new test that sets an environment variable, changes the working
-//! directory or otherwise writes process-wide state belongs with those two.
+//! directory or otherwise writes process-wide state belongs with that one.
 
 mod support;
 
@@ -90,4 +85,6 @@ mod training;
 mod training_lessons;
 mod tutorials;
 mod unit_history_budget;
+mod updater_cancellation;
 mod uploads;
+mod web_link;
