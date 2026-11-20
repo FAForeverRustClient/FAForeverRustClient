@@ -1,0 +1,1 @@
+- A game that loads before the ICE adapter is up no longer stays on "Connecting…".

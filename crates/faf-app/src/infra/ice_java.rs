@@ -655,6 +655,32 @@ async fn forward_lobby_messages<R: RpcCalls>(
     }
 }
 
+/// Say where the adapter's GPGNet server listens once the adapter has
+/// `answered` a request on its control channel, and not before.
+///
+/// The control channel counts as connected here as soon as its socket is,
+/// before the adapter has taken it on. The adapter's GPGNet client waits for
+/// that (`RPCService.onConnectionStateChanged`) after its reader has started,
+/// and a `GameState` the reader handles in the meantime throws: the adapter
+/// drops the game's connection and the game stays on "Connecting…"
+/// (java-ice-adapter 3.3.16). An answer means the control channel was taken
+/// on, and that `setLobbyInitMode`, sent before it, was handled.
+///
+/// The port is said either way: an adapter that does not answer is no
+/// reason to keep the game from it.
+async fn hand_over_the_game_connection<Answer>(
+    answered: Answer,
+    adapter_port: &tokio::sync::watch::Sender<Option<u16>>,
+    gpg_port: u16,
+) where
+    Answer: std::future::Future<Output = Result<Value, String>>,
+{
+    if let Err(reason) = answered.await {
+        tracing::warn!(%reason, "the game's GPGNet connection goes through without the adapter's answer");
+    }
+    let _ = adapter_port.send(Some(gpg_port));
+}
+
 /// Everything [`JavaAdapter::start`] hands to the task that brings the
 /// adapter up behind the game.
 struct BringUp {
@@ -743,10 +769,15 @@ impl BringUp {
         });
 
         *rpc_slot.lock().unwrap() = Some(rpc.clone());
-        let _ = answered.send(rpc);
+        let _ = answered.send(rpc.clone());
         // The game's connection goes through from here, or right away when
         // the game connects later, which is the usual order.
-        let _ = adapter_port.send(Some(gpg_port));
+        hand_over_the_game_connection(
+            rpc.request("status", vec![], STATUS_TIMEOUT),
+            &adapter_port,
+            gpg_port,
+        )
+        .await;
 
         let Some((session, servers)) = late else {
             return;
@@ -1632,6 +1663,46 @@ mod tests {
         })
         .await
         .expect("the messages are read and dropped, not left to fill the channel");
+    }
+
+    #[tokio::test]
+    async fn the_games_connection_waits_for_the_adapters_answer() {
+        let (adapter_port, mut handed_over) = tokio::sync::watch::channel(None);
+        let (answer, answered) = oneshot::channel::<Result<Value, String>>();
+        let handing_over = tokio::spawn(async move {
+            hand_over_the_game_connection(async { answered.await.unwrap() }, &adapter_port, 7237)
+                .await;
+            adapter_port
+        });
+        settle().await;
+        assert_eq!(
+            *handed_over.borrow(),
+            None,
+            "the adapter has not taken the control channel on yet"
+        );
+
+        answer.send(Ok(json!("{}"))).unwrap();
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            handed_over.wait_for(Option::is_some),
+        )
+        .await
+        .expect("the port follows the answer")
+        .unwrap();
+        assert_eq!(*handed_over.borrow(), Some(7237));
+        handing_over.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn an_adapter_that_does_not_answer_still_gets_the_games_connection() {
+        let (adapter_port, handed_over) = tokio::sync::watch::channel(None);
+        hand_over_the_game_connection(
+            async { Err("the adapter did not answer `status` within 3 seconds".to_string()) },
+            &adapter_port,
+            7237,
+        )
+        .await;
+        assert_eq!(*handed_over.borrow(), Some(7237));
     }
 
     #[test]
