@@ -42,7 +42,7 @@ use crate::runtime::{
 };
 
 pub use connection::reconnect;
-pub(crate) use game_notifications::{notify_lobby_full, LobbyFullAnnouncer};
+pub use game_notifications::GameFullReport;
 
 /// A game this client asked the server to host, as the launch order that
 /// answers the request needs to know it.
@@ -112,6 +112,9 @@ pub struct LobbyContext {
     /// can tell it from a newer start for the same queues: both read
     /// `Preparing` with the same names. See `matchmaking::watch_for_search_start`.
     search_attempt: std::sync::Arc<std::sync::atomic::AtomicU64>,
+    /// When each lobby was last announced as full, by the game list or by
+    /// the player's own game. See [`game_notifications::FullAnnouncements`].
+    full_announced: game_notifications::FullAnnouncements,
 }
 
 impl LobbyContext {
@@ -160,6 +163,25 @@ impl LobbyContext {
     /// that clears the game once the process exits.
     pub fn running_game_handle(&self) -> RunningGame {
         self.running_game.clone()
+    }
+
+    /// Where the launcher hands a custom game's own "lobby full" message
+    /// (#777). It shares the cooldown of the game list's announcement, so a
+    /// lobby both of them see filling is announced once.
+    pub fn game_full_report(
+        &self,
+        out: &EventSink,
+        game_id: i32,
+        title: String,
+        game_attention: bool,
+    ) -> GameFullReport {
+        GameFullReport::new(
+            out.clone(),
+            self.full_announced.clone(),
+            game_id,
+            title,
+            game_attention,
+        )
     }
 }
 

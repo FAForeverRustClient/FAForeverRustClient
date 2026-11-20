@@ -59,7 +59,7 @@ fn is_vault_map_folder(map_folder: &str) -> bool {
 /// without a suffix for a base-game map skipped the download for all of them,
 /// and the player was put into a lobby on a map they did not have. So a name
 /// without a suffix is only skipped when it is one of these.
-fn is_base_game_map(map_folder: &str) -> bool {
+pub(crate) fn is_base_game_map(map_folder: &str) -> bool {
     let lower = map_folder.to_ascii_lowercase();
     let Some((prefix, digits)) = lower.split_once('_') else {
         return false;

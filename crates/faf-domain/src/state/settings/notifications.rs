@@ -364,6 +364,15 @@ pub struct NotificationPreferences {
     pub new_custom_games: bool,
     pub new_custom_games_friends_only: bool,
     pub game_full: bool,
+    /// Whether a lobby that fills again is announced again, every time (#777).
+    ///
+    /// On by default: somebody leaving and a new player taking the seat is a
+    /// lobby about to launch again, and the alert is for coming back to it.
+    /// Off keeps a lobby quiet for a minute after it was announced, for
+    /// lobbies where people keep moving between the slots and the observers
+    /// (#382). The game list and the player's own game report the same
+    /// fill-up only once either way.
+    pub game_full_repeats: bool,
     pub game_launched: bool,
     pub review_reminder: bool,
     pub party_invites: bool,
@@ -442,6 +451,7 @@ impl Default for NotificationPreferences {
             new_custom_games: false,
             new_custom_games_friends_only: true,
             game_full: true,
+            game_full_repeats: true,
             game_launched: true,
             review_reminder: true,
             party_invites: true,
@@ -499,6 +509,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             new_custom_games: bool,
             new_custom_games_friends_only: bool,
             game_full: bool,
+            game_full_repeats: bool,
             game_launched: bool,
             review_reminder: bool,
             party_invites: bool,
@@ -546,6 +557,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
                     new_custom_games: defaults.new_custom_games,
                     new_custom_games_friends_only: defaults.new_custom_games_friends_only,
                     game_full: defaults.game_full,
+                    game_full_repeats: defaults.game_full_repeats,
                     game_launched: defaults.game_launched,
                     review_reminder: defaults.review_reminder,
                     party_invites: defaults.party_invites,
@@ -609,6 +621,7 @@ impl<'de> Deserialize<'de> for NotificationPreferences {
             new_custom_games: wire.new_custom_games,
             new_custom_games_friends_only: wire.new_custom_games_friends_only,
             game_full: wire.game_full,
+            game_full_repeats: wire.game_full_repeats,
             game_launched: wire.game_launched,
             review_reminder: wire.review_reminder,
             party_invites: wire.party_invites,
@@ -689,6 +702,7 @@ preference_patch! {
         new_custom_games: bool,
         new_custom_games_friends_only: bool,
         game_full: bool,
+        game_full_repeats: bool,
         game_launched: bool,
         review_reminder: bool,
         party_invites: bool,
@@ -963,6 +977,8 @@ mod tests {
         assert!(!settings.notifications.new_custom_games);
         assert!(settings.notifications.new_custom_games_friends_only);
         assert!(settings.notifications.game_full);
+        // Older files announce every fill-up, which is the new default (#777).
+        assert!(settings.notifications.game_full_repeats);
         assert!(settings.notifications.game_launched);
         assert!(settings.notifications.review_reminder);
     }

@@ -1741,6 +1741,8 @@ export const en = {
   "settings.notifications.friendsGamesOnly": "Friends' games only",
   "settings.notifications.friendsGamesOnlyHint": "Limit these notifications to games hosted by players on your friends list.",
   "settings.notifications.gameFull": "Game full",
+  "settings.notifications.gameFullRepeats": "Again when a lobby fills again",
+  "settings.notifications.gameFullRepeatsHint": "When somebody leaves and the seat is taken again. Off: a lobby announced in the last minute stays quiet, for people moving between the slots and the observers.",
   "settings.notifications.queueOpponent": "Opponent in your rating range",
   "settings.notifications.queueOpponentHint": "Alert when somebody whose rating range takes yours joins a matchmaker queue you are not searching. Pick the queues to watch.",
   "settings.notifications.queueOpponentOff": "Off",

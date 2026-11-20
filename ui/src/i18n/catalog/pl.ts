@@ -1320,6 +1320,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Tylko gry znajomych",
   "settings.notifications.friendsGamesOnlyHint": "Ogranicz te powiadomienia do gier zakładanych przez graczy z listy znajomych.",
   "settings.notifications.gameFull": "Gra pełna",
+  "settings.notifications.gameFullRepeats": "Ponownie, gdy lobby znów się zapełni",
+  "settings.notifications.gameFullRepeatsHint": "Gdy ktoś wyjdzie, a jego miejsce zostanie zajęte. Wyłączone: lobby ogłoszone w ostatniej minucie milczy, gdy gracze przechodzą między miejscami a obserwatorami.",
   "settings.notifications.queueOpponent": "Przeciwnik w twoim zakresie rankingu",
   "settings.notifications.queueOpponentHint": "Powiadom, gdy ktoś, czyj zakres rankingu obejmuje twój, dołączy do kolejki matchmakingu, w której nie szukasz. Wybierz kolejki do obserwowania.",
   "settings.notifications.queueOpponentOff": "Wyłączone",

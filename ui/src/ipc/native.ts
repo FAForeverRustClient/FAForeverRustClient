@@ -2,7 +2,7 @@
 // Feature code stays unaware of Tauri packages, which keeps it browser-testable
 // and gives architecture checks one explicit native boundary to enforce.
 
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWindow, UserAttentionType } from "@tauri-apps/api/window";
@@ -56,6 +56,18 @@ const ICON_FACTIONS = ["uef", "aeon", "cybran", "seraphim"];
 /** The shell's `UNIT_ICON_SCHEME`, which serves one picture per request. */
 const UNIT_ICON_SCHEME = "unit-icon";
 
+/** The shell's `OFFICIAL_MAP_SCHEME`: a base-game map's picture out of the original game. */
+const OFFICIAL_MAP_SCHEME = "official-map";
+
+/**
+ * Whether `url` is one of `native.officialMapPreviewUrl`'s addresses:
+ * `http://official-map.localhost/…` on Windows, `official-map://localhost/…`
+ * elsewhere. Only this client's own windows can load one.
+ */
+export function isOfficialMapPreviewUrl(url: string): boolean {
+  return url.startsWith(`http://${OFFICIAL_MAP_SCHEME}.localhost/`) || url.startsWith(`${OFFICIAL_MAP_SCHEME}://`);
+}
+
 /** Mirrors the arms of `log_directory` in the Tauri shell. `ice` is the adapters' own log folder. */
 export type LogKind = "game" | "client" | "ice";
 
@@ -70,6 +82,17 @@ export type ClientFolder =
   | "gamePrefsBackups";
 
 export const native = {
+  /**
+   * A base-game map's 256 pixel picture, read out of the original game's
+   * `.scmap` by the shell (`infra::official_map_preview`), as an address an
+   * `<img>` loads. It answers 404 where the game or the map is not found.
+   * `null` outside the desktop shell, where there is no scheme to ask.
+   */
+  officialMapPreviewUrl(folderName: string): string | null {
+    if (!/^(scmp|x1mp)_\d{3}$/i.test(folderName) || !isTauri()) return null;
+    return convertFileSrc(folderName.toLowerCase(), OFFICIAL_MAP_SCHEME);
+  },
+
   /** Read a fixed enhancement asset through the same bounded icon cache. */
   enhancementIconUrl(faction: string, name: string): string | null {
     if (!/^(uef|aeon|cybran|seraphim)$/.test(faction) || !/^[a-z0-9_]+$/.test(name)) return null;

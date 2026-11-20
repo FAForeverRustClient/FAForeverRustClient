@@ -1,10 +1,10 @@
 //! Game notifications: the tracker that turns the lobby's game lists and
-//! matchmaker queues into signals (a new game, friends starting to play, your
-//! game ending, an opponent in a watched queue), and the notifications those
-//! signals raise. A full lobby is the game's own word instead: see
-//! [`LobbyFullAnnouncer`].
+//! matchmaker queues into signals (a new game, a full lobby, friends starting
+//! to play, your game ending, an opponent in a watched queue), and the
+//! notifications those signals raise.
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use faf_domain::state::{
@@ -19,6 +19,7 @@ use crate::services::notifications;
 #[derive(Debug, Clone)]
 pub(super) enum GameNotificationSignal {
     NewGame(Game),
+    GameFull(Game),
     FriendsPlaying { logins: Vec<String>, game: Game },
     FriendsJoinedGame { logins: Vec<String>, game: Game },
     OwnGameEnded(Game),
@@ -33,64 +34,165 @@ pub(super) struct GameNotificationTracker {
     live: Option<HashMap<i32, Game>>,
     suppress_until: Option<Instant>,
     pub(super) queue_opponents: QueueOpponentTracker,
+    /// When each game was last announced as full. Shared with the player's
+    /// own game, which reports a full lobby too; see [`FullAnnouncements`].
+    full_announced: FullAnnouncements,
+    /// The player switched off `game_full_repeats`: a lobby announced as
+    /// full a moment ago is not announced again. See [`GAME_FULL_QUIET`].
+    quiet_full_repeats: bool,
 }
 
-/// How long a game stays announced as full. People move between the slots
-/// and the observers for the whole of a lobby's setup, and the game says
-/// `GameFull` again on every move that leaves it full (#382).
-const GAME_FULL_COOLDOWN: Duration = Duration::from_secs(5 * 60);
+/// How long a lobby stays quiet after it was announced as full, for somebody
+/// who switched off `game_full_repeats` (#382). Long enough for people
+/// moving between a slot and the observers, short enough that a player who
+/// left and was replaced is a lobby announced again (#777).
+const GAME_FULL_QUIET: Duration = Duration::from_secs(60);
 
-/// Announces the player's own lobby filling up, on the game's word (#777).
+/// When each game was last announced as full, and which lobby the player's
+/// own game is reporting on.
 ///
-/// Forged Alliance's lobby says so itself: `PossiblyAnnounceGameFull`
-/// (`lua/ui/lobby/lobby.lua`) sends `GameFull` over GPGnet whenever a slot is
-/// taken or closed and no open slot is left empty, on the host and on every
-/// other player in the lobby alike. The Java client announces from the same
-/// message (`GameFullNotifier`).
-///
-/// This used to be read from the server's game list instead, comparing the
-/// seated players with `max_players`. That number is the map's slot count, the
-/// lobby's `Slots` option, and closing a slot does not change it: a host who
-/// closed slots filled every open one and heard nothing, which is the
-/// "sometimes it works" of the report. The game is the only one that knows
-/// which slots are closed.
-#[derive(Default)]
-pub(crate) struct LobbyFullAnnouncer {
-    announced_at: Option<Instant>,
+/// Two places can tell that a lobby is full: the game list the server sends
+/// ([`GameNotificationTracker`]) and the player's own game
+/// ([`GameFullReport`]). For the lobby the player's game is in, the game is
+/// the one to go by, since it counts closed slots and AIs, so the list stays
+/// out of that lobby while the game reports on it and the one fill-up is not
+/// announced twice. Kept by the lobby context rather than by one connection,
+/// because the game's report arrives from a task that outlives it.
+#[derive(Debug, Clone, Default)]
+pub struct FullAnnouncements(Arc<Mutex<FullRecord>>);
+
+#[derive(Debug, Default)]
+struct FullRecord {
+    announced_at: HashMap<i32, Instant>,
+    /// The lobby a [`GameFullReport`] speaks for, while it lives.
+    reported_by_game: Option<i32>,
 }
 
-impl LobbyFullAnnouncer {
-    /// Whether a `GameFull` arriving at `now` is news, recording it if so.
-    pub(crate) fn admit(&mut self, now: Instant) -> bool {
-        if self
-            .announced_at
-            .is_some_and(|at| now.duration_since(at) < GAME_FULL_COOLDOWN)
+impl FullAnnouncements {
+    /// Whether a game that just filled up should be announced, and if so,
+    /// record that it was. With `quiet_repeats`, a lobby announced less than
+    /// [`GAME_FULL_QUIET`] ago is not.
+    fn announce(&self, game_id: i32, now: Instant, quiet_repeats: bool) -> bool {
+        let mut record = self.0.lock().unwrap();
+        Self::announce_in(&mut record, game_id, now, quiet_repeats)
+    }
+
+    /// The same for the game list, which leaves the lobby the player's own
+    /// game reports on to the game.
+    fn announce_from_list(&self, game_id: i32, now: Instant, quiet_repeats: bool) -> bool {
+        let mut record = self.0.lock().unwrap();
+        if record.reported_by_game == Some(game_id) {
+            return false;
+        }
+        Self::announce_in(&mut record, game_id, now, quiet_repeats)
+    }
+
+    fn announce_in(record: &mut FullRecord, game_id: i32, now: Instant, quiet: bool) -> bool {
+        if quiet
+            && record
+                .announced_at
+                .get(&game_id)
+                .is_some_and(|at| now.duration_since(*at) < GAME_FULL_QUIET)
         {
             return false;
         }
-        self.announced_at = Some(now);
+        record.announced_at.insert(game_id, now);
         true
+    }
+
+    fn forget(&self, game_id: i32) {
+        self.0.lock().unwrap().announced_at.remove(&game_id);
+    }
+
+    fn begin_report(&self, game_id: i32) {
+        self.0.lock().unwrap().reported_by_game = Some(game_id);
+    }
+
+    fn end_report(&self, game_id: i32) {
+        let mut record = self.0.lock().unwrap();
+        if record.reported_by_game == Some(game_id) {
+            record.reported_by_game = None;
+        }
     }
 }
 
-/// The notification for a full lobby. `game_attention` is whether the game's
-/// window can be brought forward from it, which is then what its action does.
-pub(crate) fn notify_lobby_full(out: &EventSink, game_id: i32, title: &str, game_attention: bool) {
-    if !out.with_state(|state| state.settings.notifications.game_full) {
-        return;
+/// The player's own game saying its lobby is full (#777).
+///
+/// The game list cannot always tell. The server's `max_players` is the map's
+/// number of start positions (the lobby sends `GameOption Slots` with the
+/// map's army count and nothing else), so a host who closes slots leaves a
+/// lobby that is full for everybody in it and short of full in the list. The
+/// list also counts only the people connected to the lobby, so a slot taken
+/// by an AI is an empty one there. The game knows both: its lobby sends
+/// `GameFull` over GPGNet when no open slot is left without a player
+/// (`PossiblyAnnounceGameFull` in the game's `lobby.lua`), and it sends it to
+/// every player in the lobby, not only the host.
+///
+/// Made by the launcher for a custom game only: a matchmaker game fills
+/// itself and launches on its own, so there is nothing to come back for.
+/// While it lives, the game list leaves this lobby to it.
+pub struct GameFullReport {
+    out: EventSink,
+    announced: FullAnnouncements,
+    game_id: i32,
+    /// The launch order's title, for when the game is not in the list.
+    title: String,
+    game_attention: bool,
+}
+
+impl GameFullReport {
+    pub(super) fn new(
+        out: EventSink,
+        announced: FullAnnouncements,
+        game_id: i32,
+        title: String,
+        game_attention: bool,
+    ) -> Self {
+        announced.begin_report(game_id);
+        Self {
+            out,
+            announced,
+            game_id,
+            title,
+            game_attention,
+        }
     }
-    notifications::add_text(
-        out,
-        NotificationKind::GameFull,
-        notifications::Text::new("notifications.msg.gameFull").with("title", title),
-        "Game full",
-        format!("{title} is full and ready to launch."),
-        Some(if game_attention {
-            NotificationAction::FocusGame
-        } else {
-            NotificationAction::OpenGame { game_id }
-        }),
-    );
+
+    /// The game sent `GameFull`.
+    pub fn game_full(&self) {
+        let (preferences, listed_title) = self.out.with_state(|state| {
+            (
+                state.settings.notifications.clone(),
+                state
+                    .lobby
+                    .games
+                    .iter()
+                    .find(|game| game.id == self.game_id)
+                    .map(|game| game.title.clone()),
+            )
+        });
+        if !self
+            .announced
+            .announce(self.game_id, Instant::now(), !preferences.game_full_repeats)
+        {
+            return;
+        }
+        if preferences.game_full {
+            notify_game_full(
+                &self.out,
+                self.game_id,
+                listed_title.as_deref().unwrap_or(&self.title),
+                self.game_attention,
+            );
+        }
+    }
+}
+
+impl Drop for GameFullReport {
+    /// The game is gone, so the game list speaks for the lobby again.
+    fn drop(&mut self) {
+        self.announced.end_report(self.game_id);
+    }
 }
 
 /// How long a queue keeps quiet after announcing an opponent.
@@ -263,6 +365,15 @@ fn match_reach(deviation: f64, expansion: f64) -> f64 {
 }
 
 impl GameNotificationTracker {
+    /// A tracker for one lobby connection, announcing full lobbies into the
+    /// session's shared record.
+    pub(super) fn new(full_announced: FullAnnouncements) -> Self {
+        Self {
+            full_announced,
+            ..Self::default()
+        }
+    }
+
     /// Friends who are in a lobby they were not in at the last update.
     ///
     /// A friend hosting a lobby is also in it. When `hosts_announced`
@@ -311,6 +422,12 @@ impl GameNotificationTracker {
             .collect()
     }
 
+    /// Whether a lobby that fills again is announced again; the player's
+    /// `game_full_repeats`, read before each update is observed.
+    pub(super) fn set_full_repeats(&mut self, repeats: bool) {
+        self.quiet_full_repeats = !repeats;
+    }
+
     pub(super) fn mark_authenticated(&mut self) {
         self.suppress_until = Some(Instant::now() + Duration::from_secs(5));
     }
@@ -330,6 +447,7 @@ impl GameNotificationTracker {
         &mut self,
         upserted: &[Game],
         removed: &[i32],
+        player_name: Option<&str>,
     ) -> Vec<GameNotificationSignal> {
         let Some(index) = self.open.as_mut() else {
             return Vec::new();
@@ -341,12 +459,29 @@ impl GameNotificationTracker {
         let mut signals = Vec::new();
         for game in upserted {
             let previous = index.insert(game.id, game.clone());
-            if !suppressed && previous.is_none() {
-                signals.push(GameNotificationSignal::NewGame(game.clone()));
+            if suppressed {
+                continue;
+            }
+            match previous {
+                None => signals.push(GameNotificationSignal::NewGame(game.clone())),
+                Some(old) => {
+                    if let Some(player_name) = player_name {
+                        if filled_up(&old, game, player_name)
+                            && self.full_announced.announce_from_list(
+                                game.id,
+                                Instant::now(),
+                                self.quiet_full_repeats,
+                            )
+                        {
+                            signals.push(GameNotificationSignal::GameFull(game.clone()));
+                        }
+                    }
+                }
             }
         }
         for id in removed {
             index.remove(id);
+            self.full_announced.forget(*id);
         }
         signals
     }
@@ -404,7 +539,11 @@ impl GameNotificationTracker {
         signals
     }
 
-    pub(super) fn observe_open(&mut self, games: &[Game]) -> Vec<GameNotificationSignal> {
+    pub(super) fn observe_open(
+        &mut self,
+        games: &[Game],
+        player_name: Option<&str>,
+    ) -> Vec<GameNotificationSignal> {
         let next = indexed_games(games);
         let Some(previous) = self.open.replace(next.clone()) else {
             return Vec::new();
@@ -414,11 +553,24 @@ impl GameNotificationTracker {
             return Vec::new();
         }
 
-        games
-            .iter()
-            .filter(|game| !previous.contains_key(&game.id))
-            .map(|game| GameNotificationSignal::NewGame(game.clone()))
-            .collect()
+        let mut signals = Vec::new();
+        for game in games {
+            if !previous.contains_key(&game.id) {
+                signals.push(GameNotificationSignal::NewGame(game.clone()));
+            }
+            if let (Some(player_name), Some(old)) = (player_name, previous.get(&game.id)) {
+                if filled_up(old, game, player_name)
+                    && self.full_announced.announce_from_list(
+                        game.id,
+                        Instant::now(),
+                        self.quiet_full_repeats,
+                    )
+                {
+                    signals.push(GameNotificationSignal::GameFull(game.clone()));
+                }
+            }
+        }
+        signals
     }
 
     pub(super) fn observe_live(
@@ -508,10 +660,26 @@ fn friends_playing_text(logins: &[String], game_title: &str) -> notifications::T
     text.with("game", game_title)
 }
 
+fn notify_game_full(out: &EventSink, game_id: i32, title: &str, game_attention: bool) {
+    notifications::add_text(
+        out,
+        NotificationKind::GameFull,
+        notifications::Text::new("notifications.msg.gameFull").with("title", title),
+        "Game full",
+        format!("{title} is full and ready to launch."),
+        Some(if game_attention {
+            NotificationAction::FocusGame
+        } else {
+            NotificationAction::OpenGame { game_id }
+        }),
+    );
+}
+
 pub(super) fn notify_game_signal(
     out: &EventSink,
     preferences: &NotificationPreferences,
     signal: GameNotificationSignal,
+    game_attention: bool,
 ) {
     match signal {
         GameNotificationSignal::NewGame(game) => {
@@ -531,6 +699,9 @@ pub(super) fn notify_game_signal(
                     Some(NotificationAction::OpenGame { game_id: game.id }),
                 );
             }
+        }
+        GameNotificationSignal::GameFull(game) if preferences.game_full => {
+            notify_game_full(out, game.id, &game.title, game_attention)
         }
         GameNotificationSignal::FriendsPlaying { logins, game } => {
             if preferences.friend_playing {
@@ -717,6 +888,40 @@ fn participants(game: &Game) -> impl Iterator<Item = &str> {
     game.teams.values().flatten().map(String::as_str)
 }
 
+/// Did this update fill the last slot of a lobby the player is sitting in?
+///
+/// Hosting is not the question it was. The request was for the warning "even
+/// when we're not the host", and it is the same fact for everybody in the
+/// lobby: the game is about to launch, and anybody still on another screen
+/// wants to know. Whoever is not in the lobby is not told, which is what keeps
+/// this from being a notification about every full game on the server.
+fn filled_up(old: &Game, game: &Game, player_name: &str) -> bool {
+    seated_players(old) < old.max_players
+        && seated_players(game) >= game.max_players
+        && (game_has_player(game, player_name) || game_has_player(old, player_name))
+}
+
+/// How many of a lobby's seats are taken: the players in a team, observers
+/// left out.
+///
+/// The server's `num_players` counts everybody connected to the lobby, and an
+/// observer is connected without taking a slot. An eight-player map holding
+/// six players and one observer is therefore at seven, and the next player to
+/// join put it at eight: "game full", with a seat still open (#336). The teams
+/// say who sits where, with observers under `-1` or `null`, so they are what
+/// is counted. A game that reports no teams at all falls back to the server's
+/// number rather than to zero.
+fn seated_players(game: &Game) -> i32 {
+    if game.teams.is_empty() {
+        return game.players;
+    }
+    game.teams
+        .iter()
+        .filter(|(team, _)| team.as_str() != "-1" && team.as_str() != "null")
+        .map(|(_, players)| players.len() as i32)
+        .sum()
+}
+
 fn game_has_player(game: &Game, player_name: &str) -> bool {
     game.host.eq_ignore_ascii_case(player_name)
         || participants(game).any(|name| name.eq_ignore_ascii_case(player_name))
@@ -764,12 +969,12 @@ mod tests {
         assert!(tracker
             .friends_joined(std::slice::from_ref(&joined), &friends, false)
             .is_empty());
-        tracker.observe_open(&[old]);
+        tracker.observe_open(&[old], None);
         let signals = tracker.friends_joined(std::slice::from_ref(&joined), &friends, false);
         assert!(
             matches!(&signals[..], [GameNotificationSignal::FriendsJoinedGame { logins, game }] if logins == &friends && game.id == 1)
         );
-        tracker.observe_open(std::slice::from_ref(&joined));
+        tracker.observe_open(std::slice::from_ref(&joined), None);
         assert!(tracker
             .friends_joined(std::slice::from_ref(&joined), &friends, false)
             .is_empty());
@@ -782,7 +987,7 @@ mod tests {
     #[test]
     fn a_friend_hosting_a_new_lobby_is_announced_once() {
         let mut tracker = GameNotificationTracker::default();
-        tracker.observe_open(&[]);
+        tracker.observe_open(&[], None);
         let friends = vec!["Friend".into()];
         let hosted = game(2, "Friend", &["Friend"], 1, 4);
         // New-game alerts on: their "hosted" notice covers the friend.
@@ -807,12 +1012,12 @@ mod tests {
         let seated = game(2, "Friend", &["Friend"], 1, 4);
         for hosts_announced in [true, false] {
             let mut tracker = GameNotificationTracker::default();
-            tracker.observe_open(&[]);
+            tracker.observe_open(&[], None);
             assert!(tracker
                 .friends_joined(std::slice::from_ref(&unseated), &friends, hosts_announced)
                 .is_empty());
             assert!(matches!(
-                &tracker.observe_open_delta(std::slice::from_ref(&unseated), &[])[..],
+                &tracker.observe_open_delta(std::slice::from_ref(&unseated), &[], None)[..],
                 [GameNotificationSignal::NewGame(game)] if game.id == 2
             ));
             // New-game alerts on: the "hosted" notice above was the one. Off:
@@ -830,7 +1035,7 @@ mod tests {
     fn a_friend_joining_a_friends_lobby_is_still_announced() {
         let mut tracker = GameNotificationTracker::default();
         let friends = vec!["Friend".into(), "Other".into()];
-        tracker.observe_open(&[game(2, "Friend", &["Friend"], 1, 4)]);
+        tracker.observe_open(&[game(2, "Friend", &["Friend"], 1, 4)], None);
         let signals = tracker.friends_joined(
             &[game(2, "Friend", &["Friend", "Other"], 2, 4)],
             &friends,
@@ -845,7 +1050,7 @@ mod tests {
     fn initial_game_snapshots_never_emit_notifications() {
         let mut tracker = GameNotificationTracker::default();
         assert!(tracker
-            .observe_open(&[game(1, "Host", &["Host"], 1, 4)])
+            .observe_open(&[game(1, "Host", &["Host"], 1, 4)], Some("Me"))
             .is_empty());
         assert!(tracker
             .observe_live(
@@ -857,31 +1062,172 @@ mod tests {
     }
 
     #[test]
-    fn open_game_transitions_detect_new_games() {
+    fn open_game_transitions_detect_new_games_and_own_full_lobby() {
         let mut tracker = GameNotificationTracker::default();
         let mine = game(1, "Me", &["Me"], 1, 2);
-        tracker.observe_open(std::slice::from_ref(&mine));
+        tracker.observe_open(std::slice::from_ref(&mine), Some("me"));
 
-        let signals = tracker.observe_open(&[
-            game(1, "ME", &["Me", "Other"], 2, 2),
-            game(2, "Host", &["Host"], 1, 4),
-        ]);
-        assert!(
-            matches!(&signals[..], [GameNotificationSignal::NewGame(game)] if game.id == 2),
-            "a lobby filling up is the game's to say, not the list's (#777)"
+        let signals = tracker.observe_open(
+            &[
+                game(1, "ME", &["Me", "Other"], 2, 2),
+                game(2, "Host", &["Host"], 1, 4),
+            ],
+            Some("me"),
         );
+        assert_eq!(signals.len(), 2);
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
+        assert!(signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::NewGame(game) if game.id == 2)));
+    }
+
+    #[test]
+    fn a_lobby_filling_up_is_reported_to_everybody_in_it() {
+        let mut tracker = GameNotificationTracker::default();
+        // Somebody else's lobby, with us in it, and one somebody else's with
+        // us nowhere near it.
+        tracker.observe_open(
+            &[
+                game(1, "Host", &["Host", "Me"], 2, 3),
+                game(2, "Host", &["Host"], 1, 2),
+            ],
+            Some("me"),
+        );
+
+        let signals = tracker.observe_open(
+            &[
+                game(1, "Host", &["Host", "Me", "Third"], 3, 3),
+                game(2, "Host", &["Host", "Other"], 2, 2),
+            ],
+            Some("me"),
+        );
+        assert_eq!(
+            signals
+                .iter()
+                .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+                .count(),
+            1
+        );
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
+    }
+
+    fn fills_again(tracker: &mut GameNotificationTracker) -> usize {
+        tracker.observe_open(&[game(1, "Me", &["Me"], 1, 2)], Some("me"));
+        tracker
+            .observe_open(&[game(1, "Me", &["Me", "Other"], 2, 2)], Some("me"))
+            .iter()
+            .filter(|signal| matches!(signal, GameNotificationSignal::GameFull(_)))
+            .count()
+    }
+
+    /// A player who left and was replaced is a lobby about to launch again,
+    /// and by default every fill-up is announced (#777).
+    #[test]
+    fn a_lobby_that_fills_again_is_announced_again_by_default() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.observe_open(&[], Some("me"));
+        assert_eq!(fills_again(&mut tracker), 1);
+        assert_eq!(fills_again(&mut tracker), 1);
     }
 
     /// The report in #382: people going to the observers and back made the
-    /// lobby full again, and every time was a toast and a sound. The game
-    /// says `GameFull` on each of those moves.
+    /// lobby full again, and every time was a toast and a sound. With
+    /// `game_full_repeats` off, that lobby keeps quiet for a while.
     #[test]
-    fn a_lobby_that_fills_again_is_announced_once() {
-        let mut announcer = LobbyFullAnnouncer::default();
-        let start = Instant::now();
-        assert!(announcer.admit(start));
-        assert!(!announcer.admit(start + Duration::from_secs(30)));
-        assert!(announcer.admit(start + GAME_FULL_COOLDOWN));
+    fn a_lobby_that_fills_again_is_quiet_with_repeats_off() {
+        let mut tracker = GameNotificationTracker::default();
+        tracker.set_full_repeats(false);
+        tracker.observe_open(&[], Some("me"));
+        assert_eq!(fills_again(&mut tracker), 1);
+        assert_eq!(fills_again(&mut tracker), 0);
+    }
+
+    #[test]
+    fn the_quiet_period_ends() {
+        let announced = FullAnnouncements::default();
+        let then = Instant::now();
+        assert!(announced.announce(1, then, true));
+        assert!(!announced.announce(1, then + GAME_FULL_QUIET / 2, true));
+        assert!(announced.announce(1, then + GAME_FULL_QUIET, true));
+        // Repeats on: nothing is held back.
+        assert!(announced.announce(1, then + GAME_FULL_QUIET, false));
+    }
+
+    /// The player's own game reports on its lobby (#777), so the game list
+    /// stays out of that one and the same fill-up is not announced twice. It
+    /// still speaks for every other lobby, and for this one once the game is
+    /// gone.
+    #[test]
+    fn the_game_list_leaves_the_lobby_the_game_reports_on() {
+        let announced = FullAnnouncements::default();
+        let mut tracker = GameNotificationTracker::new(announced.clone());
+        tracker.observe_open(&[], Some("me"));
+        announced.begin_report(1);
+        assert_eq!(fills_again(&mut tracker), 0);
+        assert!(announced.announce(1, Instant::now(), false));
+
+        tracker.observe_open(&[game(2, "Me", &["Me"], 1, 2)], Some("me"));
+        let signals = tracker.observe_open(&[game(2, "Me", &["Me", "Other"], 2, 2)], Some("me"));
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 2)
+        ));
+
+        announced.end_report(1);
+        assert_eq!(fills_again(&mut tracker), 1);
+    }
+
+    /// A lobby gone from the list is forgotten, now that the record lives as
+    /// long as the session rather than one connection.
+    #[test]
+    fn a_game_leaving_the_list_forgets_its_announcement() {
+        let announced = FullAnnouncements::default();
+        let mut tracker = GameNotificationTracker::new(announced.clone());
+        tracker.observe_open(&[], None);
+        assert!(announced.announce(1, Instant::now(), true));
+        tracker.observe_open_delta(&[], &[1], None);
+        assert!(announced.announce(1, Instant::now(), true));
+    }
+
+    #[test]
+    fn an_observer_does_not_take_a_seat_in_a_full_lobby() {
+        let mut tracker = GameNotificationTracker::default();
+        let with_observer = |id, seated: &[&str], connected| {
+            let mut lobby = game(id, "Me", seated, connected, 8);
+            lobby.teams.insert("-1".into(), vec!["Watcher".into()]);
+            lobby
+        };
+        // Six players and an observer on an eight-player map: the server says
+        // seven.
+        tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E"], 7)],
+            Some("me"),
+        );
+
+        // A seventh player joins. The server says eight, and a seat is open.
+        let signals = tracker.observe_open(
+            &[with_observer(1, &["Me", "A", "B", "C", "D", "E", "F"], 8)],
+            Some("me"),
+        );
+        assert!(!signals
+            .iter()
+            .any(|signal| matches!(signal, GameNotificationSignal::GameFull(_))));
+
+        // The eighth does fill it.
+        let signals = tracker.observe_open(
+            &[with_observer(
+                1,
+                &["Me", "A", "B", "C", "D", "E", "F", "G"],
+                9,
+            )],
+            Some("me"),
+        );
+        assert!(signals.iter().any(
+            |signal| matches!(signal, GameNotificationSignal::GameFull(game) if game.id == 1)
+        ));
     }
 
     fn queue(name: &str, windows: &[(i32, i32)]) -> MatchmakerQueue {

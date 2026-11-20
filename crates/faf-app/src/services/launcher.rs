@@ -29,7 +29,6 @@ use crate::ports::{
     RelayMsg, ReplayMetadata, UpdateProgress, DEFAULT_LOCAL_REPLAY_LIMIT,
 };
 use crate::runtime::{EventSink, ServiceCtx};
-use crate::services::lobby::{notify_lobby_full, LobbyFullAnnouncer};
 use crate::services::notifications;
 
 /// A live launch: the channel into the adapter, used to forward lobby
@@ -230,19 +229,20 @@ pub async fn start(
 
     // 4. Pump adapter → lobby. The reverse direction is driven by the lobby loop
     //    via `forward_to_adapter`.
-    //
-    //    The game's `GameFull` is read on the way past: it is the one word on a
-    //    full lobby that counts closed slots (#777, see `LobbyFullAnnouncer`).
-    //    Not for a matchmaker game, whose lobby fills and launches by itself.
+    //    The game's own `GameFull` is read on the way past: it is the one
+    //    account of a full lobby that counts closed slots and AIs (#777).
     let lobby = ctx.ports.lobby.clone();
     let mut to_lobby = session.to_lobby;
-    let full_sink = out.clone();
-    let full_attention = ctx.ports.process.supports_game_attention();
-    let full_announced = init_mode == 0;
-    let (full_game_id, full_title) = (launch.uid, launch.name.clone());
+    let full_report = (init_mode == 0).then(|| {
+        ctx.lobby.game_full_report(
+            out,
+            launch.uid,
+            launch.name.clone(),
+            ctx.ports.process.supports_game_attention(),
+        )
+    });
     tokio::spawn(async move {
         tracing::debug!("launcher: adapter->lobby pump started");
-        let mut lobby_full = LobbyFullAnnouncer::default();
         while let Some(msg) = to_lobby.recv().await {
             tracing::trace!(command = %msg.command, "launcher: adapter -> server lobby");
             if msg.command == "GameState" {
@@ -250,9 +250,9 @@ pub async fn start(
                 tracing::info!(state, "game -> server: game state");
             }
             if msg.command == "GameFull" {
-                tracing::info!("game: the lobby is full");
-                if full_announced && lobby_full.admit(std::time::Instant::now()) {
-                    notify_lobby_full(&full_sink, full_game_id, &full_title, full_attention);
+                tracing::info!("game -> server: the lobby is full");
+                if let Some(report) = &full_report {
+                    report.game_full();
                 }
             }
             lobby.send_game_relay(msg.command, msg.args);

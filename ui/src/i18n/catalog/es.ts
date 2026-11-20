@@ -1370,6 +1370,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Solo partidas de amigos",
   "settings.notifications.friendsGamesOnlyHint": "Limitar estos avisos a partidas creadas por jugadores de tu lista de amigos.",
   "settings.notifications.gameFull": "Partida completa",
+  "settings.notifications.gameFullRepeats": "De nuevo cuando una sala se vuelve a llenar",
+  "settings.notifications.gameFullRepeatsHint": "Cuando alguien se va y otro ocupa su puesto. Desactivado: una sala avisada en el último minuto no vuelve a avisar, por quienes se mueven entre los puestos y los observadores.",
   "settings.notifications.queueOpponent": "Rival en tu rango de puntuación",
   "settings.notifications.queueOpponentHint": "Avisar cuando alguien cuyo rango de puntuación incluye el tuyo entra en una cola de emparejamiento en la que no estás buscando. Elige las colas que quieres vigilar.",
   "settings.notifications.queueOpponentOff": "Desactivado",

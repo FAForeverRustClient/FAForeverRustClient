@@ -1434,6 +1434,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Только игры друзей",
   "settings.notifications.friendsGamesOnlyHint": "Показывать эти уведомления только об играх, созданных игроками из списка друзей.",
   "settings.notifications.gameFull": "Игра заполнена",
+  "settings.notifications.gameFullRepeats": "Снова, когда лобби опять заполнилось",
+  "settings.notifications.gameFullRepeatsHint": "Когда кто-то уходит и его место снова занимают. Выключено: лобби, о котором сообщили в последнюю минуту, молчит, пока игроки переходят между слотами и наблюдателями.",
   "settings.notifications.queueOpponent": "Соперник в вашем диапазоне рейтинга",
   "settings.notifications.queueOpponentHint": "Оповещать, если соперник вашего рейтинга появится в очереди, где вы не ищете матч. Выберите очереди для отслеживания.",
   "settings.notifications.queueOpponentOff": "Выключено",

@@ -53,6 +53,17 @@ pub fn preview_data_url(path: &Path) -> Result<String, String> {
     ))
 }
 
+/// The preview of `path` as PNG bytes, for a picture served by address
+/// rather than carried in the state as a `data:` URL.
+pub fn preview_png(path: &Path) -> Result<Vec<u8>, String> {
+    let image = read_preview(path)?;
+    Ok(super::png::encode_png(
+        image.width,
+        image.height,
+        &image.rgba,
+    ))
+}
+
 fn read_preview(path: &Path) -> Result<DecodedImage, String> {
     let mut file = std::fs::File::open(path)
         .map_err(|error| format!("could not open the map file: {error}"))?;
