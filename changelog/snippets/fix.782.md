@@ -1,6 +1,5 @@
 - A game.prefs chosen in Settings, Paths is used by the game again: since 1.0.0 the game started with default graphics and no UI mods.
 - FAF develop starts on the rebuilt engine again: the client no longer writes a version into its exe.
-- "Game full" arrives every time the lobby fills, closed slots included, for the host and everybody else in the lobby.
 - "Game full" no longer pops up while the game's window is in front.
 - A drawn ladder game says Draw instead of Defeat.
 - Hover panels on the game list open after one second by default, so reaching for a Join button no longer opens somebody's profile.
