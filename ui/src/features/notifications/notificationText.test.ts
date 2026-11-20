@@ -47,6 +47,25 @@ describe("a notification's text (#458)", () => {
     }
   });
 
+  it("says a cause the backend named in its own sentence, whatever the reason's wording", () => {
+    const refused = item({
+      kind: "error",
+      title: "Could not start the search",
+      body: "the lobby went away",
+      text: {
+        key: "notifications.msg.searchFailed",
+        params: { reason: "the lobby went away" },
+        cause: "lobbyDisconnected",
+      },
+    });
+    setLocale("de");
+    const expected = de["errors.cause.lobbyDisconnected"];
+    if (typeof expected !== "string") throw new Error("the German catalogue lacks the sentence");
+    expect(notificationBody(refused)).toContain(expected.replace(/[.!?]$/, ""));
+    // The reason as sent stays on hover.
+    expect(notificationBodyDetail(refused)).toBe("the lobby went away");
+  });
+
   it("is translated from the catalogue entry the backend attached", () => {
     setLocale("de");
     expect(notificationTitle(item())).toBe("Freund online");

@@ -893,6 +893,7 @@ export const INITIAL_STATE: AppState = {
       "newCustomGames": false,
       "newCustomGamesFriendsOnly": true,
       "gameFull": true,
+      "gameFullRepeats": true,
       "gameLaunched": true,
       "reviewReminder": true,
       "partyInvites": true,

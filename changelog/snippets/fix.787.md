@@ -1,0 +1,2 @@
+- The full-lobby alert now also comes when the host closed slots or filled them with AIs, for the host and everybody who joined.
+- A lobby that fills again after somebody left is announced again. Settings, Notifications can keep such a lobby quiet for a minute instead.

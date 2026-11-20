@@ -430,6 +430,47 @@ pub(crate) fn unit_icon_request<R: tauri::Runtime>(
     });
 }
 
+/// The scheme the page loads a base-game map's picture through, out of the
+/// original game's `.scmap` (see `faf_app::infra::official_map_preview`):
+/// `http://official-map.localhost/scmp_009` on Windows, `official-map://localhost/scmp_009`
+/// elsewhere (`convertFileSrc`). The page tries it before the preview
+/// service, whose art for these maps is a 100 pixel thumbnail, and a 404
+/// sends it on to that service as before (`ui/src/shared/mapPresentation.ts`).
+pub(crate) const OFFICIAL_MAP_SCHEME: &str = "official-map";
+
+/// Answers an [`OFFICIAL_MAP_SCHEME`] request off the webview's thread.
+pub(crate) fn official_map_request<R: tauri::Runtime>(
+    context: tauri::UriSchemeContext<'_, R>,
+    request: tauri::http::Request<Vec<u8>>,
+    responder: tauri::UriSchemeResponder,
+) {
+    use tauri::http::{header, Response, StatusCode};
+    let name = request.uri().path().trim_start_matches('/').to_owned();
+    // The install check's answer once it has one; `None` before, which looks
+    // the game up directly rather than answering "no game" for the first tiles.
+    let game = context.app_handle().try_state::<Core>().and_then(|core| {
+        core.0.with_state(|state| {
+            state
+                .install
+                .checked
+                .then(|| state.install.resolved.original_game_dir.clone())
+        })
+    });
+    tauri::async_runtime::spawn_blocking(move || {
+        let png = faf_app::infra::official_map_preview::preview_png_from(game, &name);
+        let response = match png {
+            Some(png) => Response::builder()
+                .header(header::CONTENT_TYPE, "image/png")
+                .header(header::CACHE_CONTROL, "max-age=86400")
+                .body(png),
+            None => Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Vec::new()),
+        };
+        responder.respond(response.unwrap_or_default());
+    });
+}
+
 /// An installed map's pathing regions and reclaim, drawn over its preview
 /// (see `faf_app::infra::map_analysis`). A command of its own like the unit
 /// icons: the pictures are megabytes the page wants only while the dialog is

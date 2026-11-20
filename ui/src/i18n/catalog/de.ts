@@ -1438,6 +1438,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "settings.notifications.friendsGamesOnly": "Nur Partien von Freunden",
   "settings.notifications.friendsGamesOnlyHint": "Diese Benachrichtigungen auf Partien beschränken, die Spieler aus deiner Freundesliste hosten.",
   "settings.notifications.gameFull": "Partie voll",
+  "settings.notifications.gameFullRepeats": "Erneut, wenn eine Lobby wieder voll ist",
+  "settings.notifications.gameFullRepeatsHint": "Wenn jemand geht und der Platz wieder besetzt wird. Aus: Eine Lobby, die in der letzten Minute gemeldet wurde, bleibt still, etwa wenn Spieler zwischen den Plätzen und den Zuschauern wechseln.",
   "settings.notifications.queueOpponent": "Gegner in deiner Wertungsspanne",
   "settings.notifications.queueOpponentHint": "Hinweis, wenn jemand, dessen Wertungsspanne deine einschließt, einer Matchmaker-Queue beitritt, in der du gerade nicht suchst. Wähle die Queues aus, die beobachtet werden.",
   "settings.notifications.queueOpponentOff": "Aus",

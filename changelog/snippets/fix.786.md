@@ -1,0 +1,1 @@
+- Official Forged Alliance maps now show sharp previews on the game cards and in the map vault, read from your own game files instead of a low-resolution download.

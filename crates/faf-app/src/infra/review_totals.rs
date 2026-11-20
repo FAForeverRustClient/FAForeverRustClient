@@ -21,7 +21,8 @@
 use std::collections::HashMap;
 
 use crate::infra::jsonapi::{
-    fetch_all_pages, rel_target, resource_index, value_f64, value_i32, JsonApiDoc,
+    fetch_all_pages, find_rel_resource, rel_target, resource_index, value_f64, value_i32,
+    JsonApiDoc, JsonApiResource, ResourceIndex,
 };
 
 /// The API clamps a page to a hundred, whatever is asked for.
@@ -36,6 +37,88 @@ const MAX_PAGES_WHOLE_VAULT: u32 = 50;
 /// server accepts.
 const IDS_PER_REQUEST: usize = 100;
 
+/// A vault listing's rating, in tenths, and review count for one map or mod:
+/// `subject` is its resource and `version` its latest version's, as the
+/// listing's `include` brings them.
+///
+/// Both summaries, not the first one found. A review is written against a
+/// version, so that is where the count usually is, while the older entries
+/// carry one on the parent as well. Taking the parent's whenever it existed
+/// is what printed "N/A" over a version with reviews on it: an empty summary
+/// is still a summary, and it won. Where no linked summary has a review, a
+/// summary written into the attributes is the last resort.
+///
+/// One rule for the maps and the mods vault, which had a copy each.
+pub(crate) fn listing_rating<'a>(
+    doc: &'a JsonApiDoc,
+    index: &ResourceIndex<'a>,
+    subject: &JsonApiResource,
+    version: &JsonApiResource,
+    kind: Subject,
+) -> (i32, i32) {
+    let (own, versions) = kind.listing_summaries();
+    let linked = [
+        rel_target(&subject.relationships, "reviewsSummary"),
+        rel_target(&subject.relationships, own),
+        rel_target(&version.relationships, "reviewsSummary"),
+        rel_target(&version.relationships, versions),
+    ]
+    .into_iter()
+    .flatten()
+    .filter_map(|rel| find_rel_resource(doc, index, Some(rel)))
+    .map(summary_rating)
+    // Ties keep the first, which is the subject's own: the order above is the
+    // order to believe them in when they agree on how many, and a summary
+    // hanging off the subject counts every version's reviews while the latest
+    // version's counts only its own. `max_by_key` keeps the *last* of equal
+    // elements, which is the other way round.
+    .reduce(|best, next| if next.1 > best.1 { next } else { best });
+
+    if let Some(summary) = linked.filter(|(_, reviews)| *reviews > 0) {
+        return summary;
+    }
+    subject
+        .attributes
+        .get("reviewsSummary")
+        .or_else(|| version.attributes.get("reviewsSummary"))
+        .map_or((0, 0), inline_rating)
+}
+
+/// One summary resource's rating, in tenths, and review count, under any of
+/// the names the API has used for them.
+fn summary_rating(summary: &JsonApiResource) -> (i32, i32) {
+    let reviews = value_i32(&summary.attributes, "reviews")
+        .or_else(|| value_i32(&summary.attributes, "numReviews"))
+        .or_else(|| value_i32(&summary.attributes, "totalReviews"))
+        .or_else(|| value_i32(&summary.attributes, "count"))
+        .unwrap_or(0);
+    let average = value_f64(&summary.attributes, "averageScore")
+        .or_else(|| per_review(value_f64(&summary.attributes, "score")?, reviews))
+        .or_else(|| value_f64(&summary.attributes, "rating"))
+        .unwrap_or(0.0);
+    ((average * 10.0).round() as i32, reviews)
+}
+
+/// A summary written into a resource's attributes rather than linked.
+fn inline_rating(summary: &serde_json::Value) -> (i32, i32) {
+    let reviews = value_i32(summary, "reviews")
+        .or_else(|| value_i32(summary, "numReviews"))
+        .unwrap_or(0);
+    let average = value_f64(summary, "averageScore")
+        .or_else(|| per_review(value_f64(summary, "score")?, reviews))
+        .unwrap_or(0.0);
+    ((average * 10.0).round() as i32, reviews)
+}
+
+/// A summed score as an average, where there are reviews to divide it by.
+fn per_review(score: f64, reviews: i32) -> Option<f64> {
+    Some(if reviews > 0 {
+        score / f64::from(reviews)
+    } else {
+        score
+    })
+}
+
 /// Which vault a total is for: the version resource to ask, and the name of the
 /// relationship from a version back to its subject.
 #[derive(Clone, Copy, Debug)]
@@ -45,6 +128,16 @@ pub(crate) enum Subject {
 }
 
 impl Subject {
+    /// The relationships a vault listing hangs a subject's summaries off,
+    /// beside the plain `reviewsSummary`: the subject's own, then its latest
+    /// version's.
+    fn listing_summaries(self) -> (&'static str, &'static str) {
+        match self {
+            Self::Map => ("mapReviewsSummary", "mapVersionReviewsSummary"),
+            Self::Mod => ("modReviewsSummary", "modVersionReviewsSummary"),
+        }
+    }
+
     fn version_resource(self) -> &'static str {
         match self {
             Self::Map => "mapVersion",
