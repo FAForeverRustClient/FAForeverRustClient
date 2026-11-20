@@ -139,6 +139,15 @@ pub enum LobbySendError {
 }
 
 impl LobbySendError {
+    /// The cause, for the UI to word in the reader's language.
+    pub fn cause(self) -> faf_domain::state::FailureCause {
+        match self {
+            Self::Disconnected => faf_domain::state::FailureCause::LobbyDisconnected,
+            Self::Busy => faf_domain::state::FailureCause::LobbySendBusy,
+        }
+    }
+
+    /// The same in English, for the log and for the notification's fallback.
     pub fn reason(self) -> &'static str {
         match self {
             Self::Disconnected => "The FAF lobby is disconnected. Reconnect and try again.",

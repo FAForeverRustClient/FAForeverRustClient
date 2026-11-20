@@ -586,35 +586,45 @@ async fn prepare_install(
     .await
 }
 
-/// One preparation at a time, whoever asked for it.
-///
-/// The updater writes into the game install and the maps folder, and two runs
-/// at once write the same files. That became possible when a search started
-/// preparing the install before the queue (see [`prepare_search`]): a match
-/// can be found while that run is still going, and the launch's own run must
-/// wait for it rather than race it. Java chains the two the same way, the
-/// launch being the continuation of the search's preparation
-/// (`GameRunner.startSearchMatchmaker`). The second run is then cheap, because
-/// files matching by MD5 are skipped.
-static PREPARATION: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+/// The launcher's operational context. Owned by this service.
+#[derive(Default)]
+pub struct LauncherContext {
+    /// One preparation at a time, whoever asked for it.
+    ///
+    /// The updater writes into the game install and the maps folder, and two
+    /// runs at once write the same files. That became possible when a search
+    /// started preparing the install before the queue (see
+    /// [`prepare_search`]): a match can be found while that run is still
+    /// going, and the launch's own run must wait for it rather than race it.
+    /// Java chains the two the same way, the launch being the continuation of
+    /// the search's preparation (`GameRunner.startSearchMatchmaker`). The
+    /// second run is then cheap, because files matching by MD5 are skipped.
+    ///
+    /// One per app rather than one per process: the install is the client's,
+    /// and a second app in the same process (every test, side by side) has a
+    /// launcher of its own that has no reason to wait for this one.
+    preparation: tokio::sync::Mutex<()>,
+}
 
 /// What a preparation called off ends with, where an outcome is needed at
 /// all. Never shown: the caller called the work off and goes quietly.
 const CALLED_OFF: &str = "the preparation was called off";
 
-/// Wait for [`PREPARATION`], unless the work it is wanted for is called off
-/// first. A join cancelled while it waits behind another preparation used to
-/// wait out that whole preparation before it noticed.
-async fn lock_preparation(
+/// Wait for the preparation lock ([`LauncherContext::preparation`]), unless
+/// the work it is wanted for is called off first. A join cancelled while it
+/// waits behind another preparation used to wait out that whole preparation
+/// before it noticed.
+async fn lock_preparation<'a>(
+    ctx: &'a ServiceCtx,
     called_off: &CancellationToken,
-) -> Option<tokio::sync::MutexGuard<'static, ()>> {
+) -> Option<tokio::sync::MutexGuard<'a, ()>> {
     tokio::select! {
-        guard = PREPARATION.lock() => Some(guard),
+        guard = ctx.launcher.preparation.lock() => Some(guard),
         () = called_off.cancelled() => None,
     }
 }
 
-/// Drain an updater run, holding [`PREPARATION`] while it is wanted, and
+/// Drain an updater run, holding the preparation lock while it is wanted, and
 /// answer its outcome; `narrate` is handed each step that is still wanted.
 ///
 /// The lock is let go the moment the run is called off, and the run itself
@@ -631,7 +641,7 @@ async fn lock_preparation(
 /// each one would put the join back into `Preparing`, which reopened the
 /// progress dialog over and over after Cancel.
 async fn drain_preparation(
-    guard: tokio::sync::MutexGuard<'static, ()>,
+    guard: tokio::sync::MutexGuard<'_, ()>,
     mut updates: mpsc::Receiver<UpdateProgress>,
     called_off: &CancellationToken,
     narrate: impl Fn(crate::ports::PreparationStep),
@@ -675,7 +685,7 @@ async fn prepare_request(
     // A cancelled preparation has no outcome worth reporting: the caller checks
     // its operation and returns without touching the join state, and an error
     // here would be shown to somebody who asked for this.
-    let Some(guard) = lock_preparation(&called_off).await else {
+    let Some(guard) = lock_preparation(ctx, &called_off).await else {
         return Ok(());
     };
     let updates = ctx
@@ -718,7 +728,7 @@ async fn prepare_request(
 /// updated is, since every match in the queue needs it.
 ///
 /// Stopping the search raises `called_off`, which stops the updater at its
-/// next safe point and lets [`PREPARATION`] go at once; a search stopped
+/// next safe point and lets the preparation lock go at once; a search stopped
 /// answers `Err`, which the caller does not report.
 pub(crate) async fn prepare_search(
     queue_names: &[String],
@@ -766,7 +776,7 @@ pub(crate) async fn prepare_search(
     }
 
     let failures = {
-        let Some(_one_at_a_time) = lock_preparation(called_off).await else {
+        let Some(_one_at_a_time) = lock_preparation(ctx, called_off).await else {
             return Err(CALLED_OFF.to_string());
         };
         ctx.ports.updater.ensure_maps(&folders, called_off).await
@@ -821,7 +831,7 @@ pub(crate) async fn prepare_featured_mod_narrated(
     narrate: impl Fn(crate::ports::PreparationStep),
 ) -> Result<(), String> {
     let cache_rolling_branches = out.with_state(|state| state.settings.game.cache_rolling_branches);
-    let Some(guard) = lock_preparation(called_off).await else {
+    let Some(guard) = lock_preparation(ctx, called_off).await else {
         return Err(CALLED_OFF.to_string());
     };
     let updates = ctx

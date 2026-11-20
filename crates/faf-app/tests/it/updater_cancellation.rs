@@ -48,11 +48,6 @@ const FILES: usize = 3;
 const FIRST_MAP: &str = "Theta Passage";
 const SECOND_MAP: &str = "Seton's Clutch";
 
-/// The launcher's preparation lock is one for the whole process, and these
-/// tests run side by side in one. Each test that prepares holds this, so one
-/// test's held update never stands in for another's.
-static ONE_TEST_AT_A_TIME: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-
 /// Claims live launch so preparation really runs, without an FA install.
 struct LaunchableProcess;
 
@@ -291,7 +286,6 @@ fn is_step(event: &LobbyEvent, name: &str) -> bool {
 /// the first one, which held the install to the end of its files.
 #[tokio::test]
 async fn a_join_called_off_mid_update_lets_the_next_join_prepare_at_once() {
-    let _alone = ONE_TEST_AT_A_TIME.lock().await;
     let updater = InstallLikeUpdater::default();
     let app = start(updater.clone());
     let mut log = Log::new(&app);
@@ -342,7 +336,6 @@ async fn a_join_called_off_mid_update_lets_the_next_join_prepare_at_once() {
 /// preparation lock, so the join waited behind all of it, unnarrated.
 #[tokio::test]
 async fn a_search_stopped_mid_update_lets_the_next_join_prepare_at_once() {
-    let _alone = ONE_TEST_AT_A_TIME.lock().await;
     let updater = InstallLikeUpdater::default();
     let mut files = updater.watch_files();
     let app = start(updater.clone());
@@ -430,7 +423,6 @@ impl GameUpdaterPort for FailingUpdater {
 /// UI says it plainly instead of showing the HTTP client's English.
 #[tokio::test]
 async fn a_search_that_could_not_be_prepared_hands_its_reason_to_the_notification_view() {
-    let _alone = ONE_TEST_AT_A_TIME.lock().await;
     let ports = Ports {
         process: Arc::new(LaunchableProcess),
         updater: Arc::new(FailingUpdater),
@@ -507,4 +499,97 @@ async fn a_host_refused_before_it_was_sent_hands_its_reason_to_the_notification_
         Some(refusal.body.as_str())
     );
     assert!(refusal.body.contains("Visibility"), "{}", refusal.body);
+}
+
+/// Two apps in one process prepare at the same time: each has its own
+/// preparation lock, so one app's held update does not keep the other's from
+/// starting. The lock used to be one for the whole process, which is why these
+/// tests had a binary of their own.
+#[tokio::test]
+async fn two_apps_prepare_at_the_same_time() {
+    let first_updater = InstallLikeUpdater::default();
+    let second_updater = InstallLikeUpdater::default();
+    let first = start(first_updater.clone());
+    let second = start(second_updater.clone());
+    let mut first_log = Log::new(&first);
+    let mut second_log = Log::new(&second);
+    signed_in_and_connected(&first, &mut first_log).await;
+    signed_in_and_connected(&second, &mut second_log).await;
+
+    // The first app's join holds its update on its first file.
+    spawn_command(&first, join(1));
+    first_log
+        .until("the first app preparing", |event| {
+            is_step(event, &format!("{FIRST_MAP} file 0"))
+        })
+        .await;
+
+    // The second app's join prepares all the same.
+    spawn_command(&second, join(2));
+    second_log
+        .until("the second app preparing", |event| {
+            is_step(event, &format!("{SECOND_MAP} file 0"))
+        })
+        .await;
+    assert_eq!(
+        first_updater.ended(FIRST_MAP),
+        None,
+        "the first update ended"
+    );
+
+    first_updater.open(FIRST_MAP, FILES);
+    second_updater.open(SECOND_MAP, FILES);
+}
+
+/// Within one app, preparations still take turns: a join found while the
+/// search's update is running waits for it rather than writing the same files
+/// beside it, and goes ahead once it is done.
+#[tokio::test]
+async fn a_join_waits_for_the_preparation_already_running_in_its_app() {
+    let updater = InstallLikeUpdater::default();
+    let mut files = updater.watch_files();
+    let app = start(updater.clone());
+    let mut log = Log::new(&app);
+    signed_in_and_connected(&app, &mut log).await;
+
+    // The search's update is held on its first file.
+    spawn_command(
+        &app,
+        LobbyCommand::StartSearch {
+            queue_names: vec!["ladder1v1".into()],
+        }
+        .into(),
+    );
+    tokio::time::timeout(PATIENCE, async {
+        while let Some(file) = files.recv().await {
+            if file == "faf file 0" {
+                return;
+            }
+        }
+    })
+    .await
+    .expect("the search's update never started");
+
+    // The join does not start its update while the search's runs. Absence is
+    // only seen by waiting; a join that raced would have started well within
+    // this.
+    spawn_command(&app, join(1));
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert!(
+        !updater
+            .runs
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|(run, _)| run == FIRST_MAP),
+        "the join's update started beside the search's"
+    );
+
+    // Once the search's update is through, the join prepares.
+    updater.open("faf", FILES);
+    log.until("the join preparing", |event| {
+        is_step(event, &format!("{FIRST_MAP} file 0"))
+    })
+    .await;
+    updater.open(FIRST_MAP, FILES);
 }

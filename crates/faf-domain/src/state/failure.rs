@@ -20,3 +20,19 @@ pub enum RequestFailureKind {
     /// Configuration, decoding, or another client-side invariant failed.
     Unexpected,
 }
+
+/// Why something the client tried did not happen, where the client knows the
+/// cause for certain rather than guessing it from an error's wording.
+///
+/// The UI says each one in a sentence of its own, in the reader's language.
+/// It used to recognise these by matching the English sentence the backend
+/// wrote, which broke the moment either side reworded it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub enum FailureCause {
+    /// The lobby connection is down, so the request was never sent.
+    LobbyDisconnected,
+    /// The lobby connection's outgoing queue is full; the request was not
+    /// sent, and may be retried in a moment.
+    LobbySendBusy,
+}

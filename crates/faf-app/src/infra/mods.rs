@@ -54,8 +54,8 @@ use serde_json::Value;
 
 use crate::infra::env_or;
 use crate::infra::jsonapi::{
-    fetch_all_pages_with_progress, fetch_document, find_rel_resource, meta_page_i32, rel_target,
-    resource_index, total_pages, value_bool, value_f64, value_i32, JsonApiDoc, JsonApiResource,
+    fetch_all_pages_with_progress, fetch_document, linked_player, meta_page_i32, rel_target,
+    resource_index, total_pages, value_bool, JsonApiDoc,
 };
 use crate::infra::metadata_file::{
     read_bounded_to_string, read_bounded_to_string_async, truncated, MAX_DESCRIPTION_BYTES,
@@ -1793,29 +1793,6 @@ fn find_top_level_table(contents: &str, key: &str) -> Option<(usize, usize)> {
 const MOD_VAULT_INCLUDE: &str =
     "latestVersion,latestVersion.reviewsSummary,reviewsSummary,uploader";
 
-fn parse_reviews_summary(summary: &JsonApiResource) -> (i32, i32) {
-    let reviews = value_i32(&summary.attributes, "reviews")
-        .or_else(|| value_i32(&summary.attributes, "numReviews"))
-        .or_else(|| value_i32(&summary.attributes, "totalReviews"))
-        .or_else(|| value_i32(&summary.attributes, "count"))
-        .unwrap_or(0);
-
-    let avg_score = value_f64(&summary.attributes, "averageScore")
-        .or_else(|| {
-            let score = value_f64(&summary.attributes, "score")?;
-            if reviews > 0 {
-                Some(score / f64::from(reviews))
-            } else {
-                Some(score)
-            }
-        })
-        .or_else(|| value_f64(&summary.attributes, "rating"))
-        .unwrap_or(0.0);
-
-    let rating_tenths = (avg_score * 10.0).round() as i32;
-    (rating_tenths, reviews)
-}
-
 /// Every version's reviews, not only the latest's: see `infra::review_totals`.
 fn raise_ratings(mods: &mut [VaultMod], totals: &HashMap<i32, ReviewTotal>) {
     for vault_mod in mods {
@@ -1832,67 +1809,11 @@ fn parse_vault_mods(doc: &JsonApiDoc) -> Vec<VaultMod> {
         .filter_map(|mod_res| {
             let (_, version_id) = rel_target(&mod_res.relationships, "latestVersion")?;
             let version = index.get(&("modVersion".to_string(), version_id))?;
-            let uploader_rel = rel_target(&mod_res.relationships, "uploader");
-            // The relationship's own id, so ownership does not depend on the
-            // `player` resource having been included: it is in the linkage
-            // either way.
-            let uploader_id = uploader_rel
-                .as_ref()
-                .and_then(|(_, id)| id.parse::<i32>().ok());
-            let uploader = uploader_rel
-                .and_then(|rel| find_rel_resource(doc, &index, Some(rel)))
-                .and_then(|player| player.attributes.get("login"))
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string();
-            // Both summaries, not the first one found. A review is written
-            // against a version, so that is where the count usually is, while
-            // the older entries carry one on the parent as well. Taking the
-            // parent's whenever it existed is what printed "N/A" over a
-            // version with reviews on it: an empty summary is still a summary,
-            // and it won.
-            let reviews_summary = [
-                rel_target(&mod_res.relationships, "reviewsSummary"),
-                rel_target(&mod_res.relationships, "modReviewsSummary"),
-                rel_target(&version.relationships, "reviewsSummary"),
-                rel_target(&version.relationships, "modVersionReviewsSummary"),
-            ]
-            .into_iter()
-            .flatten()
-            .filter_map(|rel| find_rel_resource(doc, &index, Some(rel)))
-            .map(parse_reviews_summary)
-            // Ties keep the first, which is the mod's own: the order above is
-            // the order to believe them in when they agree on how many, and a
-            // summary hanging off the mod counts every version's reviews while
-            // the latest version's counts only its own. `max_by_key` keeps the
-            // *last* of equal elements, which is the other way round.
-            .reduce(|best, next| if next.1 > best.1 { next } else { best });
-
+            let (uploader_id, uploader) =
+                linked_player(doc, &index, &mod_res.relationships, "uploader");
+            let uploader = uploader.unwrap_or_default();
             let (rating_tenths, reviews) =
-                if let Some(summary) = reviews_summary.filter(|(_, reviews)| *reviews > 0) {
-                    summary
-                } else if let Some(summary_attr) = mod_res
-                    .attributes
-                    .get("reviewsSummary")
-                    .or_else(|| version.attributes.get("reviewsSummary"))
-                {
-                    let r = value_i32(summary_attr, "reviews")
-                        .or_else(|| value_i32(summary_attr, "numReviews"))
-                        .unwrap_or(0);
-                    let score = value_f64(summary_attr, "averageScore")
-                        .or_else(|| {
-                            let s = value_f64(summary_attr, "score")?;
-                            if r > 0 {
-                                Some(s / f64::from(r))
-                            } else {
-                                Some(s)
-                            }
-                        })
-                        .unwrap_or(0.0);
-                    ((score * 10.0).round() as i32, r)
-                } else {
-                    (0, 0)
-                };
+                review_totals::listing_rating(doc, &index, mod_res, version, Subject::Mod);
 
             // The exact wire value for `modType` (`"UI"`/`"SIM"` or
             // something else) couldn't be verified against a live

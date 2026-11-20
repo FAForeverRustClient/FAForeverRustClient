@@ -231,6 +231,11 @@ pub struct ClientNotification {
 pub struct NotificationText {
     pub key: String,
     pub params: BTreeMap<String, String>,
+    /// What a failure's `reason` parameter means, where the backend knows it:
+    /// the UI says the cause in its own sentence rather than reading it out of
+    /// the reason's wording. Absent from notifications saved before it existed.
+    #[serde(default)]
+    pub cause: Option<crate::state::FailureCause>,
 }
 
 impl NotificationText {
@@ -238,11 +243,18 @@ impl NotificationText {
         Self {
             key: key.into(),
             params: BTreeMap::new(),
+            cause: None,
         }
     }
 
     pub fn with(mut self, name: impl Into<String>, value: impl ToString) -> Self {
         self.params.insert(name.into(), value.to_string());
+        self
+    }
+
+    /// The failure's cause, for the UI to say plainly. See [`Self::cause`].
+    pub fn with_cause(mut self, cause: crate::state::FailureCause) -> Self {
+        self.cause = Some(cause);
         self
     }
 }

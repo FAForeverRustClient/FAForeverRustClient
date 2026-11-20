@@ -85,7 +85,7 @@ pub(super) fn matchmake(queue_name: String, start: bool, ctx: &ServiceCtx, out: 
         };
         notifications::add_required_failure(
             out,
-            notifications::Text::new(key),
+            notifications::Text::new(key).with_cause(error.cause()),
             title,
             error.reason().to_owned(),
             Some(NotificationAction::OpenMatchmaking),
@@ -146,7 +146,7 @@ pub(super) fn accept_party_invite(
     if let Err(error) = ctx.ports.lobby.accept_party_invite(player_id) {
         notifications::add_required_failure(
             out,
-            notifications::Text::new("notifications.msg.cannotJoinParty"),
+            notifications::Text::new("notifications.msg.cannotJoinParty").with_cause(error.cause()),
             "Cannot join the party",
             error.reason().to_owned(),
             Some(NotificationAction::OpenMatchmaking),
@@ -343,7 +343,7 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         });
         notifications::add_required_failure(
             out,
-            notifications::Text::new("notifications.msg.searchFailed"),
+            notifications::Text::new("notifications.msg.searchFailed").with_cause(error.cause()),
             "Could not start the search",
             error.reason().to_owned(),
             Some(NotificationAction::OpenMatchmaking),

@@ -3155,6 +3155,23 @@ export type FactionVetoGame = {
 	next: FactionStep | null,
 };
 
+/**
+ *  Why something the client tried did not happen, where the client knows the
+ *  cause for certain rather than guessing it from an error's wording.
+ *
+ *  The UI says each one in a sentence of its own, in the reader's language.
+ *  It used to recognise these by matching the English sentence the backend
+ *  wrote, which broke the moment either side reworded it.
+ */
+export type FailureCause =
+/**  The lobby connection is down, so the request was never sent. */
+"lobbyDisconnected" |
+/**
+ *  The lobby connection's outgoing queue is full; the request was not
+ *  sent, and may be retried in a moment.
+ */
+"lobbySendBusy";
+
 /**  The parent this tournament feeds, where it feeds one. */
 export type FeedsInto = {
 	parentId: string,
@@ -7403,6 +7420,12 @@ export type NotificationState = {
 export type NotificationText = {
 	key: string,
 	params: { [key in string]: string },
+	/**
+	 *  What a failure's `reason` parameter means, where the backend knows it:
+	 *  the UI says the cause in its own sentence rather than reading it out of
+	 *  the reason's wording. Absent from notifications saved before it existed.
+	 */
+	cause?: FailureCause | null,
 };
 
 /**
