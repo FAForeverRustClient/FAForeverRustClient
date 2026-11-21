@@ -5081,21 +5081,35 @@ fn cases() -> Vec<Case> {
             ],
         ),
         case(
-            "history arrives in one step, earlier history in front, without repeats",
+            "history arrives in one step, laid in by time, earlier history in front, without repeats",
             vec![
                 ChatEvent::MessageReceived {
                     channel: "#aeolus".into(),
-                    message: chat_message("Bob", "third"),
+                    message: ChatMessage {
+                        timestamp: "2026-01-01T00:03:00Z".into(),
+                        ..chat_message("Bob", "third")
+                    },
                 }
                 .into(),
+                // The line that opened a private conversation comes before
+                // its backfill, which is mostly older (#794): the older line
+                // goes in front of it, the newer one after.
                 ChatEvent::HistoryReceived {
                     channel: "#aeolus".into(),
                     messages: vec![
                         ChatMessage {
+                            timestamp: "2026-01-01T00:02:00.000Z".into(),
+                            ..chat_message("Bob", "second")
+                        },
+                        ChatMessage {
                             id: "replayed".into(),
+                            timestamp: "2026-01-01T00:03:00Z".into(),
                             ..chat_message("Bob", "third")
                         },
-                        chat_message("Aurora", "fourth"),
+                        ChatMessage {
+                            timestamp: "2026-01-01T00:04:00Z".into(),
+                            ..chat_message("Aurora", "fourth")
+                        },
                     ],
                     earlier: false,
                     more_before: true,
