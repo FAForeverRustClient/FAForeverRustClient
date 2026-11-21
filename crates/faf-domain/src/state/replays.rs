@@ -612,6 +612,11 @@ pub struct ReplayPlayer {
     /// has no country for an account, so an online listing never carries one.
     #[serde(default)]
     pub country: Option<String>,
+    /// The lobby slot the player sat in, which is also their start position
+    /// on the map: `playerStats.startSpot`, 1-based. `None` where the server
+    /// recorded none, which it stores as 0.
+    #[serde(default)]
+    pub start_spot: Option<i32>,
 }
 
 /// One `.fafreplay` file already on disk, from the shared FAF replay folder
@@ -682,6 +687,10 @@ pub struct LocalReplayPlayer {
     /// Two-letter country code from the army table, where the file has one.
     #[serde(default)]
     pub country: Option<String>,
+    /// `StartSpot` in the army table: the lobby slot, 1-based. `None` where
+    /// the file only had the header's name list to go on.
+    #[serde(default)]
+    pub start_spot: Option<i32>,
 }
 
 /// How much trustworthy metadata was available without decoding the full replay
@@ -2217,6 +2226,7 @@ mod tests {
                         rating: None,
                         ai: false,
                         country: None,
+                        start_spot: None,
                     },
                     LocalReplayPlayer {
                         name: "guest".into(),
@@ -2224,6 +2234,7 @@ mod tests {
                         rating: None,
                         ai: false,
                         country: None,
+                        start_spot: None,
                     },
                 ],
             }],

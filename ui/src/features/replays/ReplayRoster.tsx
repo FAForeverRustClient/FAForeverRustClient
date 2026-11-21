@@ -208,6 +208,7 @@ export function mergeReplayTeamsWithLocal(
           faction: player.faction ?? local.faction,
           rating: player.rating ?? local.rating,
           country: player.country ?? local.country ?? null,
+          startSpot: player.startSpot ?? local.startSpot ?? null,
           ...(isRenamed ? { alias: local.name } : {}),
         };
       }),
@@ -235,6 +236,7 @@ export function mergeReplayTeamsWithLocal(
       faction: player.faction,
       rating: player.rating,
       country: player.country ?? null,
+      startSpot: player.startSpot ?? null,
       // The server never rated them and never will, so there is no outcome and
       // no score to claim one from.
       outcome: "",
@@ -680,6 +682,14 @@ export function ReplayDetailRoster({
                         </span>
                       </button>
                       <span className="replay-player-stats">
+                      {/* The lobby slot, which is also the start position
+                          (#791): the vault's `startSpot`, or the army table's
+                          for a file on disk. Observers sat in none. */}
+                      {!observer && player.startSpot != null && player.startSpot > 0 && (
+                        <span className="replay-player-slot" title={t("replays.roster.slotHint")}>
+                          {t("replays.roster.slot", { slot: player.startSpot })}
+                        </span>
+                      )}
                       {/* What the game did to this player's rating, not the
                           game score that used to sit here: the score is the
                           same number for everyone on a team and exists even

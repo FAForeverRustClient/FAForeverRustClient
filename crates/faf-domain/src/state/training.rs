@@ -2588,6 +2588,7 @@ mod tests {
                         rating: me_rating,
                         ai: false,
                         country: None,
+                        start_spot: None,
                     },
                     LocalReplayPlayer {
                         name: "Bob".into(),
@@ -2595,6 +2596,7 @@ mod tests {
                         rating: Some(2000),
                         ai: false,
                         country: None,
+                        start_spot: None,
                     },
                 ],
             }],

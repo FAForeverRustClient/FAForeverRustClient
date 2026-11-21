@@ -237,3 +237,29 @@ describe("local replay detail window", () => {
     })).toBe(500);
   });
 });
+
+describe("the slot a player sat in (#791)", () => {
+  const seated = replay({
+    teams: [{ team: "2", players: [
+      { name: "Seraphim-Noob", faction: null, rating: null, startSpot: 8 },
+      { name: "Foley", faction: null, rating: null, startSpot: 1 },
+    ] }],
+  });
+
+  it("narrows the first named player to that slot", () => {
+    const query = { ...EMPTY_LOCAL_REPLAY_QUERY, player: "Seraphim-Noob", playerSlot: 8 };
+    expect(filterLocalReplays([seated], query)).toEqual([seated]);
+    expect(filterLocalReplays([seated], { ...query, playerSlot: 1 })).toEqual([]);
+  });
+
+  it("applies to the first name only, as the vault does", () => {
+    const query = { ...EMPTY_LOCAL_REPLAY_QUERY, player: "Seraphim-Noob, Foley", playerSlot: 8 };
+    expect(filterLocalReplays([seated], query)).toEqual([seated]);
+  });
+
+  it("without a name, finds games where anybody sat there", () => {
+    const query = { ...EMPTY_LOCAL_REPLAY_QUERY, playerSlot: 1 };
+    expect(filterLocalReplays([seated], query)).toEqual([seated]);
+    expect(filterLocalReplays([seated], { ...query, playerSlot: 5 })).toEqual([]);
+  });
+});

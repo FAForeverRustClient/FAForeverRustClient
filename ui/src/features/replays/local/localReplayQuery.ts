@@ -8,6 +8,12 @@ export type LocalReplayStatusFilter = "all" | LocalReplay["status"];
 export interface LocalReplayQuery {
   player: string;
   exactPlayer: boolean;
+  /**
+   * The slot the first named player sat in, or with no name the slot anybody
+   * sat in: the army table's `StartSpot`, 1-based (#791). The same rule as
+   * the vault's `ReplayQuery::player_slot`.
+   */
+  playerSlot: number | null;
   map: string;
   replayId: string;
   /** The exact featured mod, as free text: `fafbeta`, `nomads`. */
@@ -45,6 +51,7 @@ export const EMPTY_LOCAL_REPLAY_QUERY: LocalReplayQuery = {
   // Same default as the vault search: a name means that player, not everyone
   // whose name contains it.
   exactPlayer: true,
+  playerSlot: null,
   map: "",
   replayId: "",
   mod: "",
@@ -117,16 +124,25 @@ export function filterLocalReplays(
     return name;
   };
 
+  const slot = query.playerSlot !== null && query.playerSlot > 0 ? query.playerSlot : null;
   const filtered = replays.filter((replay) => {
-    const players = targetPlayers.length > 0 ? replay.teams.flatMap((team) => team.players) : [];
-    const matchesPlayer = targetPlayers.length === 0 || targetPlayers.every((target) =>
+    const players = targetPlayers.length > 0 || slot !== null
+      ? replay.teams.flatMap((team) => team.players)
+      : [];
+    const matchesPlayer = targetPlayers.length === 0 || targetPlayers.every((target, index) =>
       players.some((player) => {
         const normalized = player.name.toLocaleLowerCase();
-        return query.exactPlayer ? normalized === target : normalized.includes(target);
+        const named = query.exactPlayer ? normalized === target : normalized.includes(target);
+        // The slot narrows the first name only, as it does in the vault.
+        return named && (index > 0 || slot === null || player.startSpot === slot);
       })
     );
+    const matchesSlot = slot === null
+      || targetPlayers.length > 0
+      || players.some((player) => player.startSpot === slot);
     const timestamp = localReplayTimestamp(replay);
     return matchesPlayer
+      && matchesSlot
       && (!query.map || contains(replay.map, query.map) || contains(mapName(replay), query.map))
       && (!replayId || replay.uid !== null && String(replay.uid).includes(replayId))
       && (!query.mod || contains(replay.modName, query.mod))

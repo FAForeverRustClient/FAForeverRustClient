@@ -5,8 +5,21 @@ import {
   EMPTY_REPLAY_QUERY,
   isRecentBound,
   isoDaysAgo,
+  parseSlot,
   personalReplayQuery,
 } from "./replayQuery";
+
+describe("parseSlot (#791)", () => {
+  it("reads a lobby slot and treats anything else as any slot", () => {
+    expect(parseSlot("8")).toBe(8);
+    expect(parseSlot(" 16 ")).toBe(16);
+    expect(parseSlot("")).toBeNull();
+    expect(parseSlot("0")).toBeNull();
+    expect(parseSlot("17")).toBeNull();
+    expect(parseSlot("2.5")).toBeNull();
+    expect(parseSlot("-3")).toBeNull();
+  });
+});
 
 describe("advancedReplayFilterCount", () => {
   it("counts logical hidden filters without double-counting ranges", () => {

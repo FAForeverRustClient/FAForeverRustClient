@@ -162,6 +162,7 @@ fn local(uid: i32, map: &str, players: i32, faction: i32, rating: i32) -> LocalR
                     rating: Some(rating),
                     ai: false,
                     country: None,
+                    start_spot: None,
                 },
                 LocalReplayPlayer {
                     name: "Someone else".into(),
@@ -169,6 +170,7 @@ fn local(uid: i32, map: &str, players: i32, faction: i32, rating: i32) -> LocalR
                     rating: Some(2100),
                     ai: false,
                     country: None,
+                    start_spot: None,
                 },
             ],
         }],

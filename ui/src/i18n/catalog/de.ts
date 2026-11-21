@@ -2325,6 +2325,9 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "replays.search.player": "Spieler",
   "replays.search.anyPlayer": "z. B. Player1, Player2",
   "replays.search.playerTooltip": "Nach einem oder mehreren Spielern suchen (Namen durch Kommas trennen). Mehrere Namen finden nur die Spiele, in denen sie zusammen gespielt haben.",
+  "replays.search.slot": "Slot",
+  "replays.search.anySlot": "Alle",
+  "replays.search.slotTooltip": "Der Lobby-Slot des Spielers, zugleich seine Startposition. Bei mehreren Namen gilt er für den ersten.",
   "replays.search.map": "Karte",
   "replays.search.anyMap": "Beliebige Karte",
   "replays.search.anyTitle": "Beliebiger Titel",
@@ -4883,6 +4886,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.enlargePreview": "Vorschau vergrößern",
   "replays.detail.simMods": "Simulations-Mods",
   "replays.roster.ratingChange": "Rating-Änderung durch dieses Spiel",
+  "replays.roster.slot": "Slot {slot}",
+  "replays.roster.slotHint": "Der Lobby-Slot dieses Spielers, zugleich seine Startposition",
 
   "replays.roster.unknownResult": "Ergebnis unbekannt",
   "replays.notRated.reason": "Das Spiel wurde nicht gewertet. Grund: {reason}",

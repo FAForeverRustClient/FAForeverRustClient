@@ -34,6 +34,20 @@ export function isRecentBound(after: string): boolean {
   return after !== "" && after !== ALL_TIME_AFTER;
 }
 
+/** The most slots a FAF lobby has. */
+export const MAX_SLOT = 16;
+
+/**
+ * A typed slot number, or `null` for "any slot": blank, not a whole number,
+ * or outside 1 to [`MAX_SLOT`]. Issue 791.
+ */
+export function parseSlot(value: string): number | null {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const slot = Number.parseInt(trimmed, 10);
+  return slot >= 1 && slot <= MAX_SLOT ? slot : null;
+}
+
 /** A date `n` days ago as `YYYY-MM-DD`, the form the search inputs use. */
 export function isoDaysAgo(days: number): string {
   return new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);

@@ -536,11 +536,17 @@ impl ReplayVault {
                     // A name nobody answers to cannot share a game with anyone.
                     None => Vec::new(),
                     Some(per_name) => {
-                        let mut scans = stream::iter(per_name)
-                            .map(|player_ids| async move {
+                        let mut scans = stream::iter(per_name.into_iter().enumerate())
+                            .map(|(index, player_ids)| async move {
                                 let scan = std::time::Instant::now();
+                                // The slot is the first name's (#791): the
+                                // others would have to sit in it as well.
+                                let named = ReplayQuery {
+                                    player_slot: query.player_slot.filter(|_| index == 0),
+                                    ..query.clone()
+                                };
                                 let games =
-                                    self.collect_game_ids(query, &player_ids, token).await?;
+                                    self.collect_game_ids(&named, &player_ids, token).await?;
                                 tracing::info!(
                                     accounts = player_ids.len(),
                                     games = games.len(),

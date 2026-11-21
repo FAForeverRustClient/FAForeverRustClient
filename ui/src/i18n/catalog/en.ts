@@ -2693,6 +2693,9 @@ export const en = {
   "replays.search.player": "Player",
   "replays.search.anyPlayer": "e.g. Player1, Player2",
   "replays.search.playerTooltip": "Search for one or more players (separate names with commas). Several names find only the games they all played in together.",
+  "replays.search.slot": "Slot",
+  "replays.search.anySlot": "Any",
+  "replays.search.slotTooltip": "The lobby slot the player sat in, which is also their start position. With several names, it applies to the first one.",
   "replays.search.map": "Map",
   "replays.search.anyMap": "Any map",
   "replays.search.anyTitle": "Any title",
@@ -5313,6 +5316,8 @@ export const en = {
   "maps.generate.enlargePreview": "Enlarge the preview",
   "replays.detail.simMods": "Simulation mods",
   "replays.roster.ratingChange": "Rating change from this game",
+  "replays.roster.slot": "Slot {slot}",
+  "replays.roster.slotHint": "The lobby slot this player sat in, which is also their start position",
 
   "replays.roster.unknownResult": "Unknown result",
   "replays.notRated.reason": "Game was not rated. Reason: {reason}",
