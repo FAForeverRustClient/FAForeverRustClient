@@ -1,0 +1,1 @@
+- Replays show the slot each player sat in, and both replay searches can filter by it: a name with slot 8 finds the games that player played from slot 8.
