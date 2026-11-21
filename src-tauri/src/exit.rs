@@ -22,6 +22,9 @@
 //! start, after a crash or a reload or a rebuild, a question sent to it may
 //! have nobody listening.
 
+// Android has no tray, so the tray's half of this module has no caller there.
+#![cfg_attr(mobile, allow(dead_code))]
+
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -181,6 +184,7 @@ pub(crate) fn on_close_request(app: &tauri::AppHandle, origin: Origin) -> Decisi
         }
         Decision::Ask => match prompt_for(origin, page_is_ready(app)) {
             Prompt::Page => {
+                #[cfg(desktop)]
                 crate::tray::restore_main_window(app);
                 let _ = app.emit("app://request-exit-confirm", ());
             }
@@ -226,11 +230,16 @@ pub(crate) fn cancel(app: &tauri::AppHandle) {
     }
 }
 
+#[cfg(desktop)]
 fn set_tray_tooltip(app: &tauri::AppHandle, tooltip: &str) {
     if let Some(tray) = app.tray_by_id(TRAY_ID) {
         let _ = tray.set_tooltip(Some(tooltip));
     }
 }
+
+/// Android has no tray.
+#[cfg(mobile)]
+fn set_tray_tooltip(_app: &tauri::AppHandle, _tooltip: &str) {}
 
 /// Whether the client is hidden to the tray waiting for its game to end. A
 /// window built again meanwhile (`webview_recovery`) is built hidden too.

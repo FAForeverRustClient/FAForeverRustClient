@@ -1,0 +1,1 @@
+- The client builds for Android as an APK. Signing in and playing from Android follow in later releases.

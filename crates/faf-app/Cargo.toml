@@ -23,8 +23,11 @@ tempfile = "3"
 # Real OAuth2 infra (see infra/oauth.rs). reqwest and tokio-tungstenite both use
 # the platform-native TLS stack (SChannel on Windows, Secure Transport on macOS,
 # OpenSSL on Linux) so no extra crypto build tooling is needed beyond libssl-dev.
-reqwest = { version = "0.12", features = ["json", "stream", "multipart"] }
-tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+# Android has no system OpenSSL to link, so there both use rustls with the
+# Mozilla roots compiled in (the target sections at the end of this file). The
+# features here are reqwest's defaults without the TLS one.
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "multipart", "charset", "http2", "system-proxy"] }
+tokio-tungstenite = { version = "0.24" }
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 open = "5"
 url = "2"
@@ -55,6 +58,15 @@ chrono = "0.4"
 # `test-util` for paused time: a test of how long two overlapping steps take
 # reads the clock it controls, not the machine's.
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "sync", "time", "test-util"] }
+
+# The TLS stack, by platform (see reqwest above).
+[target.'cfg(not(target_os = "android"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["default-tls"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 
 # `#[async_trait]` puts a bare `#[must_use]` on every method it rewrites, and
 # the method returns a boxed future, which is `#[must_use]` already. Clippy
