@@ -282,7 +282,7 @@
   min-width: 0;
 }
 
-/* Outlined pills; the official one in amber. */
+/* Outlined pills; the official one in green. */
 .tournament-row-tag {
   padding: 2px 9px;
   color: var(--color-muted);
@@ -297,9 +297,9 @@
 }
 
 .tournament-row-tag.is-official {
-  color: var(--color-warn-text);
-  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
-  border-color: color-mix(in srgb, var(--color-warn) 40%, transparent);
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-ok) 40%, transparent);
 }
 
 .tournament-row-name {
@@ -1407,10 +1407,10 @@
     var(--color-surface);
 }
 
-/* The series is the colour; with no series, an official event takes the warn
+/* The series is the colour; with no series, an official event takes the green
    tone its tag is written in and a community one the accent. */
 .tournament-hero.is-series-plain.is-official {
-  --tourney-series: var(--color-warn);
+  --tourney-series: var(--color-ok);
 }
 
 .tournament-hero.is-series-plain.is-community {
@@ -4938,8 +4938,8 @@
 }
 
 .tournament-tag.is-official {
-  color: var(--color-warn-text);
-  background: color-mix(in srgb, var(--color-warn) 14%, transparent);
+  color: var(--color-ok-text);
+  background: color-mix(in srgb, var(--color-ok) 14%, transparent);
 }
 
 /* -- The manage board ----------------------------------------------------
