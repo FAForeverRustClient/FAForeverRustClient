@@ -17,11 +17,16 @@
 //! Loopback only, so no firewall prompt, and the bytes are passed through
 //! untouched: GPGNet is the adapter's protocol, not this client's.
 
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::watch;
 use tokio::task::{AbortHandle, JoinSet};
+
+/// How long a connection the game made before the adapter was up waits,
+/// once joined to the adapter, before anything goes through. Enough for the
+/// adapter to record the new connection; see `pass_through`.
+const ADAPTER_SETTLE: Duration = Duration::from_millis(100);
 
 /// A GPGNet port open for one game. Dropping it closes the port and every
 /// connection through it.
@@ -94,6 +99,7 @@ async fn pass_through(
     opened: Instant,
 ) {
     let connected = Instant::now();
+    let ahead_of_the_adapter = adapter_port.borrow().is_none();
     let Ok(port) = adapter_port
         .wait_for(Option::is_some)
         .await
@@ -117,6 +123,15 @@ async fn pass_through(
     // GPGNet is a handful of small messages, each of which someone waits on.
     let _ = game.set_nodelay(true);
     let _ = adapter.set_nodelay(true);
+    // The adapter reads a new connection before it has recorded it, and a
+    // `GameState` handled in that moment throws and drops the connection,
+    // which leaves the game on "Connecting…" (java-ice-adapter 3.3.16,
+    // `GPGNetServer.GPGNetClient`). A game that was ahead of the adapter has
+    // said `Idle` already, so it would arrive in that moment: it waits a
+    // little first. `hand_over_the_game_connection` keeps the moment short.
+    if ahead_of_the_adapter {
+        tokio::time::sleep(ADAPTER_SETTLE).await;
+    }
     if let Err(error) = tokio::io::copy_bidirectional(&mut game, &mut adapter).await {
         tracing::debug!(%error, "the GPGNet connection ended");
     }
@@ -125,7 +140,6 @@ async fn pass_through(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     /// The adapter's side: answers what it reads with `reply`.
@@ -165,6 +179,40 @@ mod tests {
             adapter.await.unwrap(),
             b"Idle",
             "what the game said before is not lost"
+        );
+    }
+
+    /// The adapter records a new connection a moment after it accepts it,
+    /// and what reaches it before then is lost with the connection.
+    #[tokio::test]
+    async fn what_a_waiting_game_said_reaches_the_adapter_only_after_it_settles() {
+        let proxy = GpgNetProxy::open().await.unwrap();
+        let mut game = TcpStream::connect(("127.0.0.1", proxy.port()))
+            .await
+            .unwrap();
+        game.write_all(b"Idle").await.unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let adapter = tokio::spawn(async move {
+            let (mut game, _) = listener.accept().await.unwrap();
+            let accepted = Instant::now();
+            let mut heard = vec![0; 4];
+            game.read_exact(&mut heard).await.unwrap();
+            (heard, accepted.elapsed())
+        });
+        proxy.adapter_port().send(Some(port)).unwrap();
+
+        let (heard, after) = tokio::time::timeout(Duration::from_secs(5), adapter)
+            .await
+            .expect("what the game said goes through in the end")
+            .unwrap();
+        assert_eq!(heard, b"Idle");
+        // Half, as the adapter's side may see the connection a little late.
+        assert!(
+            after >= ADAPTER_SETTLE / 2,
+            "the game's `Idle` reached the adapter {after:?} after it accepted"
         );
     }
 
