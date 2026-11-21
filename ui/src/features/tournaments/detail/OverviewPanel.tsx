@@ -34,6 +34,8 @@ import {
 import { RichLine } from "../RichLine";
 import { swissMatchRecord, swissRecordsBefore } from "../bracket/swissRecords";
 import { teamNameOf } from "../bracket/matchParts";
+import { divisionLabel } from "../bracket/bracketPresentation";
+import { swissDivisionEvent, swissDivisions } from "../bracket/swissPresentation";
 import { OFFICIAL_ARTICLES, type SitePage } from "../site/sitePages";
 import { ProposalCredit } from "./ProposalBox";
 
@@ -146,15 +148,32 @@ export function OverviewPanel({
           </section>
         )}
 
-        {event.championTeamId !== null && (
-          <Panel className="tournament-champion">
-            <Icon name="trophy" size={26} className="tournament-champion-icon" />
-            <div>
-              <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
-              <h3>{championName(event)}</h3>
-            </div>
-          </Panel>
-        )}
+        {/* A Swiss in divisions crowns one champion per division (#773):
+            each its own panel, the top division's first. */}
+        {swissDivisions(event).length > 0
+          ? swissDivisions(event)
+              .map((division) => ({ division, own: swissDivisionEvent(event, division) }))
+              .filter(({ own }) => own.championTeamId !== null)
+              .map(({ division, own }) => (
+                <Panel className="tournament-champion" key={division}>
+                  <Icon name="trophy" size={26} className="tournament-champion-icon" />
+                  <div>
+                    <div className="tournament-cell-label">
+                      {t("tournaments.overview.divisionChampion", { division: divisionLabel(division, t) })}
+                    </div>
+                    <h3>{championName(own)}</h3>
+                  </div>
+                </Panel>
+              ))
+          : event.championTeamId !== null && (
+              <Panel className="tournament-champion">
+                <Icon name="trophy" size={26} className="tournament-champion-icon" />
+                <div>
+                  <div className="tournament-cell-label">{t("tournaments.overview.champion")}</div>
+                  <h3>{championName(event)}</h3>
+                </div>
+              </Panel>
+            )}
 
         {/* The format as a label and a value a row, the shape of the game
             setup under it. It was three large values over their labels side

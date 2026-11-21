@@ -106,6 +106,11 @@ pub trait IcePort: Send + Sync {
     /// already honours it.
     fn set_debug_windows(&self, _windows: IceDebugWindows) {}
 
+    /// Whether the next launch may use IPv6 (#771). Pushed by the settings
+    /// service like [`IcePort::set_backend`]; only the Java adapters have the
+    /// switch.
+    fn set_allow_ipv6(&self, _allow: bool) {}
+
     /// The running adapter's own view of its peers, for the live relay view.
     ///
     /// Idle by default: an adapter used directly in a test, and the fake,

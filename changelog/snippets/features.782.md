@@ -1,0 +1,3 @@
+- Tournaments: a Swiss can be played in divisions (King, Prince ...), each with its own rounds, table and champion.
+- Settings, Connectivity: allow the ICE adapter to use IPv6. Off by default, as in the Java client, since IPv6 causes connection issues for some players.
+- The events calendar can show only the Discord events their organisers marked for it.

@@ -25,7 +25,7 @@
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read as _;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -365,6 +365,7 @@ impl GameProcess {
         let wrapped = !wrapper.is_empty() || crate::infra::linux_runtime::active().is_some();
         let prefs = prefs_arguments(
             crate::infra::paths::game_prefs_path().as_deref(),
+            &crate::infra::mods::game_prefs_dir(),
             &config.additional_arguments,
             wrapped,
         );
@@ -1350,15 +1351,31 @@ fn require_init_name(featured_mod: &str) -> Result<(), String> {
     }
 }
 
-/// `/prefs <file>` for a `game.prefs` chosen in Settings, Paths (issue 739).
+/// `/prefs <file>` for a `game.prefs` chosen in Settings, Paths (issue 739),
+/// in the only form the game understands (#774).
 ///
-/// The client already read and wrote the chosen file (active mods, the
-/// second-instance flag, backups), but the game was never told about it and
-/// kept loading the default one from `%LOCALAPPDATA%`. Nothing when no file is
-/// chosen, which leaves FA on its default exactly as before, and nothing when
-/// the player's own launch arguments already name one: theirs wins, as it did
-/// when that was the only way to pick a file.
-fn prefs_arguments(configured: Option<&Path>, additional: &[String], wrapped: bool) -> Vec<String> {
+/// The game does not take a path here. `USER_LoadPreferences` (0x008C89D0, see
+/// faf-re's `moho/misc/StartupHelpers.cpp`) appends the argument to its own
+/// preference folder, [`crate::infra::mods::game_prefs_dir`]. The absolute
+/// path this used to pass therefore named a file *inside* that folder that does
+/// not exist, and the game fell back to `Installed.Prefs`: default graphics and
+/// no UI mods, which is what players saw after 1.0.0 whatever file they had
+/// chosen, their usual one included.
+///
+/// So the chosen file goes relative to that folder: its name when it is in
+/// there, `..` steps out of it on the same drive otherwise, and nothing at all
+/// for the folder's own `Game.prefs`, which the game opens by itself. A file
+/// the game cannot reach that way (another drive; under Wine anything outside
+/// that folder, which is inside the prefix) is left out with a warning, since
+/// the game's own file beats one it cannot open. Nothing either when the
+/// player's own launch arguments already name a file: theirs wins, as it did
+/// when that was the only way to pick one.
+fn prefs_arguments(
+    configured: Option<&Path>,
+    prefs_dir: &Path,
+    additional: &[String],
+    wrapped: bool,
+) -> Vec<String> {
     let Some(path) = configured else {
         return Vec::new();
     };
@@ -1368,7 +1385,54 @@ fn prefs_arguments(configured: Option<&Path>, additional: &[String], wrapped: bo
     {
         return Vec::new();
     }
-    vec!["/prefs".into(), game_visible_path(path, wrapped)]
+    match prefs_relative_to(prefs_dir, path, wrapped) {
+        Some(relative) if relative.eq_ignore_ascii_case("Game.prefs") => Vec::new(),
+        Some(relative) => vec!["/prefs".into(), relative],
+        None => {
+            tracing::warn!(
+                "the game.prefs chosen in Settings cannot be reached from the game's preference folder; the game opens its own"
+            );
+            Vec::new()
+        }
+    }
+}
+
+/// `file` relative to `dir`, as the game joins it: backslashes, `..` for each
+/// folder it climbs out of. `None` when there is no such path (no common root,
+/// as with two drives) or, under Wine, when it would leave `dir`.
+///
+/// Compared without regard to case: Windows and Wine both ignore it, and the
+/// file the player picked need not spell the folder the way the client does.
+fn prefs_relative_to(dir: &Path, file: &Path, wrapped: bool) -> Option<String> {
+    let dir: Vec<Component> = dir.components().collect();
+    let file: Vec<Component> = file.components().collect();
+    let common = dir
+        .iter()
+        .zip(&file)
+        .take_while(|(a, b)| {
+            a.as_os_str()
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&b.as_os_str().to_string_lossy())
+        })
+        .count();
+    let climbs = dir.len() - common;
+    let rest = &file[common..];
+    if common == 0 || rest.is_empty() || (wrapped && climbs > 0) {
+        return None;
+    }
+    if rest
+        .iter()
+        .any(|part| !matches!(part, Component::Normal(_)))
+    {
+        return None;
+    }
+    let parts: Vec<String> = std::iter::repeat_n("..".to_string(), climbs)
+        .chain(
+            rest.iter()
+                .map(|part| part.as_os_str().to_string_lossy().into_owned()),
+        )
+        .collect();
+    Some(parts.join("\\"))
 }
 
 /// Build the FA argument list: server args first, then init/bugreport/gpgnet.
@@ -1988,27 +2052,60 @@ mod tests {
         assert_eq!(config.replay_game_path, "new-replay");
     }
 
+    /// The game's preference folder in the tests, spelt with forward slashes
+    /// so it is an absolute path on every platform CI runs on.
+    const PREFS_DIR: &str = "/local/Gas Powered Games/Supreme Commander Forged Alliance";
+
     #[test]
-    fn a_chosen_game_prefs_reaches_the_game() {
-        let arguments = prefs_arguments(Some(Path::new("C:/prefs/other.prefs")), &[], false);
-        assert_eq!(arguments, ["/prefs", "C:/prefs/other.prefs"]);
+    fn a_chosen_game_prefs_in_the_games_folder_goes_by_its_name() {
+        let chosen = Path::new(PREFS_DIR).join("Other.prefs");
+        let arguments = prefs_arguments(Some(&chosen), Path::new(PREFS_DIR), &[], false);
+        assert_eq!(arguments, ["/prefs", "Other.prefs"]);
     }
 
     #[test]
-    fn a_chosen_game_prefs_under_wine_goes_through_the_z_drive() {
-        let arguments = prefs_arguments(Some(Path::new("/home/me/game.prefs")), &[], true);
-        assert_eq!(arguments, ["/prefs", r"Z:\home\me\game.prefs"]);
+    fn the_games_own_prefs_file_adds_nothing() {
+        // #774: the absolute path to the player's usual file is what made the
+        // game open its defaults. That file needs no argument at all.
+        let chosen =
+            Path::new("/LOCAL/gas powered games/Supreme Commander Forged Alliance/game.prefs");
+        assert!(prefs_arguments(Some(chosen), Path::new(PREFS_DIR), &[], false).is_empty());
+    }
+
+    #[test]
+    fn a_chosen_game_prefs_elsewhere_climbs_out_of_the_games_folder() {
+        let chosen = Path::new("/local/backups/game.prefs");
+        let arguments = prefs_arguments(Some(chosen), Path::new(PREFS_DIR), &[], false);
+        assert_eq!(arguments, ["/prefs", r"..\..\backups\game.prefs"]);
+    }
+
+    #[test]
+    fn under_wine_only_the_games_folder_is_reachable() {
+        let inside = Path::new(PREFS_DIR).join("Other.prefs");
+        assert_eq!(
+            prefs_arguments(Some(&inside), Path::new(PREFS_DIR), &[], true),
+            ["/prefs", "Other.prefs"]
+        );
+        let outside = Path::new("/home/me/game.prefs");
+        assert!(prefs_arguments(Some(outside), Path::new(PREFS_DIR), &[], true).is_empty());
+    }
+
+    #[test]
+    fn a_file_with_no_common_root_adds_nothing() {
+        let chosen = Path::new("relative/game.prefs");
+        assert!(prefs_arguments(Some(chosen), Path::new(PREFS_DIR), &[], false).is_empty());
     }
 
     #[test]
     fn no_chosen_game_prefs_adds_nothing() {
-        assert!(prefs_arguments(None, &[], false).is_empty());
+        assert!(prefs_arguments(None, Path::new(PREFS_DIR), &[], false).is_empty());
     }
 
     #[test]
     fn the_players_own_prefs_argument_wins() {
         let own = vec!["/PREFS".to_string(), "D:/mine.prefs".to_string()];
-        assert!(prefs_arguments(Some(Path::new("C:/other.prefs")), &own, false).is_empty());
+        let chosen = Path::new(PREFS_DIR).join("Other.prefs");
+        assert!(prefs_arguments(Some(&chosen), Path::new(PREFS_DIR), &own, false).is_empty());
     }
 
     #[test]

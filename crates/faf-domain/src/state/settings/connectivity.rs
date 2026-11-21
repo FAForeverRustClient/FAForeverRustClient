@@ -71,6 +71,13 @@ pub struct ConnectivityPreferences {
     /// `java` from it is the default rather than a choice: version two moves it
     /// to `Dynamic`, which behaves the same for every unmarked game.
     pub selection_version: u8,
+    /// Whether the Java adapters may gather IPv6 candidates (#771).
+    ///
+    /// Off by default, as in the Java client ("Allow the ICE adapter to use
+    /// IPv6"): IPv6 causes connection issues for some players, and the
+    /// adapter is then started with `-Dorg.ice4j.ipv6.DISABLED=true`. This
+    /// client used to start it without, so IPv6 was always on.
+    pub allow_ipv6: bool,
 }
 
 const CONNECTIVITY_SELECTION_VERSION: u8 = 2;
@@ -81,6 +88,7 @@ impl Default for ConnectivityPreferences {
             adapter: IceAdapter::Dynamic,
             host_adapter: IceAdapter::Java,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
+            allow_ipv6: false,
         }
     }
 }
@@ -108,6 +116,7 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
             adapter: IceAdapter,
             host_adapter: Option<IceAdapter>,
             selection_version: u8,
+            allow_ipv6: bool,
         }
 
         let wire = Wire::deserialize(deserializer)?;
@@ -133,6 +142,7 @@ impl<'de> Deserialize<'de> for ConnectivityPreferences {
             adapter,
             host_adapter,
             selection_version: CONNECTIVITY_SELECTION_VERSION,
+            allow_ipv6: wire.allow_ipv6,
         })
     }
 }
@@ -198,6 +208,7 @@ preference_patch! {
         adapter: IceAdapter,
         host_adapter: IceAdapter,
         selection_version: u8,
+        allow_ipv6: bool,
     }
 }
 

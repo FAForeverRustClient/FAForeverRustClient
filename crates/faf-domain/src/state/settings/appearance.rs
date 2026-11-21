@@ -193,12 +193,12 @@ impl Default for AppearancePreferences {
             game_tile_columns: 0,
             sidebar_width: 224,
             hover_panels: true,
-            // Long enough that crossing the list on the way somewhere else does
-            // not open anything, short enough to feel like an answer rather
-            // than a wait. Zero was the old behaviour and is still available;
-            // so is a full second, which is what this was before and what drew
-            // the complaint in the other direction.
-            hover_open_delay_ms: 500,
+            // A full second (#778). Half a second was still short enough that
+            // players reaching for a lobby's Join button landed on the panel
+            // of the game next to it instead and opened somebody's profile.
+            // Once one panel is open the next opens at once, so browsing stays
+            // quick; shorter steps, down to zero, are still in the tab.
+            hover_open_delay_ms: 1000,
             // The gap between a row and its panel is about six pixels, which a
             // pointer crosses in well under 50 ms. A sixth of a second covers
             // that without the panel trailing the pointer down the list.

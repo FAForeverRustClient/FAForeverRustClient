@@ -84,6 +84,36 @@ export function alreadyATournament(event, source) {
   return TOURNEY_SERVICE_HOSTS.some((host) => text.includes(`${host}/t/`));
 }
 
+/**
+ * Whether a source that mirrors only what its organisers marked (#780) lets
+ * this event through, and the marker it carries if so.
+ *
+ * A Discord server's scheduled events are everything its members organise
+ * there, a weekly training group as much as the night meant for everybody, and
+ * mirroring all of them put one person's daily sessions over the whole
+ * calendar. Blocking by name after the fact (`skip`) leaves the decision with
+ * whoever maintains `sources.json`; this leaves it with the server's own
+ * organisers, where it belongs. With `onlyTagged` set, an event is mirrored
+ * only when its name or description contains that text, `[FAF]` say, and
+ * putting it there takes the server's own Manage Events permission, so nobody
+ * else can put an entry on every player's calendar.
+ *
+ * Without `onlyTagged` every event is mirrored, as before.
+ */
+export function taggedFor(event, source) {
+  const tag = typeof source?.onlyTagged === "string" ? source.onlyTagged.trim() : "";
+  if (tag === "") return { through: true, tag: "" };
+  const text = `${event.name ?? ""} ${event.description ?? ""}`.toLowerCase();
+  return { through: text.includes(tag.toLowerCase()), tag };
+}
+
+/** `text` without `tag`, wherever and in whatever case it appears. */
+function withoutTag(text, tag) {
+  if (!tag) return text;
+  const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return (text ?? "").replace(new RegExp(escaped, "gi"), " ").replace(/\s+/g, " ").trim();
+}
+
 /** Whether Discord still considers the event upcoming or running. */
 function isLive(event) {
   return event.status === STATUS_SCHEDULED || event.status === STATUS_ACTIVE;
@@ -161,7 +191,11 @@ export function categoryOf(name, source) {
  */
 export function entryOf(event, source) {
   if (!isLive(event)) return null;
-  const title = (event.name ?? "").trim();
+  const marked = taggedFor(event, source);
+  if (!marked.through) return null;
+  // The marker is for the bot, not for the players: it comes off the title
+  // and the summary the calendar shows.
+  const title = withoutTag(event.name ?? "", marked.tag).trim();
   if (!title || !event.scheduled_start_time) return null;
   if (alreadyATournament(event, source)) return null;
   if (ruleFor(title, source)?.skip) return null;
@@ -185,7 +219,7 @@ export function entryOf(event, source) {
   const entry = {
     id: `${OWNED_PREFIX}${source.guildId}-${event.id}`,
     title,
-    summary: summaryOf(event.description),
+    summary: summaryOf(withoutTag(event.description, marked.tag)),
     category: categoryOf(title, source),
     origin: source.origin ?? "community",
     host: source.host ?? "",
@@ -272,8 +306,12 @@ async function main() {
         (event) => isLive(event) && alreadyATournament(event, source),
       ).length;
       const already = tournaments > 0 ? `, ${tournaments} already in the Tournaments tab` : "";
+      // The same for an event its organisers did not mark: one that is missing
+      // from the calendar is then explained by the run, not by a guess.
+      const unmarked = events.filter((event) => isLive(event) && !taggedFor(event, source).through).length;
+      const notMarked = unmarked > 0 ? `, ${unmarked} not marked ${source.onlyTagged}` : "";
       console.log(
-        `${source.host ?? source.guildId}: ${mapped.length} of ${events.length} events${already}`,
+        `${source.host ?? source.guildId}: ${mapped.length} of ${events.length} events${already}${notMarked}`,
       );
       ours.push(...mapped);
     } catch (error) {

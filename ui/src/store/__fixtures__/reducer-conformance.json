@@ -6370,7 +6370,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -6502,6 +6502,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -69372,7 +69373,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -69504,6 +69505,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -69694,7 +69696,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -69826,6 +69828,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70026,7 +70029,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -70158,6 +70161,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70362,7 +70366,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -70494,6 +70498,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -70690,7 +70695,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -70822,6 +70827,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71029,7 +71035,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -71161,6 +71167,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71382,7 +71389,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -71514,6 +71521,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -71727,7 +71735,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -71859,6 +71867,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -72078,7 +72087,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -72214,6 +72223,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -72512,7 +72522,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -72648,6 +72658,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -72953,7 +72964,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -73089,6 +73100,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -73347,7 +73359,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -73483,6 +73495,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -73743,7 +73756,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -73879,6 +73892,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -74273,7 +74287,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -74444,6 +74458,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -91965,6 +91980,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -92178,7 +92194,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -92310,6 +92326,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -92561,7 +92578,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -92693,6 +92710,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -92964,7 +92982,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -93096,6 +93114,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93331,7 +93350,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -93463,6 +93482,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93661,6 +93681,7 @@
               "payload": {
                 "preferences": {
                   "adapter": "go",
+                  "allowIpv6": false,
                   "hostAdapter": "java",
                   "selectionVersion": 2
                 }
@@ -93676,7 +93697,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -93808,6 +93829,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -93978,6 +94000,7 @@
               "field": "connectivity",
               "value": {
                 "adapter": "go",
+                "allowIpv6": false,
                 "hostAdapter": "java",
                 "selectionVersion": 2
               }
@@ -94009,7 +94032,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -94141,6 +94164,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -94369,7 +94393,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -94501,6 +94525,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -94722,7 +94747,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -94854,6 +94879,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95056,7 +95082,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -95196,6 +95222,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95400,7 +95427,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -95540,6 +95567,7 @@
             },
             "connectivity": {
               "adapter": "go",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -95728,7 +95756,7 @@
                     "density": "comfortable",
                     "gameTileColumns": 0,
                     "hoverCloseDelayMs": 160,
-                    "hoverOpenDelayMs": 500,
+                    "hoverOpenDelayMs": 1000,
                     "hoverPanels": true,
                     "reduceMotion": false,
                     "replayFlags": false,
@@ -95860,6 +95888,7 @@
                   },
                   "connectivity": {
                     "adapter": "dynamic",
+                    "allowIpv6": false,
                     "hostAdapter": "java",
                     "selectionVersion": 2
                   },
@@ -96037,7 +96066,7 @@
               "density": "comfortable",
               "gameTileColumns": 0,
               "hoverCloseDelayMs": 160,
-              "hoverOpenDelayMs": 500,
+              "hoverOpenDelayMs": 1000,
               "hoverPanels": true,
               "reduceMotion": false,
               "replayFlags": false,
@@ -96169,6 +96198,7 @@
             },
             "connectivity": {
               "adapter": "dynamic",
+              "allowIpv6": false,
               "hostAdapter": "java",
               "selectionVersion": 2
             },
@@ -96344,7 +96374,7 @@
                   "density": "comfortable",
                   "gameTileColumns": 0,
                   "hoverCloseDelayMs": 160,
-                  "hoverOpenDelayMs": 500,
+                  "hoverOpenDelayMs": 1000,
                   "hoverPanels": true,
                   "reduceMotion": false,
                   "replayFlags": false,
@@ -96476,6 +96506,7 @@
                 },
                 "connectivity": {
                   "adapter": "dynamic",
+                  "allowIpv6": false,
                   "hostAdapter": "java",
                   "selectionVersion": 2
                 },
@@ -138629,7 +138660,7 @@
         "density": "comfortable",
         "gameTileColumns": 0,
         "hoverCloseDelayMs": 160,
-        "hoverOpenDelayMs": 500,
+        "hoverOpenDelayMs": 1000,
         "hoverPanels": true,
         "reduceMotion": false,
         "replayFlags": false,
@@ -138761,6 +138792,7 @@
       },
       "connectivity": {
         "adapter": "dynamic",
+        "allowIpv6": false,
         "hostAdapter": "java",
         "selectionVersion": 2
       },

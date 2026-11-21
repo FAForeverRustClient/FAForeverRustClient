@@ -81,8 +81,9 @@ describe("GameSummaryPopover hover panels, mounted", () => {
   it("waits for the delay on a cold hover, then opens the next one at once and closes the first", () => {
     render(<Badges />);
 
+    // The default opening delay, a second since #778.
     fireEvent.mouseEnter(badge("First lobby"));
-    advance(499);
+    advance(999);
     expect(screen.queryByRole("tooltip")).toBeNull();
     advance(1);
     expect(screen.getAllByRole("tooltip")).toHaveLength(1);
@@ -134,7 +135,7 @@ describe("GameSummaryPopover hover panels, mounted", () => {
     advance(1_000);
     fireEvent.mouseEnter(badge("First lobby"));
     expect(screen.queryByRole("tooltip")).toBeNull();
-    advance(500);
+    advance(1_000);
     expect(screen.getAllByRole("tooltip")).toHaveLength(1);
 
     add.mockRestore();
@@ -142,15 +143,16 @@ describe("GameSummaryPopover hover panels, mounted", () => {
   });
 
   it("runs the game clock to the second while the card is open", () => {
-    // On a whole second, so the hover delay below cannot cross into the next.
+    // On a whole second, so the one-second hover delay below lands exactly
+    // on the next: the card opens 312 seconds into the game.
     vi.setSystemTime(Math.ceil(Date.now() / 1000) * 1000);
     const now = Math.floor(Date.now() / 1000);
     const live = presence(3, "Live game");
     live.status = "playing";
-    live.game.launchedAt = now - 312;
+    live.game.launchedAt = now - 311;
     render(<GameSummaryPopover presence={live} social={social} vault={[]} />);
     fireEvent.mouseEnter(badge("Live game"));
-    advance(500);
+    advance(1_000);
     const clock = () => cardOf("Live game")?.querySelector(".chat-game-elapsed")?.textContent ?? "";
     expect(clock()).toContain("5m 12s");
     advance(1_000);

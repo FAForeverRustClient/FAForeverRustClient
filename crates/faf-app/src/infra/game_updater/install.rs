@@ -11,6 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use super::content_store;
+use super::rebuilt_engine;
 use crate::infra::registry::{Hive, Registry, SystemRegistry};
 
 /// Byte offsets inside `ForgedAlliance.exe` where the 4-byte little-endian
@@ -528,7 +529,18 @@ fn steam_library_paths(vdf: &str) -> Vec<PathBuf> {
 /// [`content_store::rewrite`]), not into the file itself: an executable that
 /// is a hard link to a cache entry would otherwise change that entry under
 /// its checksum, and a patch that fails halfway leaves the original intact.
+///
+/// The rebuilt engine's exe is left alone (#781): it reads the version from
+/// the game files, and in its exe these offsets are machine code. See
+/// [`rebuilt_engine`].
 pub(super) fn patch_exe_version(exe_path: &Path, version: i32) -> Result<(), String> {
+    if rebuilt_engine::is_rebuilt_engine(exe_path) {
+        tracing::debug!(
+            exe = %exe_path.display(),
+            "not writing the version into the rebuilt engine: it reads it from the game files"
+        );
+        return Ok(());
+    }
     let required = VERSION_ADDRESSES
         .iter()
         .copied()
@@ -848,6 +860,30 @@ mod tests {
         }
 
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// #781: the version offsets are machine code in the rebuilt engine's exe,
+    /// so it comes out of the update byte for byte as it went in, small or
+    /// large. An exe whose product name is the original's is still patched.
+    #[test]
+    fn leaves_the_rebuilt_engine_exactly_as_it_was() {
+        let dir = tempfile::tempdir().unwrap();
+        for (product, size) in [("faf-re", 0usize), ("faf-re", 0x476670)] {
+            let mut exe = rebuilt_engine::test_executable(Some(product), true);
+            exe.resize(exe.len().max(size), 0);
+            let path = dir.path().join("ForgedAlliance.exe");
+            std::fs::write(&path, &exe).unwrap();
+            patch_exe_version(&path, 3838).expect("nothing to do is not a failure");
+            assert_eq!(std::fs::read(&path).unwrap(), exe);
+        }
+
+        let mut original =
+            rebuilt_engine::test_executable(Some("Supreme Commander Forged Alliance"), false);
+        original.resize(0x476670, 0);
+        let path = dir.path().join("original.exe");
+        std::fs::write(&path, &original).unwrap();
+        patch_exe_version(&path, 3838).unwrap();
+        assert_eq!(read_exe_version(&path), Some(3838));
     }
 
     #[test]

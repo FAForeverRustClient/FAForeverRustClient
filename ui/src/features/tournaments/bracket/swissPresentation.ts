@@ -5,6 +5,7 @@
 
 import type { MessageKey } from "../../../i18n";
 import type { PickMode, PickPhase, SwissCuts, Tourney } from "../../../ipc/bindings";
+import { standings } from "../../../shared/rules/tourneyRules";
 import { teamNameOf } from "./matchParts";
 
 type Translate = (key: MessageKey, values?: Record<string, string | number>) => string;
@@ -97,4 +98,43 @@ export function playoffOrigin(event: Tourney, t: Translate): string {
       : `${t("tournaments.playoffs.originUnbeaten", { pairs: pairs(chosen) })}${restLine}`;
   }
   return t("tournaments.playoffs.originHalf", { pairs: pairs(chosen) });
+}
+
+/**
+ * The divisions of a Swiss played in divisions (King, Prince ...: #773), from
+ * 1; empty for every other event.
+ *
+ * Since faf-tournaments#17 a team Swiss can be split like an elimination
+ * bracket. Every division then plays its own Swiss with the event's settings:
+ * its own rounds, records, table and final. No playoffs follow one, which the
+ * service refuses.
+ */
+export function swissDivisions(event: Tourney): number[] {
+  if (event.bracketKind !== "swiss" || event.competition !== "team" || event.divisions < 2) return [];
+  return Array.from({ length: event.divisions }, (_, index) => index + 1);
+}
+
+/**
+ * One division of such a Swiss, shaped as if it were the whole event: its own
+ * teams and matches, so the rounds, the records and the table of a plain Swiss
+ * all read it unchanged. The service's `swissOrder` lists each division's
+ * table one after the other, and filtered to this division's teams it is that
+ * division's order.
+ *
+ * Its champion is the winner of its own final. A division without a final is
+ * won by the top of its table once the event is over, which is when every
+ * division is (`swissDivisionChampion` on the service). The event's own
+ * champion is the top division's.
+ */
+export function swissDivisionEvent(event: Tourney, division: number): Tourney {
+  const teams = event.teams.filter((team) => team.division === division);
+  const matches = event.matches.filter((entry) => entry.division === division);
+  const view: Tourney = { ...event, teams, matches, championTeamId: null };
+  const final = matches.find((entry) => entry.bracket === "grandFinal");
+  if (final !== undefined) {
+    return { ...view, championTeamId: final.status === "done" ? final.winner : null };
+  }
+  if (event.status !== "finished") return view;
+  if (division === 1 && event.championTeamId !== null) return { ...view, championTeamId: event.championTeamId };
+  return { ...view, championTeamId: standings(view)[0]?.teamId ?? null };
 }

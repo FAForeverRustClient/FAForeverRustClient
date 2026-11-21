@@ -13,7 +13,8 @@ import { memo } from "react";
 
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
 import type { Standing, StandingsKind } from "../../../shared/rules/tourneyRules";
-import { tiebreakText } from "./swissPresentation";
+import { swissDivisionEvent, swissDivisions, tiebreakText } from "./swissPresentation";
+import { divisionLabel } from "./bracketPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EntrantName } from "../EntrantName";
@@ -122,6 +123,29 @@ export const StandingsPanel = memo(function StandingsPanel({ event, profiles }: 
   }
 
   if (kind !== "swiss") return <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} />;
+
+  // A Swiss in divisions (#773): a table per division, the top one first,
+  // each placed from 1 and with its own champion, as the website shows them.
+  const divisions = swissDivisions(event);
+  if (divisions.length > 0) {
+    const withCuts = event.swissCuts.wins > 0 || event.swissCuts.losses > 0;
+    return (
+      <div className="tournament-stats">
+        {event.swissTiebreak === "beaten" && <p className="muted">{tiebreakText(event, t)}</p>}
+        {divisions.map((division) => {
+          const own = swissDivisionEvent(event, division);
+          const ownRows = standings(own);
+          if (ownRows.length === 0) return null;
+          return (
+            <section className="tournament-panel" key={division}>
+              <h4>{divisionLabel(division, t)}</h4>
+              <StandingsTable event={own} profiles={profiles} kind={kind} rows={ownRows} withStatus={withCuts} />
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
 
   // A Swiss with playoffs: the playoffs decide the places, so their table
   // comes first, worked out like any elimination bracket's from the playoff

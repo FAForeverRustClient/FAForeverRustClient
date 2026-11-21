@@ -280,10 +280,27 @@ mod system {
         {
             pids.push(pid);
         }
+        // Whether the game is in front is a question about the process, not
+        // about one of its windows (#779). Forged Alliance can own more than
+        // one visible top-level window (a second monitor's, the lobby's), and
+        // `main_window` returns the first in z-order, which need not be the
+        // one in front: a lobby the player was looking at then counted as
+        // "not focused", and its "game full" popped up over it. The Java
+        // client asks the same way (`getFocusedWindowProcessId`).
+        let mut foreground_pid = 0u32;
+        // SAFETY: a window handle Windows just handed us (or null, for which
+        // the call fails and leaves the pid at zero) and a valid out pointer.
+        let foreground = unsafe { GetForegroundWindow() };
+        if foreground != 0 {
+            unsafe { GetWindowThreadProcessId(foreground, &mut foreground_pid) };
+        }
+        let focused = foreground_pid != 0 && pids.contains(&foreground_pid);
+        if !focus && !flash {
+            return Ok(focused);
+        }
         let window = main_window(&pids).ok_or("The running game's window is unavailable")?;
         // SAFETY: window belongs to the checked live launcher process tree.
         unsafe {
-            let focused = GetForegroundWindow() == window;
             if focus {
                 if IsIconic(window) != 0 {
                     ShowWindow(window, 9);

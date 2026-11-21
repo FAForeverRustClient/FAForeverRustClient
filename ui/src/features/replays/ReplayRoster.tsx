@@ -5,7 +5,7 @@ import { FactionIcon } from "../../shared/components/FactionIcon";
 import { openPlayerCard } from "../../shared/playerCardActions";
 import type { PlayerMenuOpener } from "../../shared/hooks/usePlayerMenu";
 import { t } from "../../i18n";
-import { outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind } from "../../shared/gameOutcome";
+import { gameTeamOutcomes, outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind } from "../../shared/gameOutcome";
 import { ReplayPlayerFlag } from "./ReplayPlayerFlag";
 import { useLocale } from "../../i18n/useTranslation";
 import { PlayerName } from "../../shared/components/nameColors";
@@ -41,7 +41,7 @@ function ReplayPlayerMarker({ player, observer, size }: { player: ReplayPlayer; 
 }
 
 // Moved to shared, because the matchmaker tab reads outcomes too.
-export { outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind };
+export { gameTeamOutcomes, outcomeLabel, parseOutcome, teamOutcome, type OutcomeKind };
 
 /**
  * Who won, in a few words for a list row (#454): the winning team's name, or
@@ -54,13 +54,14 @@ export function replayWinner(teams: (ReplayTeam | RosterTeam)[]): string | null 
   if (soleTeam) {
     const winners = playing[0].players.filter((player) => parseOutcome(player.outcome) === "victory");
     if (winners.length > 0) return t("replays.vault.winner", { winner: winners.map((player) => player.name).join(", ") });
-  } else {
-    const winning = playing.filter((team) => teamOutcome(team.players) === "victory");
+  }
+  const kinds = gameTeamOutcomes(playing);
+  if (!soleTeam) {
+    const winning = playing.filter((_, index) => kinds[index] === "victory");
     if (winning.length > 0) {
       return t("replays.vault.winner", { winner: winning.map((team) => teamName(team.team, false)).join(", ") });
     }
   }
-  const kinds = playing.map((team) => teamOutcome(team.players));
   if (kinds.includes("draw")) return t("replays.roster.draw");
   return null;
 }
@@ -351,13 +352,14 @@ export function ReplayCardRoster({
   const nonObserverTeams = teams.filter((team) => !isObserverTeam(team.team));
   const soleTeam = nonObserverTeams.length === 1;
   const isSingleTeamGame = teams.length === 1;
+  const outcomes = gameTeamOutcomes(teams);
   return (
     <div
       className="replay-card-teams"
       data-sole-team={soleTeam ? "true" : undefined}
       data-results={showResults ? "true" : undefined}
     >
-      {teams.map((team) => {
+      {teams.map((team, index) => {
         const observer = isObserverTeam(team.team);
         // Two columns only where a team has the card's full width to itself.
         // Side by side with another team, half a card split again is a column
@@ -368,7 +370,7 @@ export function ReplayCardRoster({
         // result: the whole panel would take the winner's colour, so there it
         // is each player's row that does.
         const perPlayer = showResults && !observer && soleTeam;
-        const outcome = showResults && !observer && !soleTeam ? teamOutcome(team.players) : "unknown";
+        const outcome = showResults && !observer && !soleTeam ? outcomes[index] : "unknown";
         return (
           <section
             key={team.team}
@@ -561,6 +563,7 @@ export function ReplayDetailRoster({
   // present a matchup. More than two is a grid, because a chain of "vs" reads
   // as a bracket rather than a lineup.
   const versus = teams.length === 2 && teams.every((team) => !isObserverTeam(team.team));
+  const outcomes = gameTeamOutcomes(teams);
   return (
     <div
       className="replay-detail-teams"
@@ -576,7 +579,7 @@ export function ReplayDetailRoster({
         const teamRating = ratings.length === 0
           ? null
           : ratings.reduce((sum, rating) => sum + rating, 0);
-        const resolved = observer ? "unknown" : teamOutcome(team.players);
+        const resolved = observer ? "unknown" : outcomes[index];
         const outcomeKind = resolved === "unknown" ? "" : resolved;
         // An unknown result is stated, not left blank: a team with no outcome
         // beside one that has an outcome read as a rendering slip.

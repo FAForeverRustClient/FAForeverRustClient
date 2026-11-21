@@ -2,7 +2,7 @@ import type { IceAdapter, ConnectivityPreferencesPatch } from "../../ipc/binding
 import { ipc } from "../../ipc/client";
 import { useAppStore } from "../../store/store";
 import { recordEntries } from "../../shared/records";
-import { SettingRow, SettingsGroup } from "./SettingControls";
+import { SettingRow, SettingsGroup, SettingsSwitch } from "./SettingControls";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
 
@@ -70,6 +70,16 @@ export function ConnectivitySettingsSection() {
             </option>
           ))}
         </select>
+      </SettingRow>
+      <SettingRow
+        label={t("settings.connectivity.allowIpv6")}
+        hint={t("settings.connectivity.allowIpv6Hint")}
+      >
+        <SettingsSwitch
+          checked={preferences.allowIpv6}
+          onChange={(allowIpv6) => change({ allowIpv6 })}
+          label={t("settings.connectivity.allowIpv6")}
+        />
       </SettingRow>
     </SettingsGroup>
   );

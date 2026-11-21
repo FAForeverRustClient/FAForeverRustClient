@@ -1316,17 +1316,34 @@ pub(crate) fn game_prefs_path() -> PathBuf {
             return PathBuf::from(path);
         }
     }
+    game_prefs_in(&game_local_app_data())
+}
+
+/// The folder the game itself opens its preferences in, whichever file the
+/// player chose in Settings: `%LOCALAPPDATA%\Gas Powered Games\Supreme
+/// Commander Forged Alliance`, inside the Wine prefix off Windows.
+///
+/// The game's `/prefs` argument names a file relative to this folder, not a
+/// path (#774), so the launcher needs the folder to say where a chosen file is.
+pub(crate) fn game_prefs_dir() -> PathBuf {
+    GAME_PREFS_DIR
+        .iter()
+        .fold(game_local_app_data(), |path, part| path.join(part))
+}
+
+/// `%LOCALAPPDATA%` as the game sees it: this machine's own on Windows, the
+/// prefix's off it (see [`game_prefs_path`]).
+fn game_local_app_data() -> PathBuf {
     let local = if cfg!(windows) {
         None
     } else {
         wine_prefix_root().and_then(|prefix| wine_local_app_data(&prefix))
     };
-    let local = local.unwrap_or_else(|| {
+    local.unwrap_or_else(|| {
         directories::BaseDirs::new()
             .map(|b| b.data_local_dir().to_path_buf())
             .unwrap_or_else(|| PathBuf::from("."))
-    });
-    game_prefs_in(&local)
+    })
 }
 
 /// The Wine prefix to look inside, off Windows.

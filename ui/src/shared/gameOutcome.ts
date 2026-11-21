@@ -44,3 +44,34 @@ export function teamOutcome(players: readonly { outcome: string }[]): OutcomeKin
   if (kinds.includes("defeat")) return "defeat";
   return "unknown";
 }
+
+/**
+ * Every team's result in one game, in the order given, observers (a negative
+ * team) always `"unknown"`.
+ *
+ * Mostly `teamOutcome` per team, with the one rule that needs the whole game:
+ * when every seated player is recorded as defeated, the game was a draw
+ * (#776). That is how a drawn game is stored. Both commanders die, each army
+ * reports its own defeat, and the server's `resolve_game`
+ * (server/games/game_results.py) rates "everyone is DEFEAT" as a draw while
+ * the per-player rows keep the DEFEAT they were reported with. Read team by
+ * team, a drawn ladder game said Defeat beside a rating that went up.
+ *
+ * Only for two or more teams, and only when no seated player has anything but
+ * a defeat: an unknown result next to the defeats is a game the server refused
+ * to rate, not a draw.
+ */
+export function gameTeamOutcomes(
+  teams: readonly { team: number; players: readonly { outcome: string }[] }[],
+): (OutcomeKind | "unknown")[] {
+  const seated = teams.filter((team) => team.team >= 0);
+  const allDefeated =
+    seated.length >= 2 &&
+    seated.every(
+      (team) => team.players.length > 0 && team.players.every((player) => parseOutcome(player.outcome) === "defeat"),
+    );
+  return teams.map((team) => {
+    if (team.team < 0) return "unknown";
+    return allDefeated ? "draw" : teamOutcome(team.players);
+  });
+}
