@@ -146,7 +146,6 @@ export function LoginView() {
         <div className="entry-brand"><BrandMark size={68} /></div>
         <div className="entry-heading">
           <h1>{t("auth.welcome")}</h1>
-          <p>{t("auth.subtitle")}</p>
         </div>
 
         {busy ? (
@@ -166,30 +165,6 @@ export function LoginView() {
         )}
         <p className="login-hint">{t("auth.hint")}</p>
 
-        {/* Everything the client can do without FAF: the replays already on
-            this disk, and the settings. Offered next to the login rather than
-            behind a failed one, because the people who need it most are the
-            ones whose login is never going to succeed. The second way in is
-            the same session, opened on the archive: watching a game that is
-            already on this disk is the whole of what most people want here,
-            and naming it is what makes that visible from the login screen. */}
-        <div className="login-offline-row">
-          <Button className="login-offline-button" onClick={launchOfflineGame} disabled={busy}>
-            <Icon name="play" size={15} /> {t("auth.playOffline")}
-          </Button>
-          <Button className="login-offline-button" onClick={openLocalReplays} disabled={busy}>
-            <Icon name="replays" size={15} /> {t("auth.localReplays")}
-          </Button>
-        </div>
-        {/* The button stays: the install may have arrived since the last
-            look, and the click checks again and says why if not. */}
-        {gameMissing && (
-          <StatusNotice tone="info" className="login-offline-setup">
-            {t(gamePending ? "auth.offlineSetupPending" : "auth.offlineSetupMissing")}
-          </StatusNotice>
-        )}
-        <p className="login-hint">{t("auth.playOfflineHint")}</p>
-
         <label className="login-remember">
           <input
             type="checkbox"
@@ -208,6 +183,39 @@ export function LoginView() {
           />
           <span>{t("auth.staySignedIn")}</span>
         </label>
+
+        {/* Everything the client can do without FAF: skirmish against AI, and
+            the replays and settings on this disk. Offered next to sign-in under
+            a clear account-free divider rather than behind a failed login, with
+            extra context kept on hover so the card stays scannable. */}
+        <div className="login-divider">
+          <span>{t("auth.noAccountNeeded")}</span>
+        </div>
+        <div className="login-offline-row">
+          <Button
+            className="login-offline-button"
+            onClick={launchOfflineGame}
+            disabled={busy}
+            title={t("auth.playOfflineTooltip")}
+          >
+            <Icon name="play" size={15} /> {t("auth.playOffline")}
+          </Button>
+          <Button
+            className="login-offline-button"
+            onClick={openLocalReplays}
+            disabled={busy}
+            title={t("auth.localReplaysTooltip")}
+          >
+            <Icon name="replays" size={15} /> {t("auth.localReplays")}
+          </Button>
+        </div>
+        {/* The button stays: the install may have arrived since the last
+            look, and the click checks again and says why if not. */}
+        {gameMissing && (
+          <StatusNotice tone="info" className="login-offline-setup">
+            {t(gamePending ? "auth.offlineSetupPending" : "auth.offlineSetupMissing")}
+          </StatusNotice>
+        )}
 
         {/* In a sentence a player can act on. The reason as it was sent
             ("Token request failed: error sending request for url (...)") is
@@ -242,8 +250,6 @@ export function LoginView() {
           </div>
         )}
       </div>
-
-      <p className="login-footnote">{t("auth.footnote")}</p>
     </main>
   );
 }
