@@ -147,6 +147,9 @@ pub struct GameProcess {
     /// the server the game ended and stops the ICE adapter, and a replay
     /// window closing is none of those things.
     exited: Arc<Notify>,
+    /// Woken when the *replay* exits; separate from [`Self::exited`] so closing
+    /// a replay clears `ReplayStatus::Playing` without ending a live game.
+    replay_exited: Arc<Notify>,
     /// Kept alive for the duration of a live game so FA has somewhere to stream
     /// its replay. Replaced on the next launch, which drops and stops the
     /// previous one.
@@ -185,6 +188,7 @@ impl GameProcess {
             game_child: Arc::new(Mutex::new(None)),
             replay_child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
+            replay_exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
             replay_relay: None,
             steam_presence: AtomicBool::new(false),
@@ -269,15 +273,19 @@ impl GameProcess {
     ///
     /// Only ever called for [`Slot::Replay`], and that is not incidental.
     /// Taking a child out of its slot is what tells [`Self::watch_for_exit`] it
-    /// is done, and the game slot's watcher announces an exit as it goes: a
+    /// is done, and the game slot's watcher announces a live-game exit: a
     /// live game relaunched through here would report the previous game as
     /// having ended, over the top of the one that just started. The replay
-    /// slot's watcher announces nothing, because a replay window closing is not
-    /// the end of a game session.
+    /// slot wakes its own separate [`Self::replay_exited`] notifier so the old
+    /// replay's exit watcher finishes cleanly while the service keeps the
+    /// replacement's status under its newer launch id.
     async fn end_previous(&self, slot: Slot) {
         let Some(mut previous) = self.slot(slot).lock().unwrap().take() else {
             return;
         };
+        if slot == Slot::Replay {
+            self.replay_exited.notify_waiters();
+        }
         // A replay ended to make room for the next: its companions stay
         // until that one has taken them over, or the replacement is given up.
         self.hold_for_replacement(previous.launch);
@@ -475,7 +483,10 @@ impl GameProcess {
             prev.launch
         });
         drop(current);
-        self.watch_for_exit(slot);
+        if slot == Slot::Replay && replaced.is_some() {
+            self.replay_exited.notify_waiters();
+        }
+        self.watch_for_exit(slot, launch);
 
         // The game slot only: a live game or a tutorial is Forged Alliance
         // being played, and a replay window is somebody watching one. Nothing
@@ -518,19 +529,22 @@ impl GameProcess {
         }
     }
 
-    /// Poll the tracked child until it exits, then wake [`Self::wait_for_exit`].
+    /// Poll the tracked child until it exits, then wake [`Self::wait_for_exit`]
+    /// or [`Self::wait_for_replay_exit`].
     ///
     /// Polling rather than `Child::wait()` because `wait` needs `&mut Child`,
     /// and the handle has to stay in the shared slot for [`ProcessPort::kill`]
     /// to reach it. A game session lasts minutes, so a second of latency on
     /// noticing the exit costs nothing.
-    fn watch_for_exit(&self, slot: Slot) {
+    fn watch_for_exit(&self, slot: Slot, launch: LaunchId) {
         let child = self.slot(slot).clone();
-        // Only the game slot wakes the launcher. A replay window closing is
-        // not the end of a game session, and telling the server "GameState
-        // Ended" because somebody finished watching a replay is how a live
-        // game would lose its launch out from under it.
-        let exited = (slot == Slot::Game).then(|| self.exited.clone());
+        // Separate notifiers for game and replay: a replay window closing
+        // clears `ReplayStatus::Playing` and must never wake the live-game
+        // launcher or tell the server "GameState Ended".
+        let exited = match slot {
+            Slot::Game => self.exited.clone(),
+            Slot::Replay => self.replay_exited.clone(),
+        };
         // The launch lets go of its companions when its process ends by
         // itself. `kill` does that on its own, and a replay replaced by the
         // next one hands them on (`hold_for_replacement`).
@@ -539,16 +553,24 @@ impl GameProcess {
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 let mut ended = None;
+                let mut notify = false;
                 let finished = {
                     let mut guard = child.lock().unwrap();
                     match guard.as_mut() {
-                        // Taken by a newer launch or by `kill`: that launch owns
-                        // its own watcher, so this one is done.
-                        None => true,
+                        // Taken by `kill` or `end_previous`: wake any waiter
+                        // on this slot and stop polling.
+                        None => {
+                            notify = true;
+                            true
+                        }
+                        // Replaced by a newer launch: that launch owns its own
+                        // watcher, so stop without notifying on its behalf.
+                        Some(process) if process.launch != launch => true,
                         Some(process) => match process.child.try_wait() {
                             Ok(Some(_status)) => {
                                 ended = Some(process.launch);
                                 *guard = None;
+                                notify = true;
                                 true
                             }
                             Ok(None) => false,
@@ -557,6 +579,7 @@ impl GameProcess {
                             Err(_) => {
                                 ended = Some(process.launch);
                                 *guard = None;
+                                notify = true;
                                 true
                             }
                         },
@@ -566,7 +589,7 @@ impl GameProcess {
                     if let Some(launch) = ended {
                         end_launch(companions.clone(), launch);
                     }
-                    if let Some(exited) = &exited {
+                    if notify {
                         exited.notify_waiters();
                     }
                     return;
@@ -731,6 +754,18 @@ impl ProcessPort for GameProcess {
         tokio::pin!(exited);
         exited.as_mut().enable();
         if self.game_child.lock().unwrap().is_none() {
+            return;
+        }
+        exited.await;
+    }
+
+    async fn wait_for_replay_exit(&self) {
+        // Same register-before-check order as `wait_for_exit` so a fast replay
+        // exit cannot be missed between launch and awaiting here.
+        let exited = self.replay_exited.notified();
+        tokio::pin!(exited);
+        exited.as_mut().enable();
+        if self.replay_child.lock().unwrap().is_none() {
             return;
         }
         exited.await;
@@ -1895,6 +1930,41 @@ mod tests {
         tokio::time::timeout(Duration::from_millis(100), process.wait_for_exit())
             .await
             .expect("a finished lesson must not keep shutdown waiting forever");
+    }
+
+    #[tokio::test]
+    async fn a_replay_exit_wakes_replay_waiters_without_waking_game_waiters() {
+        let process = GameProcess::new(GameConfig::default());
+        let game = a_process_that_keeps_running();
+        let replay = a_process_that_keeps_running();
+        *process.game_child.lock().unwrap() = Some(Running {
+            child: game,
+            exe: PathBuf::from("managed-game"),
+            launch: 1,
+        });
+        *process.replay_child.lock().unwrap() = Some(Running {
+            child: replay,
+            exe: PathBuf::from("managed-replay"),
+            launch: 2,
+        });
+        process.watch_for_exit(Slot::Replay, 2);
+
+        let replay_wait = process.wait_for_replay_exit();
+        let game_wait = process.wait_for_exit();
+        tokio::pin!(replay_wait);
+        tokio::pin!(game_wait);
+
+        process.end_previous(Slot::Replay).await;
+
+        tokio::time::timeout(Duration::from_millis(500), replay_wait)
+            .await
+            .expect("ending the replay must wake wait_for_replay_exit");
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), game_wait)
+                .await
+                .is_err(),
+            "ending a replay must not wake wait_for_exit for the running live game"
+        );
     }
 
     #[tokio::test]

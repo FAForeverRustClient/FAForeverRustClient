@@ -5,7 +5,7 @@
 // Two copies would have drifted the moment either grew a field, and the second
 // place exists precisely because the first one is not always enough.
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 
 import type { MapSummary, SocialState } from "../../../ipc/bindings";
@@ -46,8 +46,8 @@ interface Props {
   presence: GamePresence;
   social: SocialState;
   vault: MapSummary[];
-  /** Seconds since the epoch, from whichever tick the caller runs. */
-  now: number;
+  /** Keep the one-second clock ticking while a game or replay runs. */
+  tickDuringGames?: boolean;
   /** Skipped by a closed popover: this is the expensive half of the card. */
   showTeams?: boolean;
   /** Drawn beside the title where the card is not already next to a badge. */
@@ -83,14 +83,15 @@ interface Props {
  *
  * Its own component with its own one-second timer, so each tick redraws this
  * span and nothing else: the card sits in the conversation sidebar too, whose
- * clock belongs to the whole chat view and ticks twice a minute. It starts
- * from the caller's `now`, and follows it when that moves.
+ * own presence check ticks twice a minute. The elapsed time is read from the
+ * wall clock on every render rather than carried in from mount time, so a
+ * badge that mounted before the game launched never opens on `0m 00s` even
+ * when background timers are paused.
  */
-function GameTime({ started, now }: { started: number; now: number }) {
-  const [current, setCurrent] = useState(now);
-  useEffect(() => setCurrent(now), [now]);
-  useForegroundInterval(() => setCurrent(Math.floor(Date.now() / 1000)), 1000);
-  return <>{formatGameTime(Math.max(0, current - started))}</>;
+function GameTime({ started, duringGames = false }: { started: number; duringGames?: boolean }) {
+  const [, setTick] = useState(0);
+  useForegroundInterval(() => setTick((tick) => tick + 1), 1000, true, duringGames);
+  return <>{formatGameTime(Math.max(0, Math.floor(Date.now() / 1000) - started))}</>;
 }
 
 /**
@@ -156,7 +157,7 @@ export function GameSummaryCard({
   presence,
   social,
   vault,
-  now,
+  tickDuringGames = false,
   showTeams = true,
   showMap = false,
   onOpenConversation,
@@ -251,7 +252,7 @@ export function GameSummaryCard({
                 {started !== null && (
                   <span className="chat-game-elapsed">
                     <span className="chat-game-sr">{elapsedLabel} </span>
-                    <GameTime started={started} now={now} />
+                    <GameTime started={started} duringGames={tickDuringGames} />
                   </span>
                 )}
               </span>

@@ -6,14 +6,17 @@
 // online once it has arrived; before that, or without a lobby connection at
 // all, the panel says nothing about it rather than calling everybody offline.
 
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ChatChannel, LobbyStatus, PlayerProfile, SocialState } from "../../ipc/bindings";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ChatChannel, Game, LobbyStatus, PlayerProfile, SocialState } from "../../ipc/bindings";
 import { resetLocaleForTests } from "../../i18n/store";
+import { useAppStore } from "../../store/store";
 import "../../testing/mounted";
 import { ConversationAside } from "./ConversationAside";
 
 vi.mock("../../ipc/client");
+
+const pristine = useAppStore.getState();
 
 function profile(login: string): PlayerProfile {
   return {
@@ -78,6 +81,11 @@ beforeEach(() => {
   resetLocaleForTests("en");
 });
 
+afterEach(() => {
+  useAppStore.setState(pristine, true);
+  vi.useRealTimers();
+});
+
 describe("private conversation aside, presence", () => {
   it("says the peer is online when the lobby lists them, whatever the case of the name", () => {
     renderAside({ players: ["Me", "Someone", "wifi_"] });
@@ -121,5 +129,66 @@ describe("private conversation aside, presence", () => {
     expect(screen.getByText(notInGame)).toBeTruthy();
     expect(screen.queryByText("Wifi_ is offline.")).toBeNull();
     expect(screen.queryByText("Wifi_ is online.")).toBeNull();
+  });
+
+  it("shows the live game's elapsed time from the wall clock even while a game is active", () => {
+    vi.useFakeTimers();
+    const now = 1_700_000_600;
+    vi.setSystemTime(now * 1000);
+    act(() => {
+      useAppStore.getState().hydrate({
+        ...pristine.state,
+        lobby: { ...pristine.state.lobby, join: { type: "inGame" } },
+      });
+    });
+
+    const liveGame: Game = {
+      id: 9,
+      title: "Private",
+      host: "Wifi_",
+      players: 2,
+      maxPlayers: 4,
+      map: "scmp_009",
+      modName: "coop",
+      averageRating: 2_160,
+      ratingType: "global",
+      passwordProtected: true,
+      visibility: "public",
+      gameType: "coop",
+      launchedAt: now - 365,
+      hostedAt: null,
+      ratingMin: null,
+      ratingMax: null,
+      enforceRatingRange: false,
+      teams: { "1": ["Wifi_", "Partner"] },
+      simMods: {},
+    };
+
+    const social: SocialState = {
+      friends: [],
+      foes: [],
+      loginLookups: [],
+      staff: [],
+      players: [profile("Me"), profile("Wifi_")],
+    };
+
+    render(
+      <ConversationAside
+        peer="Wifi_"
+        self="Me"
+        social={social}
+        lobbyStatus="connected"
+        channels={[]}
+        openGames={[]}
+        liveGames={[liveGame]}
+        mapVault={[]}
+        now={now}
+        onOpenConversation={() => {}}
+        onPlayerContextMenu={() => {}}
+        tier="medium"
+      />,
+    );
+
+    expect(screen.getByText("6m 05s")).toBeTruthy();
   });
 });

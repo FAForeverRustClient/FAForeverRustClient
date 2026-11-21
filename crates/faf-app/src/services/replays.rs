@@ -34,7 +34,7 @@ pub struct ReplaysContext {
     /// cancellation, and for the same reason: dropping the future is the only
     /// thing that actually stops work that is several awaits deep inside a
     /// port. See [`LaunchSlot`] for which launch may settle it.
-    launch: std::sync::Mutex<LaunchSlot>,
+    launch: std::sync::Arc<std::sync::Mutex<LaunchSlot>>,
     /// The analysis read in flight, so the next request can call it off. See
     /// [`AnalysisSlot`].
     analysis: std::sync::Mutex<AnalysisSlot>,
@@ -375,9 +375,45 @@ async fn launch(
     // status of a replay that is playing.
     slot.cancellation = None;
     match result {
-        Ok(warning) => out.emit(ReplayEvent::Playing { uid, warning }),
+        Ok(warning) => {
+            out.emit(ReplayEvent::Playing { uid, warning });
+            watch_replay_exit(
+                ticket.id,
+                ctx.replays.launch.clone(),
+                ctx.ports.process.clone(),
+                out.clone(),
+            );
+        }
         Err(reason) => fail(out, reason),
     }
+}
+
+/// Return the replay slice to `Idle` when Forged Alliance closes.
+///
+/// Scoped to `launch_id`, so a previous replay closing to make room for its
+/// replacement cannot clear the replacement's `Connecting` or `Playing` state.
+fn watch_replay_exit(
+    launch_id: u64,
+    launch: std::sync::Arc<std::sync::Mutex<LaunchSlot>>,
+    process: std::sync::Arc<dyn crate::ports::ProcessPort>,
+    out: EventSink,
+) {
+    tokio::spawn(async move {
+        process.wait_for_replay_exit().await;
+        let slot = launch
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if slot.current == launch_id
+            && out.with_state(|state| {
+                matches!(
+                    state.replays.status,
+                    faf_domain::state::ReplayStatus::Playing { .. }
+                )
+            })
+        {
+            out.emit(ReplayEvent::Closed);
+        }
+    });
 }
 
 /// Report a replay that did not start.
