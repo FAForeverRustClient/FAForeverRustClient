@@ -309,22 +309,23 @@ export const en = {
 
   // Login screen.
   "auth.welcome": "Welcome to FAForever",
-  "auth.subtitle": "Sign in with your FAF account to continue.",
   "auth.signingIn": "Signing in…",
   "auth.cancel": "Cancel sign-in",
-  "auth.login": "Log in with FAF",
-  "auth.hint": "Opens your browser to sign in. The client never sees your password.",
+  "auth.login": "Sign in with FAF",
+  "auth.hint": "Opens in your browser.",
   "auth.noBrowser": "Browser did not open? Open this link in your browser:",
   "auth.copyLink": "Copy link",
   "auth.linkCopied": "Copied",
   "auth.linkLabel": "Sign-in link",
+  "auth.noAccountNeeded": "No account needed",
   "auth.playOffline": "Play offline",
-  "auth.playOfflineHint": "Play offline starts Forged Alliance on its own, for skirmish against the AI. Local replays opens this client on the replays and settings on this machine. Neither needs an account.",
+  "auth.playOfflineTooltip": "Starts Forged Alliance for skirmish against the AI.",
   "auth.offlineSetupPending": "FAF hasn't set the game up on this computer yet. Sign in once, then choose Play offline in the menu on your name, or play or watch any game, and the client downloads it. After that, this button works without an account.",
   "auth.offlineSetupMissing": "Forged Alliance with FAF's files was not found at the game path. Sign in once, then choose Play offline in the menu on your name, or play or watch any game, to set it up. Or choose the game's folder in Settings.",
   "auth.localReplays": "Local replays",
+  "auth.localReplaysTooltip": "Opens replays and settings stored on this PC.",
   "auth.signIn": "Sign in",
-  "auth.staySignedIn": "Stay signed in on this computer",
+  "auth.staySignedIn": "Stay signed in",
   "auth.helpNav": "FAF account help",
   "auth.createAccount": "Create account",
   "auth.forgotPassword": "Forgot password?",
@@ -332,7 +333,6 @@ export const en = {
   "auth.devBuild": "Development build",
   "auth.enterTestMode": "Enter test mode",
   "auth.devHint": "Local sample account. No browser, no server.",
-  "auth.footnote": "The open-source multiplayer client for Forged Alliance Forever.",
 
   // Status bar. The connection words are lowercase on purpose: they render
   // inline after the service name, as in "FAF connected".

@@ -12,9 +12,11 @@ afterEach(() => {
 });
 
 describe("the ways into the client", () => {
-  it("offers the archive by name, beside signing in and playing offline", () => {
+  it("offers the archive by name under the no-account divider, beside signing in and playing offline", () => {
     const markup = renderToStaticMarkup(<LoginView />);
 
+    expect(markup).toContain("Sign in with FAF");
+    expect(markup).toContain("No account needed");
     expect(markup).toContain("Play offline");
     expect(markup).toContain("Local replays");
   });
@@ -23,12 +25,13 @@ describe("the ways into the client", () => {
     setLocale("de");
     const markup = renderToStaticMarkup(<LoginView />);
 
+    expect(markup).toContain("Kein Konto nötig");
     expect(markup).toContain("Offline spielen");
     expect(markup).toContain("Lokale Replays");
   });
 
   it("never leaks a message key into the markup", () => {
-    for (const locale of ["en", "de"] as const) {
+    for (const locale of ["en", "de", "es", "fr", "pl", "ru"] as const) {
       setLocale(locale);
       expect(renderToStaticMarkup(<LoginView />)).not.toContain("auth.");
     }
