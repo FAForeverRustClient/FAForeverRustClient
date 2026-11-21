@@ -1,0 +1,1 @@
+- No visible changes: publishing a release now requires three to seven highlights.
