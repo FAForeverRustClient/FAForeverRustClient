@@ -335,12 +335,20 @@ async fn connect(username: String, ctx: &ServiceCtx, out: &EventSink, only_if_ar
                 )
             });
             quiet_history = is_quiet_history;
+            // A private message from a foe, with foe hiding on, is dropped like
+            // a muted player's rather than hidden at display: a channel line we
+            // already belong to is only filtered from view, but a DM has no tab
+            // yet, and emitting it would conjure one that sits unread for a
+            // message its own sender we chose never to see (#789). Scoped to
+            // private conversations so a foe in a shared channel keeps the
+            // display-only hiding that a toggle can still reverse.
+            let foe_whisper = hide_foe_messages && is_foe && !channel.starts_with('#');
             // A line the channel already shows is the history backfill
             // overlapping the scrollback after a reconnect or a rejoin (#471).
             // The reducer would drop it; skipping it here also keeps its
             // mention from notifying a second time, and spares the frontend
             // an event per replayed line that changes nothing.
-            if muted || held {
+            if muted || held || foe_whisper {
                 continue;
             }
             let incoming = !message.sender.is_empty()

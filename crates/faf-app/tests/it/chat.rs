@@ -9,8 +9,8 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_app::infra::fake_ports;
-use faf_app::ports::{ChatPort, ChatUpdate, SettingsPort};
+use faf_app::infra::{fake_ports, FakeLobby};
+use faf_app::ports::{ChatPort, ChatUpdate, LobbyUpdate, SettingsPort};
 use faf_app::{App, Ports};
 use faf_domain::state::{
     ChatCommand, ChatMessage, ChatMessageKind, ChatStatus, LobbyCommand, NotificationKind,
@@ -540,6 +540,80 @@ async fn muted_players_are_filtered_before_messages_enter_state() {
     assert!(messages
         .iter()
         .all(|message| !message.sender.eq_ignore_ascii_case("Stormlord")));
+}
+
+/// A chat server that opens with two whispers: one from a foe, one from a
+/// stranger. Both are private (the channel is named after the sender), so the
+/// only thing the service can tell them apart by is the foe relation.
+struct WhisperingChat;
+
+#[async_trait]
+impl ChatPort for WhisperingChat {
+    async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
+        let (tx, rx) = mpsc::channel(8);
+        for update in [
+            ChatUpdate::Status(ChatStatus::Connecting, String::new()),
+            ChatUpdate::Status(ChatStatus::Connected, username),
+            ChatUpdate::ChannelJoined(DEFAULT_CHANNEL.into()),
+            ChatUpdate::Message {
+                channel: "Nemesis".into(),
+                message: said("Nemesis", "w1", "you won't see this"),
+            },
+            ChatUpdate::Message {
+                channel: "Ally".into(),
+                message: said("Ally", "w2", "but you will see this"),
+            },
+        ] {
+            tx.try_send(update).unwrap();
+        }
+        rx
+    }
+    fn send_message(&self, _: String, _: String, _: String) {}
+    fn send_action(&self, _: String, _: String) {}
+    fn join_channel(&self, _: String) {}
+    fn leave_channel(&self, _: String, _: String) {}
+    fn set_topic(&self, _: String, _: String) {}
+    fn disconnect(&self) {}
+}
+
+/// A private message from a foe opens no conversation tab: with foe hiding on
+/// (the default) it is dropped before it reaches state, the way a muted
+/// player's is, rather than hidden only at display, so no empty tab sits
+/// unread for someone we chose never to see (#789). The stranger's whisper
+/// still lands, which both proves ordinary DMs are untouched and pins the
+/// order: once it is in, the foe's has already been processed and dropped.
+#[tokio::test]
+async fn a_foe_whisper_opens_no_conversation() {
+    let lobby = FakeLobby::default();
+    let app = support::start(Ports {
+        lobby: Arc::new(lobby.clone()),
+        chat: Arc::new(WhisperingChat),
+        ..fake_ports()
+    });
+
+    app.dispatch(LobbyCommand::Connect.into()).await.unwrap();
+    until(&app, |state| state.social.is_friend("Stormlord")).await;
+    assert!(lobby.push_update(LobbyUpdate::Relations {
+        friends: vec![],
+        foes: vec!["Nemesis".into()],
+        contacts: vec![],
+    }));
+    until(&app, |state| state.social.is_foe("Nemesis")).await;
+
+    app.dispatch(
+        ChatCommand::Connect {
+            username: "Aurora".into(),
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    let state = until(&app, |state| state.chat.channel("Ally").is_some()).await;
+    assert!(
+        state.chat.channel("Nemesis").is_none(),
+        "a foed player's whisper must not open a conversation tab"
+    );
 }
 
 /// A chat server that hands over the same history on every connection, as
