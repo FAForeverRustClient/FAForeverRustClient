@@ -1,0 +1,1 @@
+- A direct message from a foe no longer opens an empty chat tab with an unread mark.
