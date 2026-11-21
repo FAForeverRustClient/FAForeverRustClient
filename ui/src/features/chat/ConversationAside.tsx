@@ -127,7 +127,6 @@ export function ConversationAside({
           presence={presence}
           social={social}
           vault={mapVault}
-          now={now}
           showMap
           onOpenConversation={onOpenConversation}
           onPlayerContextMenu={onPlayerContextMenu}

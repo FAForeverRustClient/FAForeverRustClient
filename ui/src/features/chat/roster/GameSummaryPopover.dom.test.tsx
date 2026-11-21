@@ -12,8 +12,11 @@ import type { Game, SocialState } from "../../../ipc/bindings";
 import "../../../testing/mounted";
 import { GameSummaryPopover } from "./GameSummaryPopover";
 import type { GamePresence } from "./gameSummary";
+import { useAppStore } from "../../../store/store";
 
 vi.mock("../../../ipc/client");
+
+const pristine = useAppStore.getState();
 
 const social: SocialState = { friends: [], foes: [], loginLookups: [], staff: [], players: [] };
 
@@ -74,6 +77,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  useAppStore.setState(pristine, true);
   vi.useRealTimers();
 });
 
@@ -157,5 +161,39 @@ describe("GameSummaryPopover hover panels, mounted", () => {
     expect(clock()).toContain("5m 12s");
     advance(1_000);
     expect(clock()).toContain("5m 13s");
+  });
+
+  it("shows and advances the real elapsed time for a game launched after the badge mounted, even during a game", () => {
+    vi.setSystemTime(Math.ceil(Date.now() / 1000) * 1000);
+    const mountedAt = Math.floor(Date.now() / 1000);
+    const hosting = presence(4, "Private");
+    hosting.status = "hosting";
+    hosting.game.hostedAt = new Date((mountedAt - 60) * 1000).toISOString();
+
+    const { rerender } = render(<GameSummaryPopover presence={hosting} social={social} vault={[]} />);
+
+    // The user enters a game (or watches a replay), pausing background intervals.
+    act(() => {
+      useAppStore.getState().hydrate({
+        ...pristine.state,
+        lobby: { ...pristine.state.lobby, join: { type: "inGame" } },
+      });
+    });
+
+    // Five minutes pass, the player launches their game, and 359 seconds pass;
+    // the one-second hover delay below lands right on 6m 00s.
+    const launchedAt = mountedAt + 300;
+    vi.setSystemTime((launchedAt + 359) * 1000);
+    const playing = presence(4, "Private");
+    playing.status = "playing";
+    playing.game.launchedAt = launchedAt;
+    rerender(<GameSummaryPopover presence={playing} social={social} vault={[]} />);
+
+    fireEvent.mouseEnter(badge("Private"));
+    advance(1_000);
+    const clock = () => cardOf("Private")?.querySelector(".chat-game-elapsed")?.textContent ?? "";
+    expect(clock()).toContain("6m 00s");
+    advance(1_000);
+    expect(clock()).toContain("6m 01s");
   });
 });

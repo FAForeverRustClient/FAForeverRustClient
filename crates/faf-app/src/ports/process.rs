@@ -195,6 +195,20 @@ pub trait ProcessPort: Send + Sync {
         std::future::pending::<()>().await
     }
 
+    /// Resolve when the currently running replay process exits.
+    ///
+    /// Separate from [`Self::wait_for_exit`]: a replay window closing ends the
+    /// replay status (`ReplayStatus::Playing` back to `Idle`), not a live game
+    /// session. Without this, watching one replay leaves the replay slice in
+    /// `Playing` for the rest of the session, keeping foreground UI timers
+    /// paused and update popups suppressed.
+    ///
+    /// The default never resolves, matching [`Self::wait_for_exit`] for fakes
+    /// that never start a process.
+    async fn wait_for_replay_exit(&self) {
+        std::future::pending::<()>().await
+    }
+
     /// Point the launcher at new install paths.
     ///
     /// Called by the settings service whenever either path changes, so picking

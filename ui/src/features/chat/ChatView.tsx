@@ -216,14 +216,14 @@ export function ChatView() {
   const anyTyping = (active?.typing?.length ?? 0) > 0;
   useForegroundInterval(() => setTypingTick(Math.floor(Date.now() / 1000)), 1000, anyTyping);
 
-  // The game time in a private conversation's panel advances on the reader's
-  // clock, so the view supplies the tick. Half a minute, because the label is
-  // written in whole minutes and a slower tick would leave it visibly behind.
-  // Kept apart from the typing clock above, which retires notices per second
-  // and only while somebody is actually typing.
-  const [minuteNow, setMinuteNow] = useState(() => Math.floor(Date.now() / 1000));
+  // The game presence in a private conversation's panel crosses the live-replay
+  // delay boundary on the reader's clock, so the view supplies a redraw tick.
+  // The time itself is read as the view is drawn, like `typists` above, so a
+  // paused tick never hands the panel a stale timestamp from mount time.
+  const [, setAsideTick] = useState(0);
   const inPrivateConversation = !!active && isPrivateChannel(active.name);
-  useForegroundInterval(() => setMinuteNow(Math.floor(Date.now() / 1000)), 30_000, inPrivateConversation);
+  useForegroundInterval(() => setAsideTick((tick) => tick + 1), 30_000, inPrivateConversation);
+  const minuteNow = Math.floor(Date.now() / 1000);
 
   // Stable across renders, as the list's other handlers are: `MessageList`
   // and every line in it are memoised, and a fresh function each render

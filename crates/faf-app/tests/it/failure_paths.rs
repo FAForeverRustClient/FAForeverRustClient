@@ -178,6 +178,15 @@ fn notification_titles(app: &App) -> Vec<String> {
 #[derive(Default)]
 struct RecordingProcess {
     replay_launches: AtomicUsize,
+    replay_ended: std::sync::atomic::AtomicBool,
+    replay_exited: tokio::sync::Notify,
+}
+
+impl RecordingProcess {
+    fn finish_replay(&self) {
+        self.replay_ended.store(true, Ordering::SeqCst);
+        self.replay_exited.notify_waiters();
+    }
 }
 
 #[async_trait]
@@ -192,8 +201,18 @@ impl ProcessPort for RecordingProcess {
         FakeGame.launch_offline(featured_mod, map).await
     }
     async fn launch_replay(&self, _args: Vec<String>) -> Result<(), String> {
+        self.replay_ended.store(false, Ordering::SeqCst);
         self.replay_launches.fetch_add(1, Ordering::SeqCst);
         Ok(())
+    }
+    async fn wait_for_replay_exit(&self) {
+        let exited = self.replay_exited.notified();
+        tokio::pin!(exited);
+        exited.as_mut().enable();
+        if self.replay_ended.load(Ordering::SeqCst) {
+            return;
+        }
+        exited.await;
     }
     fn kill(&self) {
         FakeGame.kill()
@@ -514,6 +533,98 @@ async fn a_refused_live_replay_leaves_a_starting_replay_alone() {
     assert_eq!(
         h.app.snapshot().replays.status,
         ReplayStatus::Playing { uid: Some(REPLAY) }
+    );
+}
+
+/// Closing Forged Alliance after watching a replay returns the replay slice to
+/// `Idle`, so foreground UI timers and popups are not paused for the rest of
+/// the session.
+#[tokio::test]
+async fn closing_a_replay_returns_status_to_idle() {
+    let h = replay_harness();
+    h.gates.release("download");
+    h.gates.release("prepare");
+
+    h.app
+        .dispatch_and_wait(ReplayCommand::WatchVault { uid: REPLAY }.into())
+        .await
+        .unwrap();
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing { uid: Some(REPLAY) }
+    );
+
+    h.process.finish_replay();
+
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+    loop {
+        if h.app.snapshot().replays.status == ReplayStatus::Idle {
+            break;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "replay status stayed {:?} after the replay process exited",
+            h.app.snapshot().replays.status
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+}
+
+/// When a second replay starts while the first is playing, the first replay's
+/// process exiting must not clear the replacement's `Connecting` status.
+#[tokio::test]
+async fn an_earlier_replay_exiting_does_not_clear_its_replacement() {
+    let h = replay_harness();
+    // One permit each: the first replay passes both gates and the second stops
+    // at `download` while `Connecting`.
+    h.gates.release("download");
+    h.gates.release("prepare");
+
+    h.app
+        .dispatch_and_wait(ReplayCommand::WatchVault { uid: REPLAY }.into())
+        .await
+        .unwrap();
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing { uid: Some(REPLAY) }
+    );
+
+    const REPLACEMENT: i32 = REPLAY + 1;
+    let replacement = spawn_command(
+        &h.app,
+        ReplayCommand::WatchVault { uid: REPLACEMENT }.into(),
+    );
+    let deadline = tokio::time::Instant::now() + PROMPTLY;
+    while !matches!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Connecting { .. }
+    ) {
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "replacement never entered Connecting"
+        );
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+
+    // The first replay's FA window closes while the replacement is preparing.
+    h.process.finish_replay();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    assert!(
+        matches!(
+            h.app.snapshot().replays.status,
+            ReplayStatus::Connecting { .. }
+        ),
+        "the first replay exiting cleared the replacement's Connecting status"
+    );
+
+    h.gates.release("download");
+    h.gates.release("prepare");
+    finished(replacement, "the replacement WatchVault").await;
+    assert_eq!(
+        h.app.snapshot().replays.status,
+        ReplayStatus::Playing {
+            uid: Some(REPLACEMENT)
+        }
     );
 }
 

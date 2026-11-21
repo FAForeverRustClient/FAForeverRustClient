@@ -1,0 +1,2 @@
+- Chat game cards no longer show 0m 00s for recently launched games and keep counting up while hovered.
+- Closing a replay no longer leaves client timers paused for the rest of the session.
