@@ -137,6 +137,95 @@
   }
 }
 
+/* A tab past the end of a navigation row (NavOverflowMenu): it keeps its
+   place, so measuring does not move the others, and is reached through the
+   menu instead. Only a theme that lays the navigation out in a row has any. */
+.tab[data-overflow] {
+  visibility: hidden;
+}
+
+.nav-overflow {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+
+.nav-overflow-toggle {
+  gap: 4px;
+}
+
+.nav-overflow-arrow {
+  width: 0;
+  height: 0;
+  border-top: 5px solid currentColor;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+}
+
+.nav-overflow-menu {
+  position: absolute;
+  z-index: 20;
+  top: 100%;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 192px;
+  padding: var(--space-1) 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-popover);
+}
+
+.nav-overflow-item {
+  padding: 7px 14px;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.nav-overflow-item:hover,
+.nav-overflow-item:focus-visible {
+  background: var(--color-surface-hover);
+  outline: none;
+}
+
+.nav-overflow-item.is-active {
+  font-weight: 600;
+}
+
+/* The main menu (NavMainMenu) is the header bar's; a sidebar keeps the same
+   entries in its bottom group, so only a theme with a header bar shows it. */
+.nav-main-menu {
+  display: none;
+}
+
+.nav-menu-heading {
+  margin: 0;
+  padding: 6px 14px 2px;
+  color: var(--color-subtle);
+  font-size: 11px;
+}
+
+.nav-menu-separator {
+  margin: var(--space-1) 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.nav-menu-error {
+  max-width: 260px;
+  margin: 0;
+  padding: 6px 14px;
+  color: var(--color-error-text);
+  font-size: 12px;
+}
+
 .app-shell.is-sidebar-rail .tab span.tab-badge {
   display: inline-flex;
   position: absolute;
