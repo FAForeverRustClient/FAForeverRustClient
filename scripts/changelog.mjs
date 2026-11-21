@@ -13,11 +13,12 @@
 // Usage:
 //   node scripts/changelog.mjs verify            every snippet is well named
 //   node scripts/changelog.mjs combine [<tag>]   the release notes, to stdout
+//   node scripts/changelog.mjs release [<tag>]   notes with required highlights
 //
-// `combine` with a tag takes only the snippets added since that tag, which is
-// what the Release workflow passes: the previous release. So snippets never
-// have to be deleted for the next release to start empty, and deleting old
-// ones later is harmless.
+// `combine` and `release` take only snippets added since the supplied tag.
+// The Release workflow passes the previous release, so snippets never have
+// to be deleted for the next release to start empty, and deleting old ones
+// later is harmless.
 
 import { execFileSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
@@ -63,12 +64,31 @@ export function verifySnippets(snippets) {
   const problems = [];
   for (const { name, text } of snippets) {
     if (name.startsWith(".")) continue;
-    if (!parseSnippetName(name)) {
+    const parsed = parseSnippetName(name);
+    if (!parsed) {
       const prefixes = CATEGORIES.map(([prefix]) => prefix).join(", ");
       problems.push(`${name}: not <category>.<pr>.md, with category one of ${prefixes}`);
     } else if (!text.trim()) {
       problems.push(`${name}: empty`);
+    } else if (parsed.category === "highlights") {
+      const lines = text.split(/\r?\n/).filter((line) => line.trim());
+      if (lines.length < 3 || lines.length > 7) {
+        problems.push(`${name}: highlights must contain 3 to 7 bullet points`);
+      }
+      if (lines.some((line) => !/^- \S/.test(line))) {
+        problems.push(`${name}: write each highlight as one top-level '- ' bullet on one line`);
+      }
     }
+  }
+  return problems;
+}
+
+/** A release needs its own summary, not a previous release's highlights. */
+export function verifyReleaseSnippets(snippets) {
+  const problems = verifySnippets(snippets);
+  const highlights = snippets.filter(({ name }) => parseSnippetName(name)?.category === "highlights");
+  if (highlights.length !== 1) {
+    problems.push(`Expected exactly one new highlights.<pr>.md snippet for this release; found ${highlights.length}. Add 3 to 7 player-facing bullets in the version-bump pull request. See changelog/README.md.`);
   }
   return problems;
 }
@@ -108,11 +128,11 @@ function allSnippetNames() {
 
 // Compares the two trees, not the commits between them, so a pull request
 // branched before the tag and merged after it still counts as new.
-function snippetNamesAddedSince(tag) {
+export function snippetNamesAddedSince(tag, head = "HEAD", cwd = process.cwd()) {
   const output = execFileSync(
     "git",
-    ["diff", "--name-only", "--diff-filter=A", tag, "HEAD", "--", SNIPPET_DIR],
-    { encoding: "utf8" }
+    ["diff", "--name-only", "--diff-filter=A", tag, head, "--", SNIPPET_DIR],
+    { encoding: "utf8", cwd }
   );
   return output
     .split("\n")
@@ -132,9 +152,9 @@ function main() {
     return;
   }
 
-  if (command === "combine") {
+  if (command === "combine" || command === "release") {
     const snippets = read(tag ? snippetNamesAddedSince(tag) : allSnippetNames());
-    const problems = verifySnippets(snippets);
+    const problems = command === "release" ? verifyReleaseSnippets(snippets) : verifySnippets(snippets);
     if (problems.length) {
       for (const problem of problems) console.error(problem);
       process.exitCode = 1;
@@ -145,7 +165,7 @@ function main() {
     return;
   }
 
-  console.error("Usage: node scripts/changelog.mjs verify | combine [<tag>]");
+  console.error("Usage: node scripts/changelog.mjs verify | combine [<tag>] | release [<tag>]");
   process.exitCode = 1;
 }
 

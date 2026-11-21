@@ -125,16 +125,17 @@ jobs:
 
       # The previous release is the newest `v*` tag behind this commit, never
       # this version's own: with allow_existing_tag that tag already exists,
-      # and taking it would leave nothing to combine. A release with no new
-      # snippets is refused rather than shipped with an empty post on Discord.
-      - name: Combine the changelog snippets
+      # and taking it would leave nothing to combine. The release command
+      # requires one new highlights snippet with 3 to 7 player-facing bullets
+      # before opening a draft or starting any platform builds.
+      - name: Validate highlights and combine the changelog snippets
         env:
           VERSION: ${{ steps.version.outputs.version }}
           REQUIRED: ${{ inputs.required }}
         run: |
           PREVIOUS=$(git describe --tags --abbrev=0 --match 'v*' --exclude "v$VERSION" HEAD 2>/dev/null || true)
           echo "Snippets added since ${PREVIOUS:-the beginning}"
-          node scripts/changelog.mjs combine $PREVIOUS > release-notes.md
+          node scripts/changelog.mjs release $PREVIOUS > release-notes.md
           if [ ! -s release-notes.md ]; then
             echo "::error::No changelog snippets were added since ${PREVIOUS:-the beginning}. See changelog/README.md."
             exit 1
