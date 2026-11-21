@@ -65,8 +65,9 @@ To see what the next release would say:
 node scripts/changelog.mjs combine "$(git describe --tags --abbrev=0 --match 'v*')"
 ```
 
-CI runs `node scripts/changelog.mjs verify`, which fails on a misnamed or empty
-snippet, so a typo in a file name cannot silently drop a line from the release.
+CI runs `node scripts/changelog.mjs verify`, which rejects misnamed or empty snippets and requires any highlights snippet to contain 3 to 7 top-level bullets, each on one line.
+
+Before opening a draft or building installers, the Release workflow runs `node scripts/changelog.mjs release <previous tag>`. This requires exactly one new `highlights.<pr>.md` snippet in that release's changes. Missing highlights, duplicate summaries and summaries from older releases cannot satisfy the check. Use this command locally to check the release before dispatching the workflow; `combine` remains available for previews without highlights.
 
 This is the scheme FAForever/fa uses for its game patch notes
 (`changelog/snippets` there), trimmed to the categories a client needs.
@@ -91,18 +92,14 @@ This is the scheme FAForever/fa uses for its game patch notes
 
 ## Highlights
 
-The pull request that bumps the version for a release carries one more
-snippet, `highlights.<pr>.md`: 3 to 5 lines for the whole release, the changes
-that matter most to players, written like any other snippet.
+The pull request that bumps the version for a release carries one more snippet, `highlights.<pr>.md`: 3 to 7 bullet points for the whole release, the changes that matter most to players, written like any other snippet.
 
 ```markdown
 - The client's own release notes, in the Changelog tab.
 - A short "What's new" after every update.
+- Replay searches remember your chosen filters.
 ```
 
-They lead the release notes, ahead of Features, and they lead the client's
-What's new window after the update, which lists every change of the release
-below them, section by section. The window finds them by their heading, so
-`Highlights` stays `Highlights`. A release without them still goes out, but
-the window then opens on the oldest pull requests' features rather than on
-the changes that matter most.
+They lead the release notes, ahead of Features, and they lead the client's What's new window after the update, which lists every change of the release below them, section by section. The window finds them by their heading, so `Highlights` stays `Highlights`. The Release workflow refuses to proceed without them.
+
+To correct highlights after publishing, edit the existing release description: keep any Required update notice first and put `### Highlights` before `### Features`. Keep the published tag and installers unchanged. Do not add a past release's highlights to the next release's snippets.
