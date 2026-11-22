@@ -54,6 +54,7 @@ interface DialogProps {
  */
 export function UpdateGateDialog({ release, status, waiting = false, onDefer }: DialogProps) {
   const { t } = useTranslation();
+  const title = t("updates.required.title");
   const restarts = installerRestartsClient(release);
   const percent = updatePercent(status);
   const notesUrl = optionalHttpsUrl(release.notesUrl);
@@ -65,12 +66,10 @@ export function UpdateGateDialog({ release, status, waiting = false, onDefer }: 
       onClose={() => undefined}
       dismissible={false}
       className="update-gate"
-      ariaLabel={t("updates.required.title")}
+      ariaLabel={title}
     >
-      <h2 className="update-gate-title">
-        {t("updates.required.heading", { version: release.version })}
-      </h2>
-      <p className="update-gate-why">{t("updates.required.why")}</p>
+      <h2 className="update-gate-title">{title}</h2>
+      <p className="update-gate-why">{t("updates.required.why", { version: release.version })}</p>
 
       {/* Whatever the client is doing about it right now: the progress of a
           download, the instruction after one, or the reason the last attempt

@@ -167,9 +167,9 @@ describe("UpdateNotice states", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     applyEvent({ kind: "ClientUpdate", event: { type: "overdue" } });
     const gate = screen.getByRole("dialog", { name: "Update required" });
-    expect(screen.getByRole("heading", { name: "Update to 0.9.0" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Update required" })).toBeDefined();
     expect(Array.from(gate.querySelectorAll("p"), (line) => line.textContent)).toEqual([
-      "Install to continue.",
+      "Install version 0.9.0 to continue.",
       "The installer is 1 KB.",
     ]);
     expect(screen.queryByRole("button", { name: "Update available" })).toBeNull();
