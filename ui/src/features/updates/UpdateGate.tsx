@@ -19,7 +19,6 @@ import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import { updatePercent } from "../../store/reducers/clientUpdate";
 import { formatSize } from "../../shared/format/installerSize";
-import { formatDate } from "../../shared/format/dates";
 import { installerRestartsClient } from "./installerCopy";
 import { useGatedUpdate } from "./useGatedUpdate";
 import "./updates.css";
@@ -33,14 +32,13 @@ export function UpdateGate({ deferredVersion = null, onDefer }: { deferredVersio
   const update = useAppStore((s) => s.state.clientUpdate);
   const release = useGatedUpdate(deferredVersion);
   if (release === null) return null;
-  return <UpdateGateDialog release={release} status={update.status} currentVersion={update.currentVersion}
+  return <UpdateGateDialog release={release} status={update.status}
     waiting={update.installWaiting === true} onDefer={onDefer ? () => onDefer(release.version) : undefined} />;
 }
 
 interface DialogProps {
   release: ClientRelease;
   status: ClientUpdateState["status"];
-  currentVersion: string;
   /** Install is held until the last game has finished saving. */
   waiting?: boolean;
   /** Carry on without the update for this session; offered after a failure. */
@@ -54,12 +52,13 @@ interface DialogProps {
  * repository has no DOM in its test environment, and anything that reads the
  * store renders as though the store were empty.
  */
-export function UpdateGateDialog({ release, status, currentVersion, waiting = false, onDefer }: DialogProps) {
+export function UpdateGateDialog({ release, status, waiting = false, onDefer }: DialogProps) {
   const { t } = useTranslation();
   const restarts = installerRestartsClient(release);
   const percent = updatePercent(status);
   const notesUrl = optionalHttpsUrl(release.notesUrl);
   const size = formatSize(release.sizeBytes);
+  const statusText = waiting && status.type === "ready" ? t("updates.waitingForGame") : describe(status, restarts, t);
 
   return (
     <Modal
@@ -72,14 +71,6 @@ export function UpdateGateDialog({ release, status, currentVersion, waiting = fa
         {t("updates.required.heading", { version: release.version })}
       </h2>
       <p className="update-gate-why">{t("updates.required.why")}</p>
-      {release.publishedAt && !Number.isNaN(Date.parse(release.publishedAt)) && <p className="update-gate-versions muted">{t("updates.required.since", { date: formatDate(release.publishedAt) })}</p>}
-      <p className="update-gate-versions muted">
-        {t("updates.required.from", {
-          current: currentVersion,
-          version: release.version,
-        })}
-        {size ? ` ${t("updates.installerSize", { size })}` : ""}
-      </p>
 
       {/* Whatever the client is doing about it right now: the progress of a
           download, the instruction after one, or the reason the last attempt
@@ -96,7 +87,7 @@ export function UpdateGateDialog({ release, status, currentVersion, waiting = fa
         // itself says them plainly.
         title={status.type === "failed" ? status.payload.reason : undefined}
       >
-        {waiting && status.type === "ready" ? t("updates.waitingForGame") : describe(status, restarts, t)}
+        {statusText ?? (size ? t("updates.installerSize", { size }) : null)}
       </p>
       {percent !== null && (
         <div className="update-gate-progress" aria-hidden="true">
@@ -149,7 +140,7 @@ function describe(
   status: ClientUpdateState["status"],
   restarts: boolean,
   t: ReturnType<typeof useTranslation>["t"],
-): string {
+): string | null {
   switch (status.type) {
     case "downloading": {
       const percent = updatePercent(status);
@@ -164,6 +155,6 @@ function describe(
     case "failed":
       return plainError(status.payload.reason);
     default:
-      return t("updates.installerReady");
+      return null;
   }
 }
