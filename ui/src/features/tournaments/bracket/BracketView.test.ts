@@ -3,8 +3,15 @@
 // pure, and both are the part that used to be guessed at from column geometry.
 
 import { describe, expect, it } from "vitest";
-import { columnLayouts, feedsForward, groupIntoSides, withGrandFinalInWinners } from "./BracketView";
-import { match } from "../fixtures";
+import {
+  columnLayouts,
+  feedsForward,
+  groupIntoSides,
+  matchDivision,
+  sideDeepestRound,
+  withGrandFinalInWinners,
+} from "./BracketView";
+import { match, team, tourney } from "../fixtures";
 
 /** A four-team double-elimination draw, as the server links it. */
 const doubleElimination = [
@@ -178,5 +185,42 @@ describe("columnLayouts", () => {
     ])[0].columns;
     expect(columnLayouts(swiss).map((held) => held.link)).toEqual(["none", "none"]);
     expect(columnLayouts(swiss).map((held) => held.pitch)).toEqual([1, 1]);
+  });
+});
+
+describe("matchDivision", () => {
+  const event = tourney({
+    divisions: 2,
+    teams: [
+      team({ id: "k1", division: 1 }),
+      team({ id: "k2", division: 1 }),
+      team({ id: "p1", division: 2 }),
+    ],
+  });
+
+  it("uses the match's own division when present", () => {
+    expect(matchDivision(event, match({ division: 2, team1: "k1", team2: "k2" }))).toBe(2);
+  });
+
+  it("infers the division when a multi-division grand final left division unset", () => {
+    expect(matchDivision(event, match({ bracket: "grandFinal", division: 0, team1: "k1", team2: "k2" }))).toBe(1);
+    expect(matchDivision(event, match({ bracket: "grandFinal", division: 0, team1: "k1", team2: "p1" }))).toBe(0);
+  });
+});
+
+describe("sideDeepestRound", () => {
+  it("steps past winners rounds when a single-elim or stepladder winners column feeds a grand final", () => {
+    const stepladder = withGrandFinalInWinners(
+      groupIntoSides([
+        match({ id: "semi", bracket: "winners", round: 1, winnerTo: { matchId: "gf", slot: 2 } }),
+        match({ id: "gf", bracket: "grandFinal", round: 1 }),
+      ]),
+    )[0];
+    expect(sideDeepestRound(tourney({ bracketKind: "swiss" }), stepladder, false)).toBe(2);
+  });
+
+  it("keeps double elimination winners rounds measured against winners rounds only", () => {
+    const [winners] = withGrandFinalInWinners(groupIntoSides(doubleElimination));
+    expect(sideDeepestRound(tourney({ bracketKind: "double" }), winners, true)).toBe(2);
   });
 });

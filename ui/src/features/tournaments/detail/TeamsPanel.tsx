@@ -11,26 +11,25 @@
 // the way the service will resolve it: the full teams that are in, the full
 // teams waiting beyond the cap, the free agents, and the teams still forming.
 // Places go by when a team filled up; rating only decides the seed. Once the
-// field is locked there is one grid, in seed order, and nothing left to form:
+// field is locked, rosters follow seed order within their assigned division:
 // the service refuses every team action from then on.
 //
-// Laid out as the Overview and the Players section are: the teams on the left,
-// each group in its own card, and in a narrower column on the right how full
-// the field is, the check-in, starting a team and how places are given out.
-// The rules used to sit as paragraphs above every grid, which pushed the teams
-// themselves below the fold; they are reference, so they moved aside.
+// During signup, team formation and check-in tools sit beside the rosters.
+// Once the field is locked, a summary above the divisions leaves the full
+// width to the teams and keeps the reserve list close to its count.
 //
 // Invitations addressed to this account sit at the top, because they are the
 // one thing in the pane that is waiting on the reader rather than on somebody
 // else.
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { PlayerSummary, Tourney, TourneyAdmin, TourneyPlayer, TourneyTeam } from "../../../ipc/bindings";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { EntrantName } from "../EntrantName";
 import { PlayerTable } from "../PlayerTable";
+import { divisionLabel } from "../bracket/bracketPresentation";
 import { fieldSummary } from "../entrantsPresentation";
 import { formatMoment } from "../tourneyPresentation";
 import {
@@ -152,9 +151,22 @@ export function TeamsPanel(props: TeamsPanelProps) {
     />
   );
 
+  const fieldPanel = (
+    <FieldPanel
+      event={event}
+      open={open}
+      forming={forming.length}
+      freeAgents={freeAgents.length}
+      reserveList={!open && freeAgents.length > 0
+        ? <PlayerTable event={event} profiles={props.profiles} players={freeAgents} />
+        : undefined}
+    />
+  );
+
   return (
     <div className="tournament-columns tournament-teams">
       <div className="tournament-columns-main">
+        {!open && fieldPanel}
         {event.premadeTeams && event.teamSize > 1 && event.status === "signup" && (
           <PremadeTeams event={event} busy={busy} onAdmin={props.onAdmin} />
         )}
@@ -257,44 +269,29 @@ export function TeamsPanel(props: TeamsPanelProps) {
         )}
 
         {!open && event.teams.length > 0 && (
-          <TeamSection title={t("tournaments.section.teams")} count={String(event.teams.length)}>
-            <ul className="tournament-team-grid">
-              {[...event.teams].sort(byStanding(event, display.streamer)).map((team) => card(team))}
-            </ul>
-          </TeamSection>
+          <TeamRoster
+            divisions={event.divisions}
+            teams={[...event.teams].sort(byStanding(event, display.streamer))}
+            renderTeam={card}
+          />
         )}
 
-        {/* The free agents: everyone who has entered and has no team.
-            Before the field is locked they are players still looking, and a
-            captain with room invites them from here. Afterwards they are the
-            service's `subs`, which is the same people under a different name:
-            a team that never filled up is dissolved and its members land here,
-            as do the members of any team the entrant cap pushed out. */}
-        {freeAgents.length > 0 &&
-          (open ? (
-            <FreeAgents
-              event={event}
-              players={freeAgents}
-              profiles={props.profiles}
-              busy={busy}
-              sort={sort}
-              recruiting={recruiting}
-              onSort={setSort}
-              onInvite={props.teams.invite}
-              onCancelInvite={(teamId, playerId) =>
-                props.onAdmin({ type: "cancelTeamInvite", payload: { teamId, playerId } })
-              }
-              onFromFreeAgent={organiser ? () => setDialog({ kind: "fromFreeAgent" }) : null}
-            />
-          ) : (
-            <TeamSection
-              title={t("tournaments.teams.freeAgents")}
-              count={String(freeAgents.length)}
-              hint={t("tournaments.teams.freeAgentsReserve")}
-            >
-              <PlayerTable event={event} profiles={props.profiles} players={freeAgents} />
-            </TeamSection>
-          ))}
+        {open && freeAgents.length > 0 && (
+          <FreeAgents
+            event={event}
+            players={freeAgents}
+            profiles={props.profiles}
+            busy={busy}
+            sort={sort}
+            recruiting={recruiting}
+            onSort={setSort}
+            onInvite={props.teams.invite}
+            onCancelInvite={(teamId, playerId) =>
+              props.onAdmin({ type: "cancelTeamInvite", payload: { teamId, playerId } })
+            }
+            onFromFreeAgent={organiser ? () => setDialog({ kind: "fromFreeAgent" }) : null}
+          />
+        )}
 
         {open && forming.length > 0 && (
           <TeamSection
@@ -307,80 +304,82 @@ export function TeamsPanel(props: TeamsPanelProps) {
         )}
       </div>
 
-      <aside className="tournament-columns-aside">
-        {canForm && (
-          <section className="tournament-panel">
-            <h4>{t("tournaments.teams.createLabel")}</h4>
-            <form
-              className="tournament-team-create"
-              onSubmit={(submitted) => {
-                submitted.preventDefault();
-                if (newName.trim() === "") return;
-                props.teams.create(newName);
-                setNewName("");
-              }}
-            >
-              <input
-                value={newName}
-                onChange={(changed) => setNewName(changed.target.value)}
-                placeholder={t("tournaments.teams.createPlaceholder")}
-                aria-label={t("tournaments.teams.createPlaceholder")}
-                maxLength={30}
-              />
-              <Button type="submit" variant="primary" disabled={busy || newName.trim() === ""}>
-                <Icon name="plus" size={16} /> {t("tournaments.teams.create")}
-              </Button>
-            </form>
-            <p className="muted tournament-team-aside-note">
-              {t("tournaments.teams.createHint", { size: event.teamSize })}
-            </p>
-          </section>
-        )}
+      {open && (
+        <aside className="tournament-columns-aside">
+          {canForm && (
+            <section className="tournament-panel">
+              <h4>{t("tournaments.teams.createLabel")}</h4>
+              <form
+                className="tournament-team-create"
+                onSubmit={(submitted) => {
+                  submitted.preventDefault();
+                  if (newName.trim() === "") return;
+                  props.teams.create(newName);
+                  setNewName("");
+                }}
+              >
+                <input
+                  value={newName}
+                  onChange={(changed) => setNewName(changed.target.value)}
+                  placeholder={t("tournaments.teams.createPlaceholder")}
+                  aria-label={t("tournaments.teams.createPlaceholder")}
+                  maxLength={30}
+                />
+                <Button type="submit" variant="primary" disabled={busy || newName.trim() === ""}>
+                  <Icon name="plus" size={16} /> {t("tournaments.teams.create")}
+                </Button>
+              </form>
+              <p className="muted tournament-team-aside-note">
+                {t("tournaments.teams.createHint", { size: event.teamSize })}
+              </p>
+            </section>
+          )}
 
-        {myPlayerId === null && open && (
-          <section className="tournament-panel">
-            <p className="muted tournament-team-aside-note">{t("tournaments.teams.enterFirst")}</p>
-          </section>
-        )}
+          {myPlayerId === null && (
+            <section className="tournament-panel">
+              <p className="muted tournament-team-aside-note">{t("tournaments.teams.enterFirst")}</p>
+            </section>
+          )}
 
-        <FieldPanel event={event} open={open} forming={forming.length} freeAgents={freeAgents.length} />
+          {fieldPanel}
 
-        {open && event.checkInDeadline !== null && (
-          <section className="tournament-panel">
-            <h4>{t("tournaments.teams.checkInTitle")}</h4>
-            <p
-              className={
-                event.checkInDeadline < now
-                  ? "tournament-team-checkin is-passed"
-                  : "tournament-team-checkin"
-              }
-            >
-              <span>
-                {t(event.checkInDeadline < now ? "tournaments.teams.deadlinePassed" : "tournaments.teams.deadline", {
-                  when: formatMoment(event.checkInDeadline, ""),
-                })}
-              </span>
-            </p>
-          </section>
-        )}
+          {event.checkInDeadline !== null && (
+            <section className="tournament-panel">
+              <h4>{t("tournaments.teams.checkInTitle")}</h4>
+              <p
+                className={
+                  event.checkInDeadline < now
+                    ? "tournament-team-checkin is-passed"
+                    : "tournament-team-checkin"
+                }
+              >
+                <span>
+                  {t(event.checkInDeadline < now ? "tournaments.teams.deadlinePassed" : "tournaments.teams.deadline", {
+                    when: formatMoment(event.checkInDeadline, ""),
+                  })}
+                </span>
+              </p>
+            </section>
+          )}
 
-        {open && event.teams.length > 0 && (
-          <section className="tournament-panel">
-            <h4>{t("tournaments.teams.howPlaces")}</h4>
-            <ul className="tournament-team-rules">
-              <li>{t("tournaments.teams.firstCome")}</li>
-              {event.maxTeams > 0 && <li>{t("tournaments.teams.signUpAnyway")}</li>}
-              {event.minTeams > 0 && (
-                <li>
-                  {event.maxTeams > 0
-                    ? t("tournaments.teams.minMax", { min: event.minTeams, max: event.maxTeams })
-                    : t("tournaments.teams.minOnly", { min: event.minTeams })}
-                </li>
-              )}
-            </ul>
-          </section>
-        )}
-      </aside>
+          {event.teams.length > 0 && (
+            <section className="tournament-panel">
+              <h4>{t("tournaments.teams.howPlaces")}</h4>
+              <ul className="tournament-team-rules">
+                <li>{t("tournaments.teams.firstCome")}</li>
+                {event.maxTeams > 0 && <li>{t("tournaments.teams.signUpAnyway")}</li>}
+                {event.minTeams > 0 && (
+                  <li>
+                    {event.maxTeams > 0
+                      ? t("tournaments.teams.minMax", { min: event.minTeams, max: event.maxTeams })
+                      : t("tournaments.teams.minOnly", { min: event.minTeams })}
+                  </li>
+                )}
+              </ul>
+            </section>
+          )}
+        </aside>
+      )}
 
       {dialog?.kind === "captain" && (
         <ChangeCaptainDialog
@@ -438,11 +437,53 @@ function byStanding(event: Tourney, streamer: boolean) {
   };
 }
 
-/**
- * One group of the field in its own card: the heading with its count beside
- * it, the right-hand tools if there are any, one line of what the group means,
- * and the teams.
- */
+/** Rosters follow the service's division assignments, keeping the caller's order in each group. */
+export function TeamRoster({
+  divisions,
+  teams,
+  renderTeam,
+}: {
+  divisions: number;
+  teams: TourneyTeam[];
+  renderTeam: (team: TourneyTeam) => ReactNode;
+}) {
+  const { t } = useTranslation();
+  const grouped = new Map<number, TourneyTeam[]>();
+  if (divisions > 1) {
+    for (const team of teams) {
+      if (team.division < 1 || team.division > divisions) continue;
+      const assigned = grouped.get(team.division);
+      if (assigned === undefined) grouped.set(team.division, [team]);
+      else assigned.push(team);
+    }
+  }
+
+  if (grouped.size === 0) {
+    return (
+      <TeamSection title={t("tournaments.section.teams")} count={String(teams.length)}>
+        <ul className="tournament-team-grid">{teams.map((team) => renderTeam(team))}</ul>
+      </TeamSection>
+    );
+  }
+
+  const unassigned = teams.filter((team) => !grouped.has(team.division));
+  return (
+    <>
+      {[...grouped.entries()].sort(([a], [b]) => a - b).map(([division, assigned]) => (
+        <TeamSection key={division} title={divisionLabel(division, t)} count={String(assigned.length)}>
+          <ul className="tournament-team-grid">{assigned.map((team) => renderTeam(team))}</ul>
+        </TeamSection>
+      ))}
+      {unassigned.length > 0 && (
+        <TeamSection title={t("tournaments.teams.unassignedDivision")} count={String(unassigned.length)}>
+          <ul className="tournament-team-grid">{unassigned.map((team) => renderTeam(team))}</ul>
+        </TeamSection>
+      )}
+    </>
+  );
+}
+
+/** A roster panel with its heading, count, and optional tools. */
 export function TeamSection({
   title,
   count,
@@ -482,19 +523,24 @@ function FieldPanel({
   open,
   forming,
   freeAgents,
+  reserveList,
 }: {
   event: Tourney;
   open: boolean;
   forming: number;
   freeAgents: number;
+  reserveList?: ReactNode;
 }) {
   const { t } = useTranslation();
+  const [showReserves, setShowReserves] = useState(false);
+  const reservesId = useId();
   const field = fieldSummary(event);
   const filled = field.max > 0 ? Math.min(1, field.count / field.max) : 0;
   const enough = field.min === 0 || field.count >= field.min;
   const checkedIn = event.teams.filter((team) => team.checkedIn).length;
-  return (
-    <section className="tournament-panel">
+
+  const size = (
+    <div className="tournament-team-field-size">
       <h4>{t("tournaments.entrants.field")}</h4>
       <div className="tournament-field-count">
         <span className="tournament-field-number">{field.count}</span>
@@ -511,23 +557,55 @@ function FieldPanel({
           )}
         </div>
       )}
-      <dl className="tournament-field-ratings">
-        {open ? (
-          <div>
-            <dt>{t("tournaments.teams.forming")}</dt>
-            <dd>{forming}</dd>
-          </div>
-        ) : (
-          <div>
-            <dt>{t("tournaments.entrants.checkedIn")}</dt>
-            <dd>{checkedIn}</dd>
-          </div>
-        )}
+    </div>
+  );
+  const counts = (
+    <dl className="tournament-field-ratings">
+      <div>
+        <dt>{t(open ? "tournaments.teams.forming" : "tournaments.entrants.checkedIn")}</dt>
+        <dd>{open ? forming : checkedIn}</dd>
+      </div>
+      {reserveList === undefined && (
         <div>
-          <dt>{t("tournaments.teams.freeAgents")}</dt>
+          <dt>{t(open ? "tournaments.teams.freeAgents" : "tournaments.teams.reserves")}</dt>
           <dd>{freeAgents}</dd>
         </div>
-      </dl>
+      )}
+    </dl>
+  );
+
+  if (open) {
+    return <section className="tournament-panel">{size}{counts}</section>;
+  }
+
+  return (
+    <section className="tournament-panel tournament-team-field is-compact">
+      <div className="tournament-team-field-row">
+        {size}
+        {counts}
+        {reserveList !== undefined && (
+          <Button
+            className="tournament-team-field-reserve-toggle"
+            aria-expanded={showReserves}
+            aria-controls={reservesId}
+            onClick={() => setShowReserves((shown) => !shown)}
+          >
+            {t("tournaments.teams.reserves")}
+            <span className="mono">{freeAgents}</span>
+            <Icon name={showReserves ? "chevronUp" : "chevronDown"} size={14} />
+          </Button>
+        )}
+      </div>
+      {reserveList !== undefined && (
+        <div id={reservesId} className="tournament-team-field-reserve-list" hidden={!showReserves}>
+          {showReserves && (
+            <>
+              <p className="muted">{t("tournaments.teams.freeAgentsReserve")}</p>
+              {reserveList}
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }

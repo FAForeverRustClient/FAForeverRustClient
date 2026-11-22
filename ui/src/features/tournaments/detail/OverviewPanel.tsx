@@ -15,6 +15,7 @@
 // site-wide articles are links under it rather than a page of their own.
 
 import { useState } from "react";
+import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
 import type { Article, Tourney, TourneyMatch } from "../../../ipc/bindings";
 import type { MessageKey } from "../../../i18n";
@@ -137,14 +138,17 @@ export function OverviewPanel({
             the time. */}
         {latest !== undefined && event.status !== "finished" && (
           <section className={latest.important ? "tournament-panel tournament-latest is-important" : "tournament-panel tournament-latest"}>
-            <div className="tournament-latest-head">
-              <h4>{t("tournaments.overview.latestNews")}</h4>
-              {latest.at !== null && <span className="tournament-latest-when">{formatMoment(latest.at, "")}</span>}
+            <div className="tournament-overview-panel-heading">
+              <div className="tournament-latest-head">
+                <h4>{t("tournaments.overview.latestNews")}</h4>
+                {latest.at !== null && <span className="tournament-latest-when">{formatMoment(latest.at, "")}</span>}
+              </div>
+              <Button onClick={() => onOpenSection("news")}>
+                {t("tournaments.overview.allNews")}
+                <Icon name="arrowRight" size={14} />
+              </Button>
             </div>
             <RichText source={latest.body} assetBase={assetBase} className="tournament-latest-body" />
-            <button type="button" className="tournament-link-button tournament-latest-all" onClick={() => onOpenSection("news")}>
-              {t("tournaments.overview.allNews")} {"→"}
-            </button>
           </section>
         )}
 
@@ -402,12 +406,20 @@ export function OverviewPanel({
   );
 }
 
-/** The website's Recent results panel: the eight latest done matches. */
+/** The eight latest completed matches. */
 function RecentResults({ event, onOpenMatches }: { event: Tourney; onOpenMatches: () => void }) {
   const { t } = useTranslation();
   const done = recentResults(event);
+  const title = t("tournaments.overview.recentResults");
   return (
-    <Panel title={t("tournaments.overview.recentResults")}>
+    <section className="tournament-panel tournament-results-panel" aria-label={title}>
+      <div className="tournament-overview-panel-heading">
+        <h4>{title}</h4>
+        <Button onClick={onOpenMatches}>
+          {t("tournaments.section.matches")}
+          <Icon name="arrowRight" size={14} />
+        </Button>
+      </div>
       {done.length === 0 ? (
         <p className="muted">{t("tournaments.overview.noResults")}</p>
       ) : (
@@ -417,64 +429,70 @@ function RecentResults({ event, onOpenMatches }: { event: Tourney; onOpenMatches
           ))}
         </ol>
       )}
-      <p className="muted tournament-recent-footer">
-        <RichLine text={t("tournaments.overview.recentFooter")} onLink={onOpenMatches} />
-      </p>
-    </Panel>
+    </section>
   );
 }
 
-/** One result: the round, the record it was paired on, who won, the maps. */
 function ResultRow({ event, entry }: { event: Tourney; entry: TourneyMatch }) {
   const { t } = useTranslation();
   const record = swissMatchRecord(entry, swissRecordsBefore(event.matches, entry.round));
   const maps = roundMapNames(event, entry);
   const name = (teamId: string | null) => teamNameOf(event, teamId) ?? t("tournaments.bracket.tbd");
-  // A walkover stores the forfeiting side's score as -1. The website prints
-  // the number; FF is what it means.
+  const side = (teamId: string | null) => (
+    <span className={teamId !== null && teamId === entry.winner ? "is-winner" : undefined}>
+      <bdi>{name(teamId)}</bdi>
+    </span>
+  );
+  // A walkover stores the forfeiting side's score as -1.
   const score = (value: number | null) =>
     value !== null && value < 0 ? t("tournaments.match.forfeitShort") : String(value ?? 0);
 
   return (
     <li className="tournament-recent-row">
-      <span className="tournament-recent-round mono">{resultRoundLabel(event, entry, t)}</span>
-      {record !== null && (
-        <span className="tournament-swiss-record mono" title={t("tournaments.swiss.recordHint")}>
-          {record}
-        </span>
-      )}
-      {entry.bracket === "freeForAll" ? (
-        <span className="tournament-recent-teams">
-          {entry.entrants.map((teamId, index) => (
-            <span key={teamId}>
-              {index > 0 && <span className="tournament-recent-vs"> · </span>}
-              <span className={entry.winners.includes(teamId) ? "is-winner" : undefined}>{name(teamId)}</span>
-            </span>
-          ))}
-        </span>
-      ) : (
-        <>
-          <span className="tournament-recent-teams">
-            <span className={entry.winner !== null && entry.winner === entry.team1 ? "is-winner" : undefined}>
-              {name(entry.team1)}
-            </span>
-            <span className="tournament-recent-vs mono">{t("tournaments.swiss.vs")}</span>
-            <span className={entry.winner !== null && entry.winner === entry.team2 ? "is-winner" : undefined}>
-              {name(entry.team2)}
-            </span>
-          </span>
-          {entry.score1 !== null && (
-            <span className="tournament-recent-score mono">
-              {score(entry.score1)} – {score(entry.score2)}
-            </span>
-          )}
-        </>
-      )}
-      {maps.length > 0 && (
-        <span className="mono muted tournament-recent-maps" title={t("tournaments.recent.maps")}>
-          {maps.map((map, index) => t("tournaments.recent.gameMap", { game: index + 1, name: map })).join(" · ")}
-        </span>
-      )}
+      <div className="tournament-recent-stage">
+        <span className="tournament-recent-round">{resultRoundLabel(event, entry, t)}</span>
+        {event.divisions > 1 && entry.division > 0 && (
+          <span>{divisionLabel(entry.division, t)}</span>
+        )}
+      </div>
+      <div className="tournament-recent-result">
+        {entry.bracket === "freeForAll" ? (
+          <div className="tournament-recent-entrants">
+            {entry.entrants.map((teamId, index) => (
+              <span key={teamId}>
+                {index > 0 && " · "}
+                <bdi className={entry.winners.includes(teamId) ? "is-winner" : undefined}>{name(teamId)}</bdi>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="tournament-recent-matchup">
+            {side(entry.team1)}
+            {entry.score1 === null ? (
+              <span className="tournament-recent-vs">{t("tournaments.swiss.vs")}</span>
+            ) : (
+              <span className="tournament-recent-score" dir="ltr">
+                {`${score(entry.score1)} – ${score(entry.score2)}`}
+              </span>
+            )}
+            {side(entry.team2)}
+          </div>
+        )}
+        {(record !== null || maps.length > 0) && (
+          <div className="tournament-recent-meta">
+            {maps.length > 0 && (
+              <span title={t("tournaments.recent.maps")}>
+                {maps.length === 1
+                  ? maps[0]
+                  : maps.map((map, index) => t("tournaments.recent.gameMap", { game: index + 1, name: map })).join(" · ")}
+              </span>
+            )}
+            {record !== null && (
+              <span title={t("tournaments.swiss.recordHint")}>{t("tournaments.swiss.group", { record })}</span>
+            )}
+          </div>
+        )}
+      </div>
     </li>
   );
 }
