@@ -1,0 +1,16 @@
+- Switching tournament tabs keeps the header in place.
+- Short tournament sections stop scrolling at the end of their content.
+- Recent Results aligns scores between the teams.
+- Latest Update puts the date and All Updates button above the announcement.
+- Teams are grouped by their assigned division.
+- Team rosters use the full width once signups close.
+- The reserve list opens from the field summary above the rosters.
+- Removed stray row numbers from team cards.
+- Division standings sit side by side when space allows.
+- The Rounds division selector switches Swiss rounds and playoffs together.
+- Winners-bracket play-ins before a grand final are labeled as semifinals.
+- Swiss rounds align match scores.
+- Swiss rounds show each record group once.
+- All rounds displays two columns in wide windows.
+- Swiss rounds show player names when Show players is enabled.
+- Streamer mode hides Swiss match scores.

@@ -45,7 +45,7 @@ import { MatchActions, TeamName, teamNameOf } from "./matchParts";
 import { feedersOf, matchLabel } from "./matchLabels";
 import { useTourneyDisplay } from "../display";
 import { PreviewBracket, RoundMapBlock, StopNotice } from "./BracketParts";
-import { bracketPreview, columnLabel, divisionLabel, isPhantom, neverPlayed } from "./bracketPresentation";
+import { BYE, bracketPreview, columnLabel, divisionLabel, isPhantom, neverPlayed } from "./bracketPresentation";
 import { SwissRounds } from "./SwissRounds";
 import { PickPhasePanel } from "./PickPhasePanel";
 import { RoundOneEditor } from "./RoundOneEditor";
@@ -199,6 +199,45 @@ export function columnLayouts(columns: Column[]): ColumnLayout[] {
   });
 }
 
+/**
+ * The division a match belongs to, from its own field or from the teams in it
+ * when a multi-division event left a grand final's division unset.
+ */
+export function matchDivision(event: Tourney, entry: TourneyMatch): number {
+  if (entry.division > 0) return entry.division;
+  if (event.divisions <= 1) return 0;
+  const divisions = [entry.team1, entry.team2]
+    .filter((id): id is string => id !== null && id !== BYE)
+    .map((id) => event.teams.find((team) => team.id === id)?.division ?? 0)
+    .filter((division) => division > 0);
+  if (divisions.length === 0) return 0;
+  return divisions.every((division) => division === divisions[0]) ? divisions[0] : 0;
+}
+
+/**
+ * The deepest round number `columnLabel` measures a side's own columns against.
+ *
+ * `withGrandFinalInWinners` appends the grand final onto the winners side, so
+ * taking `max` across every column let the grand final's round skew winners
+ * column names. When a single-elimination or stepladder winners column feeds
+ * straight into a grand final, stepping one past its own rounds labels that
+ * column Semi-final instead of Final beside Grand final.
+ */
+export function sideDeepestRound(event: Tourney, side: Side, hasLosers: boolean): number {
+  const ownRounds = side.columns.filter((column) => column.bracket === undefined).map((column) => column.round);
+  const maxOwn = ownRounds.length > 0 ? Math.max(...ownRounds) : 1;
+  const hasGrandFinal = side.columns.some((column) => column.bracket === "grandFinal");
+  const isDouble =
+    event.bracketKind === "double" ||
+    event.playoffs?.double === true ||
+    event.stageTwoPlan?.double === true ||
+    hasLosers;
+  if (side.bracket === "winners" && hasGrandFinal && !isDouble) {
+    return maxOwn + 1;
+  }
+  return maxOwn;
+}
+
 interface BracketViewProps {
   event: Tourney;
   profiles: PlayerSummary[];
@@ -331,27 +370,42 @@ export const BracketView = memo(function BracketView({
         : swissDivisionList.includes(ownDivision)
           ? ownDivision
           : 1;
-  const swissEvent = shownDivision > 0 ? swissDivisionEvent(event, shownDivision) : event;
-  const playoffs = event.matches.filter(
+  const swissEvent =
+    shownDivision > 0
+      ? {
+          ...swissDivisionEvent(event, shownDivision),
+          matches: event.matches.filter((entry) => matchDivision(event, entry) === shownDivision),
+        }
+      : event;
+  const allPlayoffs = event.matches.filter(
     (entry) => entry.bracket === "winners" || entry.bracket === "losers",
   );
+  // Multi-division Swiss events can run a playoff per division (each match
+  // tagged with its division). Scope those playoffs to the active division so
+  // two divisions' playoff rounds never merge into one column.
+  const dividedPlayoffs =
+    swissDivisionList.length > 0 && allPlayoffs.some((entry) => matchDivision(event, entry) > 0);
+  const playoffs = dividedPlayoffs
+    ? swissEvent.matches.filter((entry) => entry.bracket === "winners" || entry.bracket === "losers")
+    : allPlayoffs;
   const drawn = (
     swissStage
       ? playoffs.length > 0
-        ? event.matches.filter((entry) => entry.bracket !== "swiss")
+        ? (dividedPlayoffs ? swissEvent.matches : event.matches).filter((entry) => entry.bracket !== "swiss")
         : []
       : event.matches
   ).filter((entry) => entry.bracket !== "thirdPlace");
   // Divisions are separate brackets, each under its own name, as the website
   // draws them: grouped by round alone, two divisions' first rounds merged
   // into one column.
-  const blocks =
+  const blocks = (
     event.divisions > 1 && !swissStage
       ? Array.from({ length: event.divisions }, (_, index) => ({
           division: index + 1,
-          sides: withGrandFinalInWinners(groupIntoSides(drawn.filter((entry) => entry.division === index + 1))),
-        })).filter((block) => block.sides.length > 0)
-      : [{ division: 0, sides: withGrandFinalInWinners(groupIntoSides(drawn)) }];
+          sides: withGrandFinalInWinners(groupIntoSides(drawn.filter((entry) => matchDivision(event, entry) === index + 1))),
+        }))
+      : [{ division: dividedPlayoffs ? shownDivision : 0, sides: withGrandFinalInWinners(groupIntoSides(drawn)) }]
+  ).filter((block) => block.sides.length > 0);
   const sides = blocks.flatMap((block) => block.sides);
   const feeders = feedersOf(event.matches);
   /**
@@ -506,10 +560,34 @@ export const BracketView = memo(function BracketView({
     </div>
   );
   const builtPlayoffs = swissStage && event.playoffs !== null && event.playoffs.built ? event.playoffs : null;
+  const playoffsTitle =
+    builtPlayoffs !== null
+      ? t(builtPlayoffs.double ? "tournaments.playoffs.headDouble" : "tournaments.playoffs.headSingle", {
+          count: builtPlayoffs.cutTo,
+        })
+      : t("tournaments.swiss.playoffs");
+  const inlinePlayoffHead = swissStage && sides.length === 1;
+  const divisionNav =
+    swissDivisionList.length > 0 ? (
+      <nav className="tournament-round-nav tournament-division-nav" aria-label={t("tournaments.swiss.divisionNav")}>
+        {swissDivisionList.map((division) => (
+          <button
+            type="button"
+            key={division}
+            className={shownDivision === division ? "is-active" : undefined}
+            aria-pressed={shownDivision === division}
+            onClick={() => setChosenDivision(division)}
+          >
+            {divisionLabel(division, t)}
+          </button>
+        ))}
+      </nav>
+    ) : null;
 
   return (
     <div className="tournament-bracket">
       <StopNotice event={event} />
+      {dividedPlayoffs && divisionNav !== null && <div className="tournament-division-bar">{divisionNav}</div>}
       {/* The organiser's switch for the 3rd place match, above the bracket, and
           only while it can still be switched: added any time the event runs,
           taken away until anything happens in it. */}
@@ -538,21 +616,15 @@ export const BracketView = memo(function BracketView({
       {stagePicks !== null && (
         <PickPhasePanel event={event} picks={stagePicks} busy={busy} onAdmin={onAdmin} onRefresh={onRefresh} />
       )}
-      {swissStage && sides.length > 0 && (
+      {swissStage && sides.length > 1 && (
         <header className="tournament-playoffs-head">
-          <h4>
-            {builtPlayoffs !== null
-              ? t(builtPlayoffs.double ? "tournaments.playoffs.headDouble" : "tournaments.playoffs.headSingle", {
-                  count: builtPlayoffs.cutTo,
-                })
-              : t("tournaments.swiss.playoffs")}
-          </h4>
+          <h4>{playoffsTitle}</h4>
           {builtPlayoffs !== null && <p className="muted">{playoffOrigin(event, t)}</p>}
         </header>
       )}
       {blocks.map((block) => (
         <div className="tournament-division" key={block.division}>
-          {block.division > 0 && <h3>{divisionLabel(block.division, t)}</h3>}
+          {block.division > 0 && !swissStage && <h3>{divisionLabel(block.division, t)}</h3>}
           {block.sides.map((rawSide) => {
             // A column that is nothing but byes is not drawn at all; one that
             // has a real game keeps its byes as empty slots, so the lines
@@ -563,7 +635,8 @@ export const BracketView = memo(function BracketView({
             };
             if (side.columns.length === 0) return null;
             const layouts = columnLayouts(side.columns);
-            const deepest = Math.max(...rawSide.columns.map((column) => column.round));
+            const hasLosers = block.sides.some((held) => held.bracket === "losers");
+            const deepest = sideDeepestRound(event, rawSide, hasLosers);
             const withThird = third !== null && side.bracket === "winners";
             // The 3rd place match hangs under the winners final, which is not
             // the last column once a grand final follows it.
@@ -575,18 +648,28 @@ export const BracketView = memo(function BracketView({
               (sum, column) => sum + column.matches.filter((entry) => !isPhantom(entry)).length,
               0,
             );
+            const sideTitle = inlinePlayoffHead
+              ? playoffsTitle
+              : block.sides.length > 1
+                ? t(BRACKET_LABELS[side.bracket])
+                : null;
             return (
               <section className="tournament-bracket-side" key={side.bracket}>
                 {/* Each half under its own name, with how much of it there is:
                     a double elimination is three brackets read one after
                     another, and without a frame each they ran together. */}
                 <header className="tournament-bracket-side-head">
-                  {block.sides.length > 1 && <h4>{t(BRACKET_LABELS[side.bracket])}</h4>}
-                  <span>
-                    {t("tournaments.bracket.roundCount", { count: side.columns.length })}
-                    {" · "}
-                    {t("tournaments.bracket.matchCount", { count: real + (withThird ? 1 : 0) })}
-                  </span>
+                  <div className="tournament-bracket-side-title">
+                    {sideTitle !== null && <h4>{sideTitle}</h4>}
+                    <span>
+                      {t("tournaments.bracket.roundCount", { count: side.columns.length })}
+                      {" · "}
+                      {t("tournaments.bracket.matchCount", { count: real + (withThird ? 1 : 0) })}
+                    </span>
+                  </div>
+                  {inlinePlayoffHead && builtPlayoffs !== null && (
+                    <p className="muted tournament-playoffs-origin">{playoffOrigin(event, t)}</p>
+                  )}
                 </header>
                 <div className="tournament-bracket-columns">
                   {side.columns.map((column, index) => (
@@ -646,33 +729,20 @@ export const BracketView = memo(function BracketView({
       ))}
       {swissStage && (
         <>
-          {sides.length > 0 && <h4>{t("tournaments.swiss.stage")}</h4>}
           {roundOneEditor}
-          {swissDivisionList.length > 0 && (
-            <nav className="tournament-round-nav tournament-division-nav" aria-label={t("tournaments.swiss.divisionNav")}>
-              {swissDivisionList.map((division) => (
-                <button
-                  type="button"
-                  key={division}
-                  className={shownDivision === division ? "is-active" : undefined}
-                  aria-pressed={shownDivision === division}
-                  onClick={() => setChosenDivision(division)}
-                >
-                  {divisionLabel(division, t)}
-                </button>
-              ))}
-            </nav>
-          )}
           <SwissRounds
             key={shownDivision}
             event={swissEvent}
             profiles={profiles}
             busyMatchId={busyMatchId}
+            title={sides.length > 0 ? t("tournaments.swiss.stage") : undefined}
+            divisionNav={!dividedPlayoffs ? divisionNav : undefined}
             withFinal={playoffs.length === 0}
             hideUpcoming={builtPlayoffs !== null}
             onReport={onReport}
             onAnswer={onAnswer}
             onHost={onHost}
+            onWatchReplay={onWatchReplay}
             vault={vault}
             assetBase={assetBase}
             veto={veto}

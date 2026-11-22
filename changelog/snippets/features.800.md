@@ -1,0 +1,1 @@
+- Open match replays directly from Swiss rounds.

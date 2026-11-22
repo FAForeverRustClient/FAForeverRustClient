@@ -8,8 +8,9 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Tourney } from "../../ipc/bindings";
+import { roundKeyOf } from "../../shared/rules/tourneyRules";
 import { applyEvent, seedStore, sentCommands } from "../../testing/mounted";
-import { player, team, tourney } from "./fixtures";
+import { match, player, team, tourney } from "./fixtures";
 import { TournamentEventDetail } from "./TournamentEventDetail";
 
 vi.mock("../../ipc/client");
@@ -86,6 +87,115 @@ describe("TournamentEventDetail, mounted", () => {
     await user.click(within(sections).getByRole("button", { name: "Overview" }));
     await user.click(within(sections).getByRole("button", { name: /^Chat/ }));
     expect(loads()).toHaveLength(1);
+  });
+
+  it("shows recent results with the correct scores and opens the Matches tab from the panel", async () => {
+    const user = userEvent.setup();
+    mountDetail(tourney({
+      name: "Division Cup",
+      bracketKind: "swiss",
+      teamSize: 2,
+      divisions: 2,
+      teams: [
+        team({ id: "t1", name: "Team Nory", division: 1 }),
+        team({ id: "t2", name: "One-Way Ticket", division: 1 }),
+      ],
+      matches: [
+        match({ id: "early", bracket: "swiss", division: 1, status: "done", score1: 1, score2: 0, winner: "t1", loser: "t2" }),
+        match({ id: "recent", bracket: "swiss", division: 1, round: 2, status: "done", score1: -1, score2: 1, winner: "t2", loser: "t1" }),
+        match({ id: "future", bracket: "swiss", division: 1, round: 3, status: "ready" }),
+      ],
+      roundMaps: [{ round: roundKeyOf("swiss", 2), mapIds: ["Seton's Clutch"] }],
+    }));
+
+    const panel = within(screen.getByRole("region", { name: "Recent results" }));
+    const results = panel.getAllByRole("listitem");
+    expect(results).toHaveLength(2);
+    const latest = within(results[0]);
+    expect(latest.getByText("Round 2")).toBeDefined();
+    expect(latest.getByText("King division")).toBeDefined();
+    expect(latest.getByText("Team Nory")).toBeDefined();
+    expect(latest.getByText("FF – 1")).toBeDefined();
+    expect(latest.getByText("One-Way Ticket")).toBeDefined();
+    expect(latest.getByText("Seton's Clutch")).toBeDefined();
+    expect(latest.getByText("Record 1-0 vs 0-1")).toBeDefined();
+
+    await user.click(panel.getByRole("button", { name: "Matches" }));
+    expect(screen.getByRole("button", { name: "Matches", current: true })).toBeDefined();
+  });
+
+  it("shows the assigned divisions separately and keeps unassigned teams and reserves visible", async () => {
+    const user = userEvent.setup();
+    mountDetail(tourney({
+      name: "Division Cup",
+      teamSize: 2,
+      divisions: 2,
+      teams: [
+        team({ id: "p", name: "Prince Team", division: 2, seed: 1 }),
+        team({ id: "k", name: "King Team", division: 1, seed: 2 }),
+        team({ id: "k2", name: "King Rivals", division: 1, seed: 4 }),
+        team({ id: "u", name: "Pending Team", division: 0, seed: 3 }),
+      ],
+      players: [player({ id: "reserve", name: "Ada", teamId: null })],
+      subs: ["reserve"],
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Teams" }));
+    const sections = ["King division", "Prince division", "Division unassigned"].map((name) => {
+      const section = screen.getByRole("heading", { name: new RegExp(name) }).closest("section");
+      if (section === null) throw new Error("Missing team section");
+      const items = within(section).getAllByRole("listitem");
+      for (const item of items) expect(within(item).queryByText("1", { exact: true })).toBeNull();
+      return items.map((item) => item.textContent);
+    });
+    expect(sections.map((items) => items[0])).toEqual([
+      expect.stringContaining("King Team"),
+      expect.stringContaining("Prince Team"),
+      expect.stringContaining("Pending Team"),
+    ]);
+    expect(sections[0][1]).toContain("King Rivals");
+    const reserves = screen.getByRole("button", { name: "Reserve players 1" });
+    const king = screen.getByRole("heading", { name: /King division/ });
+    expect(reserves.compareDocumentPosition(king) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reserves.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Ada" })).toBeNull();
+    await user.click(reserves);
+    expect(reserves.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Ada" })).toBeDefined();
+    await user.click(reserves);
+    expect(screen.queryByRole("button", { name: "Ada" })).toBeNull();
+    expect(screen.queryByText("Free agents")).toBeNull();
+  });
+
+  it("shows each Swiss division's own results and champion in its standings table", async () => {
+    const user = userEvent.setup();
+    mountDetail(tourney({
+      name: "Division Cup",
+      bracketKind: "swiss",
+      teamSize: 2,
+      divisions: 2,
+      teams: [
+        team({ id: "k1", name: "King Leader", division: 1, seed: 1 }),
+        team({ id: "k2", name: "King Runner-up", division: 1, seed: 2 }),
+        team({ id: "p1", name: "Prince Leader", division: 2, seed: 1 }),
+        team({ id: "p2", name: "Prince Champion", division: 2, seed: 2 }),
+      ],
+      matches: [
+        match({ id: "king", bracket: "swiss", division: 1, team1: "k1", team2: "k2", status: "done", winner: "k1", loser: "k2", score1: 2, score2: 0 }),
+        match({ id: "prince", bracket: "swiss", division: 2, team1: "p1", team2: "p2", status: "done", winner: "p1", loser: "p2", score1: 2, score2: 1 }),
+        match({ id: "final", bracket: "grandFinal", division: 2, team1: "p1", team2: "p2", status: "done", winner: "p2", loser: "p1" }),
+      ],
+    }));
+
+    await user.click(screen.getByRole("button", { name: "Standings" }));
+    const king = within(screen.getByRole("table", { name: "King division" }));
+    const prince = within(screen.getByRole("table", { name: "Prince division" }));
+    expect(king.getByRole("rowheader", { name: "King Leader" })).toBeDefined();
+    expect(king.getByRole("cell", { name: "+2" })).toBeDefined();
+    expect(king.queryByRole("img", { name: "Champion" })).toBeNull();
+    expect(king.queryByText("Prince Leader")).toBeNull();
+    expect(prince.getByText("Prince Leader")).toBeDefined();
+    expect(prince.getByRole("img", { name: "Champion" })).toBeDefined();
   });
 
   it("prompts a captain to pick, and not once they are in the draft", async () => {
