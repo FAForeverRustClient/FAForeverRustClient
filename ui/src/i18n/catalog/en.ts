@@ -5266,6 +5266,8 @@ export const en = {
 
   "settings.game.borderlessWindowHint": "Takes the frame off the game's window and stretches it over the screen while it runs. Set Forged Alliance itself to windowed for this to apply.",
   "settings.game.borderlessWindow": "Borderless window",
+  "settings.game.multipleInstancesHint": "Opens another replay beside the one already open instead of closing it, and starts Play offline and tutorials beside a running game. One online game at a time stays the server's rule. Copies of one install share its files: a replay of another game version may not start while another one is open.",
+  "settings.game.multipleInstances": "Allow multiple instances",
   "settings.game.forceAffinity": "Keep the game off the first CPU cores",
   "settings.game.forceAffinityHint": "On computers with six or more logical cores, Forged Alliance skips the first two, where the system does most of its own work. Applies from the next game.",
   // Joining used to fetch whatever a lobby required the moment you

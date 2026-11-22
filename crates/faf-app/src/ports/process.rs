@@ -124,6 +124,25 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
+    /// Whether a launch that has to be *the* game, a live game or a lesson,
+    /// would find another one in its way.
+    ///
+    /// The same as [`Self::game_running`] unless the player allowed several
+    /// copies of the game ([`Self::set_multiple_instances`]). Then the games
+    /// "Play offline" and the tutorials start beside it do not count: they
+    /// were started as extra copies, and nothing waits for them to end. One
+    /// live game per account is still the server's rule, and a lesson reads
+    /// its result when its own game exits, so those two still take turns.
+    fn game_slot_taken(&self) -> bool {
+        self.game_running()
+    }
+
+    /// Whether the player allowed more than one Forged Alliance at once
+    /// (Settings, Game). A port that launches nothing allows nothing.
+    fn multiple_instances(&self) -> bool {
+        false
+    }
+
     /// Native attention is restricted to the live process owned by this launcher.
     fn supports_game_attention(&self) -> bool {
         false
@@ -246,6 +265,14 @@ pub trait ProcessPort: Send + Sync {
     /// over its monitor (#445). Read at launch, like the Steam status, and
     /// defaulted to nothing for a launcher that starts no process.
     fn set_borderless_window(&self, _enabled: bool) {}
+
+    /// Whether the next launches may start beside a Forged Alliance this
+    /// launcher already runs (Settings, Game, "Allow multiple instances"):
+    /// another replay beside an open replay, "Play offline" or a tutorial
+    /// beside a running game, a game and a replay from one install. Read at
+    /// each launch; copies already running are left alone when it changes.
+    /// Defaulted to nothing for a launcher that starts no process.
+    fn set_multiple_instances(&self, _enabled: bool) {}
 
     /// Replace the companion programs started alongside every game and
     /// replay this launcher starts (Settings, Game). Read at each launch, and

@@ -3753,6 +3753,24 @@ export type GamePreferences = {
 	 */
 	borderlessWindow?: boolean,
 	/**
+	 *  Let more than one Forged Alliance run from this client at once: a
+	 *  replay opened while another is still open starts beside it instead of
+	 *  replacing it, "Play offline" and tutorials start beside whatever game
+	 *  is already running, and the game and the replay may share one install.
+	 *
+	 *  The game itself allows this since the client sets
+	 *  `debug.enable_debug_facilities` in `game.prefs` before every launch
+	 *  (#676), which is how FA's developers start several copies of one
+	 *  install (`scripts/LaunchFAInstances.ps1` in FAForever/fa). What stays
+	 *  one at a time is what the server allows: one live game per account,
+	 *  and with it one lesson, which reads its result when its game ends.
+	 *
+	 *  Off by default: copies of one install share its cache and its files,
+	 *  and a replay of another game version updates the replay install under
+	 *  the replay already open.
+	 */
+	allowMultipleInstances?: boolean,
+	/**
 	 *  Programs of the player's own started alongside the game, such as a
 	 *  recording tool. See [`CompanionProgram`].
 	 */
@@ -3795,6 +3813,7 @@ export type GamePreferencesPatch = {
 	mapGeneratorInstances?: number,
 	steamPresence?: boolean,
 	borderlessWindow?: boolean,
+	allowMultipleInstances?: boolean,
 	companions?: CompanionProgram[],
 	autoUpdateMapAndMods?: boolean,
 	forceAffinity?: boolean,

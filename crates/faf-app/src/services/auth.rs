@@ -66,9 +66,15 @@ const SIGN_IN_TO_SET_UP: &str = "Forged Alliance with FAF's files was not found.
      and choose Play offline in the menu on your name, or play or watch any game, so the client \
      can set the game up; after that, playing offline works without an account.";
 
-/// Whether Forged Alliance is running for this client already.
+/// Whether Forged Alliance is running for this client already, and that is a
+/// reason not to start an offline game.
+///
+/// It is not while the player allows several copies at once (Settings, Game):
+/// the offline game then starts beside whatever runs, live game included, and
+/// "Play offline" never runs the updater on an install that is there.
 fn game_running(ctx: &ServiceCtx) -> bool {
-    ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some()
+    !ctx.ports.process.multiple_instances()
+        && (ctx.ports.process.game_running() || ctx.lobby.running_game_id().is_some())
 }
 
 /// Whether the configured game path holds FAF's copy of the game.

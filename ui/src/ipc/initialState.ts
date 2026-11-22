@@ -948,6 +948,7 @@ export const INITIAL_STATE: AppState = {
       "mapGeneratorInstances": 0,
       "steamPresence": false,
       "borderlessWindow": false,
+      "allowMultipleInstances": false,
       "companions": [],
       "autoUpdateMapAndMods": false,
       "forceAffinity": true

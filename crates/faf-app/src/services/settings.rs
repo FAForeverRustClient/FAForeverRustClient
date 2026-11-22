@@ -1117,18 +1117,21 @@ fn sync_launch_preferences(ctx: &ServiceCtx, out: &EventSink) {
                 state.settings.game.steam_presence,
             )
         });
-    let (borderless_window, force_affinity, companions) = out.with_state(|state| {
-        (
-            state.settings.game.borderless_window,
-            state.settings.game.force_affinity,
-            state.settings.game.companions.clone(),
-        )
-    });
+    let (borderless_window, multiple_instances, force_affinity, companions) =
+        out.with_state(|state| {
+            (
+                state.settings.game.borderless_window,
+                state.settings.game.allow_multiple_instances,
+                state.settings.game.force_affinity,
+                state.settings.game.companions.clone(),
+            )
+        });
     // Written into `fa_path.lua` by every install pass, replays included.
     ctx.ports.updater.set_force_affinity(force_affinity);
     ctx.ports.process.set_additional_arguments(arguments);
     ctx.ports.process.set_steam_presence(steam_presence);
     ctx.ports.process.set_borderless_window(borderless_window);
+    ctx.ports.process.set_multiple_instances(multiple_instances);
     ctx.ports.process.set_companions(companions);
     // The two halves of "run a Windows game on Linux" arrive from two
     // different preference groups, because that is where each one belongs: the

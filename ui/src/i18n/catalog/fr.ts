@@ -2528,6 +2528,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Retire le cadre de la fenêtre du jeu et l'étend sur tout l'écran pendant la partie. Forged Alliance doit lui-même être en mode fenêtré.",
   "settings.game.borderlessWindow": "Fenêtre sans bordure",
+  "settings.game.multipleInstancesHint": "Ouvre un autre replay à côté de celui déjà ouvert au lieu de le fermer, et lance « Jouer hors ligne » et les tutoriels à côté d'une partie en cours. Une seule partie en ligne à la fois reste la règle du serveur. Les copies d'une installation partagent ses fichiers : un replay d'une autre version du jeu peut ne pas démarrer tant qu'un autre est ouvert.",
+  "settings.game.multipleInstances": "Autoriser plusieurs instances",
   "settings.game.forceAffinity": "Tenir le jeu à l'écart des premiers cœurs",
   "settings.game.forceAffinityHint": "Sur les ordinateurs à six cœurs logiques ou plus, Forged Alliance évite les deux premiers, où le système fait l'essentiel de son propre travail. S'applique à partir de la prochaine partie.",
   "lobby.modConflict.title": "Remplacer les mods installés ?",

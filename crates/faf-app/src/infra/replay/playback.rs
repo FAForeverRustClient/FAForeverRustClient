@@ -162,10 +162,17 @@ impl ReplayPlayback {
         // pending replacement and then waits: a request cancelled during that
         // wait still lets them go.
         let _replacement = super::ReplacementGuard(Arc::clone(&self.process));
-        self.process.stop_replay().await;
-        // A live replay on the pipe transport may still be relaying into the
-        // window just closed; nothing will read from it again.
-        self.live.end_session().await;
+        // Unless the player allows several copies at once (Settings, Game):
+        // then the replay already open stays open beside this one, and so
+        // does a live replay's relay into it. The version step can still
+        // fail for a replay of another game version, on files the open
+        // replay holds, and says so.
+        if !self.process.multiple_instances() {
+            self.process.stop_replay().await;
+            // A live replay on the pipe transport may still be relaying into
+            // the window just closed; nothing will read from it again.
+            self.live.end_session().await;
+        }
         let replay = prepare_scfareplay(&path).await?;
         let mod_name = normalize_mod(&replay.mod_name);
         let mut warning = None;

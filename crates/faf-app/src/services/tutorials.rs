@@ -170,7 +170,7 @@ async fn launch(tutorial_id: i32, ctx: &ServiceCtx, out: &EventSink) {
 /// Shared with the training tab's lessons, which start a game in the same
 /// slot and must refuse for the same reason.
 pub(crate) fn game_is_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
-    ctx.ports.process.game_running()
+    ctx.ports.process.game_slot_taken()
         || ctx.lobby.running_game_id().is_some()
         || out.with_state(|state| {
             matches!(

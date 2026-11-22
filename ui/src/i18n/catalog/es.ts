@@ -2526,6 +2526,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Quita el marco de la ventana del juego y la extiende por toda la pantalla mientras se ejecuta. Forged Alliance debe estar en modo ventana.",
   "settings.game.borderlessWindow": "Ventana sin bordes",
+  "settings.game.multipleInstancesHint": "Abre otra repetición junto a la que ya está abierta en lugar de cerrarla, e inicia «Jugar sin conexión» y los tutoriales junto a una partida en curso. Una sola partida en línea a la vez sigue siendo la regla del servidor. Las copias de una instalación comparten sus archivos: puede que una repetición de otra versión del juego no se inicie mientras haya otra abierta.",
+  "settings.game.multipleInstances": "Permitir varias instancias",
   "settings.game.forceAffinity": "Mantener el juego fuera de los primeros núcleos",
   "settings.game.forceAffinityHint": "En equipos con seis o más núcleos lógicos, Forged Alliance evita los dos primeros, donde el sistema hace la mayor parte de su propio trabajo. Se aplica desde la próxima partida.",
   "lobby.modConflict.title": "¿Reemplazar los mods instalados?",

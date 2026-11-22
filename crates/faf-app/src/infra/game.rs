@@ -91,6 +91,13 @@ struct Running {
     launch: LaunchId,
 }
 
+/// A Forged Alliance running beside the slots; see [`GameProcess::beside`].
+struct Beside {
+    /// The install it was started from, as a launch of that kind.
+    slot: Slot,
+    running: Running,
+}
+
 /// A path in a form two spellings of the same file agree on.
 ///
 /// A live game and a replay are two different executables in a normal FAF
@@ -141,6 +148,20 @@ pub struct GameProcess {
     config: Mutex<GameConfig>,
     game_child: Arc<Mutex<Option<Running>>>,
     replay_child: Arc<Mutex<Option<Running>>>,
+    /// Copies of Forged Alliance started beside the two slots while the
+    /// player allows several at once ([`Self::multiple_instances`]): a game
+    /// from "Play offline" or a tutorial, and a replay a newer replay took
+    /// the replay slot from.
+    ///
+    /// Kept rather than forgotten, so their companion programs are let go of
+    /// when they end and [`ProcessPort::game_running`] still counts them for
+    /// whatever must not happen under a running game (a client update, the
+    /// generated-map clean-up). Nothing waits for them, and nothing reports
+    /// their exit: a slot's exit is what ends a live game or a replay status,
+    /// and these are neither.
+    beside: Arc<Mutex<Vec<Beside>>>,
+    /// Settings, Game, "Allow multiple instances". Read at each launch.
+    multiple_instances: AtomicBool,
     /// Woken when the *game* exits; see [`GameProcess::watch_for_exit`].
     ///
     /// Only the game slot notifies. This is what releases the launch, tells
@@ -187,6 +208,8 @@ impl GameProcess {
             config: Mutex::new(config),
             game_child: Arc::new(Mutex::new(None)),
             replay_child: Arc::new(Mutex::new(None)),
+            beside: Arc::new(Mutex::new(Vec::new())),
+            multiple_instances: AtomicBool::new(false),
             exited: Arc::new(Notify::new()),
             replay_exited: Arc::new(Notify::new()),
             replay_recorder: Mutex::new(None),
@@ -302,16 +325,22 @@ impl GameProcess {
         tracing::warn!("the previous Forged Alliance process has not exited; launching anyway");
     }
 
+    /// `beside` starts the process as an extra copy, kept in
+    /// [`Self::beside`] rather than in its slot: only ever asked for while
+    /// the player allows several copies, and only for launches nothing waits
+    /// on (see [`ProcessPort::launch_offline`]).
     fn spawn(
         &self,
         slot: Slot,
         game_path: &str,
         args: &[String],
         what: &str,
+        beside: bool,
     ) -> Result<(), String> {
         let _launch = self.launching.lock().unwrap();
+        let multiple = self.multiple_instances.load(Ordering::Relaxed);
         let mut current = self.slot(slot).lock().unwrap();
-        if slot == Slot::Game {
+        if slot == Slot::Game && !beside {
             if let Some(running) = current.as_mut() {
                 match running.child.try_wait() {
                     Ok(Some(_)) => {}
@@ -345,7 +374,11 @@ impl GameProcess {
         // (Settings, Paths, replay install) makes both run side by side, with
         // the `game.prefs` flag [`allow_second_instance`] sets before every
         // launch: without it FA refuses a second copy of itself on its own.
-        if self.other_slot_holds(slot, &exe) {
+        //
+        // Unless the player asked for exactly that, in Settings, Game: with
+        // several copies allowed, one install runs as many as are started,
+        // which is how FA's own developers test (`LaunchFAInstances.ps1`).
+        if !multiple && self.other_slot_holds(slot, &exe) {
             return Err(match slot {
                 Slot::Game => "a replay is already running from this install, and two copies of one install cannot run at once: close the replay window, or point Settings → Paths at a separate replay install".to_string(),
                 Slot::Replay => "the game is already running from this install, and two copies of one install cannot run at once: set a separate replay install in Settings → Paths to watch a replay while playing".to_string(),
@@ -478,15 +511,33 @@ impl GameProcess {
             exe: install_key(&exe),
             launch,
         };
-        let replaced = current.replace(running).map(|mut prev| {
-            let _ = prev.child.start_kill();
-            prev.launch
-        });
-        drop(current);
-        if slot == Slot::Replay && replaced.is_some() {
+        let mut replaced = None;
+        let mut moved = false;
+        if beside {
+            drop(current);
+            self.keep_beside(slot, running);
+        } else {
+            let previous = current.replace(running);
+            drop(current);
+            match previous {
+                // With several copies allowed, the replay already open stays
+                // open: it moves aside, and the slot, with the replay status
+                // that follows it, belongs to the one just started.
+                Some(previous) if multiple && slot == Slot::Replay => {
+                    self.keep_beside(slot, previous);
+                    moved = true;
+                }
+                Some(mut previous) => {
+                    let _ = previous.child.start_kill();
+                    replaced = Some(previous.launch);
+                }
+                None => {}
+            }
+            self.watch_for_exit(slot, launch);
+        }
+        if slot == Slot::Replay && (replaced.is_some() || moved) {
             self.replay_exited.notify_waiters();
         }
-        self.watch_for_exit(slot, launch);
 
         // The game slot only: a live game or a tutorial is Forged Alliance
         // being played, and a replay window is somebody watching one. Nothing
@@ -527,6 +578,76 @@ impl GameProcess {
         if let Some(superseded) = superseded {
             end_launch(self.companions.clone(), superseded);
         }
+    }
+
+    /// Keep `running` beside the slots until it exits, then let go of its
+    /// companion programs. Polled like the slots, for the same reason: the
+    /// handle stays in the shared list, where [`ProcessPort::game_running`]
+    /// can see it.
+    fn keep_beside(&self, slot: Slot, running: Running) {
+        let launch = running.launch;
+        self.beside.lock().unwrap().push(Beside { slot, running });
+        let beside = self.beside.clone();
+        let companions = self.companions.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let ended = {
+                    let mut list = beside.lock().unwrap();
+                    let Some(index) = list.iter().position(|copy| copy.running.launch == launch)
+                    else {
+                        return;
+                    };
+                    match list[index].running.child.try_wait() {
+                        Ok(None) => false,
+                        // Ended, or a handle that can no longer say: either
+                        // way nothing will be heard from it again.
+                        Ok(Some(_)) | Err(_) => {
+                            list.swap_remove(index);
+                            true
+                        }
+                    }
+                };
+                if ended {
+                    end_launch(companions, launch);
+                    return;
+                }
+            }
+        });
+    }
+
+    /// Whether a copy of the game of this kind runs beside the slots.
+    fn runs_beside(&self, slot: Slot) -> bool {
+        self.beside
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|copy| copy.slot == slot)
+    }
+
+    /// A single-player game on the live install, in the game slot or, with
+    /// `beside`, as an extra copy; and where it was told to write its log.
+    async fn offline(
+        &self,
+        featured_mod: String,
+        map: String,
+        beside: bool,
+    ) -> Result<Option<PathBuf>, String> {
+        require_init_name(&featured_mod)?;
+        let path = self.config.lock().unwrap().game_path.clone();
+        crate::infra::game_prefs_backup::backup_if_due();
+        let log_path = crate::infra::game_logs::next_path("offline", None)?;
+        allow_second_instance(&path).await;
+        self.spawn(
+            Slot::Game,
+            &path,
+            &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
+            "game",
+            beside,
+        )?;
+        // The path this side of any Wine translation: the client reads it, the
+        // game only writes it.
+        Ok(Some(log_path))
     }
 
     /// Poll the tracked child until it exits, then wake [`Self::wait_for_exit`]
@@ -605,12 +726,27 @@ impl ProcessPort for GameProcess {
         true
     }
 
+    /// A replay moved aside by a newer one counts: what waits on this gives
+    /// the player's own mods back to `game.prefs`, and a replay window still
+    /// open writes its own over them when it closes.
     fn replay_running(&self) -> bool {
-        self.replay_child.lock().unwrap().is_some()
+        self.replay_child.lock().unwrap().is_some() || self.runs_beside(Slot::Replay)
     }
 
     fn game_running(&self) -> bool {
-        self.game_child.lock().unwrap().is_some()
+        self.game_child.lock().unwrap().is_some() || self.runs_beside(Slot::Game)
+    }
+
+    fn game_slot_taken(&self) -> bool {
+        if self.multiple_instances.load(Ordering::Relaxed) {
+            self.game_child.lock().unwrap().is_some()
+        } else {
+            self.game_running()
+        }
+    }
+
+    fn multiple_instances(&self) -> bool {
+        self.multiple_instances.load(Ordering::Relaxed)
     }
 
     fn supports_game_attention(&self) -> bool {
@@ -691,6 +827,7 @@ impl ProcessPort for GameProcess {
                 savereplay.as_deref(),
             ),
             "game",
+            false,
         );
 
         // Held for the game's lifetime: dropping the recorder aborts its
@@ -701,38 +838,34 @@ impl ProcessPort for GameProcess {
         result
     }
 
+    /// "Play offline" and the tutorials. Nothing waits for these to end, so
+    /// with several copies allowed they start beside whatever runs and leave
+    /// the game slot to the launches that need it: a live game, a lesson.
     async fn launch_offline(&self, featured_mod: String, map: String) -> Result<(), String> {
-        self.launch_offline_logged(featured_mod, map)
-            .await
-            .map(|_| ())
+        let beside = self.multiple_instances.load(Ordering::Relaxed);
+        self.offline(featured_mod, map, beside).await.map(|_| ())
     }
 
+    /// A lesson, which reads its result from the log once its game exits:
+    /// always the game slot, whose exit [`ProcessPort::wait_for_exit`]
+    /// reports.
     async fn launch_offline_logged(
         &self,
         featured_mod: String,
         map: String,
     ) -> Result<Option<PathBuf>, String> {
-        require_init_name(&featured_mod)?;
-        let path = self.config.lock().unwrap().game_path.clone();
-        crate::infra::game_prefs_backup::backup_if_due();
-        let log_path = crate::infra::game_logs::next_path("offline", None)?;
-        allow_second_instance(&path).await;
-        self.spawn(
-            Slot::Game,
-            &path,
-            &offline_arguments(&featured_mod, &map, &self.game_argument_path(&log_path)),
-            "game",
-        )?;
-        // The path this side of any Wine translation: the client reads it, the
-        // game only writes it.
-        Ok(Some(log_path))
+        self.offline(featured_mod, map, false).await
     }
 
     async fn launch_replay(&self, args: Vec<String>) -> Result<(), String> {
-        self.end_previous(Slot::Replay).await;
+        // With several copies allowed, the replay already open stays open;
+        // `spawn` moves it aside.
+        if !self.multiple_instances.load(Ordering::Relaxed) {
+            self.end_previous(Slot::Replay).await;
+        }
         let path = self.config.lock().unwrap().replay_game_path.clone();
         allow_second_instance(&path).await;
-        self.spawn(Slot::Replay, &path, &args, "replay")
+        self.spawn(Slot::Replay, &path, &args, "replay", false)
     }
 
     /// End the *game*, not whatever Forged Alliance happens to be running.
@@ -793,6 +926,10 @@ impl ProcessPort for GameProcess {
 
     fn set_borderless_window(&self, enabled: bool) {
         self.borderless_window.store(enabled, Ordering::Relaxed);
+    }
+
+    fn set_multiple_instances(&self, enabled: bool) {
+        self.multiple_instances.store(enabled, Ordering::Relaxed);
     }
 
     fn set_companions(&self, companions: Vec<CompanionProgram>) {
@@ -1981,7 +2118,7 @@ mod tests {
         // A valid executable ensures refusal happens before any second spawn.
         let executable = std::env::current_exe().unwrap();
         let error = process
-            .spawn(Slot::Game, executable.to_str().unwrap(), &[], "game")
+            .spawn(Slot::Game, executable.to_str().unwrap(), &[], "game", false)
             .unwrap_err();
         assert!(error.contains("already running"));
         let mut slot = process.game_child.lock().unwrap();
@@ -1989,6 +2126,65 @@ mod tests {
         assert_eq!(running.child.id(), original_pid);
         assert!(running.child.try_wait().unwrap().is_none());
         running.child.start_kill().unwrap();
+    }
+
+    #[tokio::test]
+    async fn several_copies_still_leave_one_live_game() {
+        // "Allow multiple instances" lets offline games and replays start
+        // beside the slots; a live game or a lesson needs the slot itself,
+        // and the server allows one live game per account.
+        let process = GameProcess::new(GameConfig::default());
+        process.set_multiple_instances(true);
+        let child = a_process_that_keeps_running();
+        *process.game_child.lock().unwrap() = Some(Running {
+            child,
+            exe: PathBuf::from("managed-game"),
+            launch: 0,
+        });
+
+        let executable = std::env::current_exe().unwrap();
+        let error = process
+            .spawn(Slot::Game, executable.to_str().unwrap(), &[], "game", false)
+            .unwrap_err();
+        assert!(error.contains("already running"));
+        assert!(process.game_slot_taken());
+        process
+            .game_child
+            .lock()
+            .unwrap()
+            .as_mut()
+            .unwrap()
+            .child
+            .start_kill()
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_copy_beside_the_slots_counts_as_running_but_not_as_the_game() {
+        let process = GameProcess::new(GameConfig::default());
+        process.set_multiple_instances(true);
+        process.keep_beside(
+            Slot::Game,
+            Running {
+                child: a_process_that_keeps_running(),
+                exe: PathBuf::from("managed-game"),
+                launch: 0,
+            },
+        );
+
+        // A client update or the generated-map clean-up still waits for it;
+        // a live game or a lesson does not.
+        assert!(process.game_running());
+        assert!(!process.game_slot_taken());
+        assert!(!process.replay_running());
+
+        // Turned off again, every copy counts as the game again.
+        process.set_multiple_instances(false);
+        assert!(process.game_slot_taken());
+
+        for copy in process.beside.lock().unwrap().iter_mut() {
+            copy.running.child.start_kill().unwrap();
+        }
     }
 
     #[test]

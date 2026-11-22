@@ -465,6 +465,7 @@ fn launch_change(patch: &GamePreferencesPatch, current: &GamePreferences) -> Opt
         map_generator_instances: _,
         steam_presence: _,
         borderless_window: _,
+        allow_multiple_instances: _,
         auto_update_map_and_mods: _,
         force_affinity: _,
     } = patch;
