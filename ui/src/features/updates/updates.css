@@ -75,6 +75,10 @@
   color: var(--color-subtle);
 }
 
+.update-gate-status:empty {
+  margin: 0;
+}
+
 /* A failure is not a status line like the others: it is the reason the
    button beside it now says "try again". */
 .update-gate-status-failed {

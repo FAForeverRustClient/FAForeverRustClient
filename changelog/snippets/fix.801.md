@@ -1,0 +1,1 @@
+- Required update dialogs are shorter and state which version to install.

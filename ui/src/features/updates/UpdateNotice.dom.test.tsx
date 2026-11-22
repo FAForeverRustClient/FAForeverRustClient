@@ -158,12 +158,24 @@ describe("UpdateNotice states", () => {
   });
 
   it("only raises the gate after overdue and keeps a deferred notice accessible", () => {
-    seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate, release, overdue: false, status: { type: "available" } } }));
+    seedStore((state) => ({ ...state, clientUpdate: { ...state.clientUpdate,
+      release: { ...release, publishedAt: "2026-09-01T12:00:00Z" },
+      overdue: false,
+      status: { type: "available" },
+    } }));
     const view = render(<><UpdateNotice /><UpdateGate /></>);
     expect(screen.queryByRole("dialog")).toBeNull();
     applyEvent({ kind: "ClientUpdate", event: { type: "overdue" } });
-    expect(screen.getByRole("dialog", { name: "Update required" })).toBeDefined();
+    const gate = screen.getByRole("dialog", { name: "Update required" });
+    expect(screen.getByRole("heading", { name: "Update required" })).toBeDefined();
+    expect(Array.from(gate.querySelectorAll("p"), (line) => line.textContent)).toEqual([
+      "Install version 0.9.0 to continue.",
+      "The installer is 1 KB.",
+    ]);
     expect(screen.queryByRole("button", { name: "Update available" })).toBeNull();
+    applyEvent({ kind: "ClientUpdate", event: { type: "downloadProgressed", payload: { receivedBytes: 42, totalBytes: 100 } } });
+    expect(screen.getByRole("status").textContent).toBe(en["updates.progress.percent"].replace("{percent}", "42"));
+    applyEvent({ kind: "ClientUpdate", event: { type: "downloadCancelled" } });
     view.rerender(<><UpdateNotice deferredVersion={release.version} /><UpdateGate deferredVersion={release.version} /></>);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("button", { name: "Update available" })).toBeDefined();
