@@ -1,0 +1,2 @@
+- Reduced background UI redraws during live lobby updates.
+- Paused Settings, Connectivity live relay polling while the client window is hidden.
