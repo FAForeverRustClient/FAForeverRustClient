@@ -54,11 +54,23 @@ const stopShowing = () =>
   ipc.send({ kind: "Settings", command: { type: "patchGame", payload: { patch: { showJoinProgress: false } } } });
 
 export function JoinPreparationDialog() {
-  const { t } = useTranslation();
   const join = useAppStore((state) => state.state.lobby.join);
-  const joinAdapter = useAppStore((state) => state.state.settings.connectivity.adapter);
   // Off, the status bar narrates the join alone.
   const enabled = useAppStore((state) => state.state.settings.game.showJoinProgress ?? true);
+  const progress = joinProgressOf(join);
+  if (!progress || !enabled) return null;
+  return <JoinPreparationDialogContent join={join} progress={progress} />;
+}
+
+function JoinPreparationDialogContent({
+  join,
+  progress,
+}: {
+  join: ReturnType<typeof useAppStore.getState>["state"]["lobby"]["join"];
+  progress: NonNullable<ReturnType<typeof joinProgressOf>>;
+}) {
+  const { t } = useTranslation();
+  const joinAdapter = useAppStore((state) => state.state.settings.connectivity.adapter);
   const games = useAppStore((state) => state.state.lobby.games);
   const vault = useAppStore((state) => state.state.maps.vault);
   const matchmakerLaunching = useAppStore((state) => state.state.lobby.matchmaking.type === "launching");
@@ -68,10 +80,9 @@ export function JoinPreparationDialog() {
   // that follows it.
   const launchSeen = useRef<GameLaunch | null>(null);
   if (launch) launchSeen.current = launch;
-  const progress = joinProgressOf(join);
   // The line the step log follows. While the game is starting there is no
   // detail to follow, so the log stops growing and keeps what it has.
-  const detail = progress?.kind === "preparing" ? progress.detail : "";
+  const detail = progress.kind === "preparing" ? progress.detail : "";
 
   const [hidden, setHidden] = useState(false);
   // The steps already done, which is the "Details" the report asked for. Held
@@ -80,28 +91,15 @@ export function JoinPreparationDialog() {
   // Vec in `AppState` that every snapshot would carry for the rest of the
   // session.
   const [steps, setSteps] = useState<string[]>([]);
-  const wasPreparing = useRef(false);
 
   useEffect(() => {
-    if (!progress) {
-      // Reset on the way out, not on the way in: the first render with a step
-      // in it must not throw that step away.
-      if (wasPreparing.current) {
-        wasPreparing.current = false;
-        setHidden(false);
-        setSteps([]);
-        launchSeen.current = null;
-      }
-      return;
-    }
-    wasPreparing.current = true;
     setSteps((current) => {
       const line = nextStep(current, detail);
       return line === null ? current : [...current, line];
     });
   }, [progress, detail]);
 
-  if (!progress || hidden || !enabled) return null;
+  if (hidden) return null;
 
   // Starting the game has nothing to measure: the client has handed off to a
   // process and is waiting for a window, so the bar runs rather than fills.

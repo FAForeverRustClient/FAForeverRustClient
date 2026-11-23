@@ -230,7 +230,9 @@ export function Select<T extends string | number>({
       className={`select-container ${className}`}
       ref={rootRef}
       onBlur={(event) => {
-        if (open && !rootRef.current?.contains(event.relatedTarget)) setOpen(false);
+        const next = event.relatedTarget;
+        const root = rootRef.current;
+        if (open && next && root && !root.contains(next) && !next.contains(root)) setOpen(false);
       }}
     >
       <button

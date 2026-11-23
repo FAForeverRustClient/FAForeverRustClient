@@ -482,12 +482,14 @@ export function BackgroundActivityTask({ activities }: { activities: BackgroundA
  */
 export function MatchmakingTask({
   state,
-  queues,
+  queues: queuesOverride,
 }: {
   state: Exclude<AppState["lobby"]["matchmaking"], { type: "idle" } | { type: "cancelled" }>;
-  queues: AppState["lobby"]["matchmakerQueues"];
+  queues?: AppState["lobby"]["matchmakerQueues"];
 }) {
   const { t } = useTranslation();
+  const storeQueues = useAppStore((store) => store.state.lobby.matchmakerQueues);
+  const queues = queuesOverride ?? storeQueues;
   // "2 vs 2", the way the queue cards name them, rather than "tmm2v2".
   const named = (queueName: string) => {
     const queue = queues.find((candidate) => candidate.queueName === queueName);
@@ -549,7 +551,6 @@ export function ClientStatusBar() {
   const chatStatus = useAppStore((state) => state.state.chat.status);
   const activities = useBackgroundActivities();
   const matchmaking = useAppStore((state) => state.state.lobby.matchmaking);
-  const matchmakerQueues = useAppStore((state) => state.state.lobby.matchmakerQueues);
   const [openMenu, setOpenMenu] = useState<ConnectionKind | null>(null);
   const [checking, setChecking] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
@@ -677,7 +678,7 @@ export function ClientStatusBar() {
         : joinTaskVisible
           ? <GameJoinStatus state={joinState} />
           : matchmaking.type !== "idle" && matchmaking.type !== "cancelled"
-            ? <MatchmakingTask state={matchmaking} queues={matchmakerQueues} />
+            ? <MatchmakingTask state={matchmaking} />
             : activities.length > 0
               ? <BackgroundActivityTask activities={activities} />
               : null}

@@ -32,7 +32,10 @@ export function nickHue(name: string): number {
 
 /** Inline style carrying the generated hue for player nicknames to consume. */
 export const nickStyle = (name: string): CSSProperties =>
-  ({ "--nick-hue": `${nickHue(name)}`, color: `hsl(${nickHue(name)}, 75%, 65%)` }) as CSSProperties;
+  ({
+    "--nick-hue": `${nickHue(name)}`,
+    color: `hsl(${nickHue(name)}, var(--chat-nick-saturation), var(--chat-nick-lightness))`,
+  }) as CSSProperties;
 
 /**
  * Case-insensitive key for nickname matching.

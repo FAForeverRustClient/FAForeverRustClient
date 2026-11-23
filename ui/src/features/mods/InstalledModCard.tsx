@@ -55,7 +55,7 @@ export function InstalledModCard({
         {/* The installed map card's three lines: the name, who made it, and
             what kind of mod at which version. */}
         <span className="installed-mod-copy">
-          <strong title={mod.uid}>{mod.displayName}</strong>
+          <strong title={mod.displayName}>{mod.displayName}</strong>
           <small>{mod.author ? t("mods.vault.byAuthor", { author: mod.author }) : t("mods.vault.unknownAuthor")}</small>
           <small>
             {t(mod.modType === "ui" ? "mods.vault.uiMod" : "mods.vault.simMod")}

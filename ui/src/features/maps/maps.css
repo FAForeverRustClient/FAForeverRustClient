@@ -405,7 +405,8 @@
   margin-left: auto;
 }
 
-.map-vault-card-action .btn {
+.map-vault-card-action .btn-primary,
+.map-vault-card-action .btn-ghost {
   min-height: 28px;
   padding: 0 10px;
   font-size: 12px;
@@ -480,7 +481,6 @@
      it, and a strip kept for that narrowed the picture and the facts band in
      every other window. */
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 /* The map square and whole across the panel's width, opening the enlarged

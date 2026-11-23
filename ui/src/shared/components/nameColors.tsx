@@ -41,7 +41,7 @@ export function usePlayerStyle(name: string): CSSProperties | undefined {
     }
 
     if (chat.coloredNames) {
-      return `hsl(${nickHue(name)}, 75%, 65%)`;
+      return `hsl(${nickHue(name)}, var(--chat-nick-saturation), var(--chat-nick-lightness))`;
     }
 
     return undefined;

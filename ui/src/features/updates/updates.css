@@ -318,6 +318,24 @@
   display: none;
 }
 
+@media (max-width: 900px) {
+  .update-notice {
+    display: flex;
+    justify-content: center;
+  }
+
+  .update-notice-button {
+    justify-content: center;
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+
+  .update-notice-label {
+    display: none;
+  }
+}
+
 /* The popover, beside the sidebar like the notification panel next to it,
    and on that panel's layer: over the workspace, under modals (100). */
 .update-notice-popover {

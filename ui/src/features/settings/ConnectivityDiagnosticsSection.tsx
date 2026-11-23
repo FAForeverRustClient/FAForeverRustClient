@@ -7,7 +7,7 @@
 // running adapter for its peers on a timer, and only while a game runs and
 // this page is the one open: nothing is polled from a page nobody is reading.
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 
 import { Button } from "../../design-system/Button";
 import { Icon, type IconName } from "../../design-system/Icon";
@@ -28,6 +28,7 @@ import type {
 import { ipc } from "../../ipc/client";
 import { native } from "../../ipc/native";
 import { formatShortDateTime, formatTime } from "../../shared/format/dates";
+import { useForegroundInterval } from "../../shared/hooks/useForegroundInterval";
 import { plainError } from "../../shared/plainError";
 import { useAppStore } from "../../store/store";
 import { SettingRow, SettingsGroup } from "./SettingControls";
@@ -529,13 +530,12 @@ export function LiveRelay({ relay }: { relay: RelayStatus }) {
  * bar's connection check (#647).
  */
 export function useLiveRelayPolling(active: boolean) {
-  useEffect(() => {
-    if (!active) return;
-    const ask = () => ipc.send({ kind: "Connectivity", command: { type: "refreshRelayStatus" } });
-    ask();
-    const timer = window.setInterval(ask, RELAY_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [active]);
+  useForegroundInterval(
+    () => ipc.send({ kind: "Connectivity", command: { type: "refreshRelayStatus" } }),
+    RELAY_POLL_MS,
+    active,
+    true,
+  );
 }
 
 /** The run button's words for where the check is. */

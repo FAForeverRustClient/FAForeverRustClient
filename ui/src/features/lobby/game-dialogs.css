@@ -1184,15 +1184,15 @@
   justify-content: center;
   gap: 8px;
   container-type: inline-size;
-  border-color: rgba(75, 157, 232, 0.35);
-  background: rgba(75, 157, 232, 0.08);
+  border-color: color-mix(in srgb, var(--color-faction-uef) 35%, transparent);
+  background: color-mix(in srgb, var(--color-faction-uef) 8%, transparent);
   color: var(--color-text);
   transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
 
 .host-generate-btn:hover {
-  background: rgba(75, 157, 232, 0.16);
-  border-color: rgba(75, 157, 232, 0.6);
+  background: color-mix(in srgb, var(--color-faction-uef) 16%, transparent);
+  border-color: color-mix(in srgb, var(--color-faction-uef) 60%, transparent);
   color: var(--color-text);
 }
 
@@ -1220,8 +1220,8 @@
   font-weight: 600;
   padding: 1px 6px;
   border-radius: var(--radius-pill);
-  background: rgba(75, 157, 232, 0.15);
-  border: 1px solid rgba(75, 157, 232, 0.35);
+  background: color-mix(in srgb, var(--color-faction-uef) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-faction-uef) 35%, transparent);
   color: var(--color-faction-uef);
 }
 

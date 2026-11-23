@@ -14,6 +14,7 @@ import { ReplayInsights } from "./analysis/ReplayInsights";
 import { ReplayChartFrame } from "./analysis/ReplayChartFrame";
 import { ReplayMapPreviewOverlay } from "./ReplayDetailHero";
 import { LiveReplayDetail } from "./live/LiveReplayDetail";
+import { LiveWatchButton } from "./live/LiveReplayRow";
 
 vi.mock("../../ipc/client");
 failOnConsoleError();
@@ -156,5 +157,16 @@ describe("replay overlay focus", () => {
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(onClose).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(opener);
+  });
+
+  it("moves focus from an open live delay menu to Watch when the delay expires", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<LiveWatchButton busy={false} game={live} tracking={null} waitSeconds={30} />);
+    await user.click(screen.getByRole("button", { name: /Ready in/ }));
+    const notifyItem = screen.getByRole("menuitem", { name: en["replays.live.notifyMe"] });
+    expect(document.activeElement).toBe(notifyItem);
+    rerender(<LiveWatchButton busy={false} game={live} tracking={null} waitSeconds={0} />);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: en["replays.live.watch"] }));
   });
 });
