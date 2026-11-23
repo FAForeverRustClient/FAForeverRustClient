@@ -89,11 +89,9 @@ export function HallOfFamePage({
 
 /**
  * The board's rows the way the leaderboard draws a player: the avatar, then
- * the name, which opens the player menu the chat's names open. The account is
- * FAF's and arrives a moment after the board, so a row draws without it first
- * and keeps the avatar's room either way. The name is the account's current
- * login, the one the menu and everybody else know; the name the board recorded
- * is the tooltip where the two differ.
+ * the name, which opens the player menu the chat's names open. The row keeps
+ * space for the avatar while the account is loading. The menu uses the
+ * account's current login, with the recorded name in a tooltip if it differs.
  */
 function HallTable({ rows }: { rows: { player: HallPlayer; rank: number }[] }) {
   const { t } = useTranslation();
