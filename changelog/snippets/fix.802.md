@@ -1,0 +1,2 @@
+- Hall of Fame avatars no longer flash when you reopen the rankings.
+- Tournaments headings use the same typography as Events and Settings.
