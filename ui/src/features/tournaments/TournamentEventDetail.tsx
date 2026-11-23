@@ -102,6 +102,16 @@ export function TournamentEventDetail({ jump, onOpenPage, onSignUp, onReport }: 
     [maps, copySources, copySourcesStatus, copySource, copySourceStatus],
   );
 
+  const errorNotice = detailStatus.type === "failed" ? (
+    <StatusNotice
+      tone="error"
+      action={selectedId ? { label: t("common.retry"), onClick: () => send({ type: "select", payload: { tournamentId: selectedId } }) } : undefined}
+      detail={detailStatus.payload.reason}
+    >
+      {plainError(detailStatus.payload.reason)}
+    </StatusNotice>
+  ) : null;
+
   return open !== null && actions !== null && mapImport !== null ? (
     <TournamentDetailPane
       event={open}
@@ -112,6 +122,7 @@ export function TournamentEventDetail({ jump, onOpenPage, onSignUp, onReport }: 
       siteAdmin={siteAdmin}
       pastedImage={descImage}
       detailLoading={detailStatus.type === "loading"}
+      detailError={errorNotice}
       series={series}
       events={events}
       profiles={entrantProfiles}
@@ -136,14 +147,8 @@ export function TournamentEventDetail({ jump, onOpenPage, onSignUp, onReport }: 
       playerRatingsStatus={playerRatingsStatus}
       mapImport={mapImport}
     />
-  ) : detailStatus.type === "failed" ? (
-    <StatusNotice
-      tone="error"
-      action={selectedId ? { label: t("common.retry"), onClick: () => send({ type: "select", payload: { tournamentId: selectedId } }) } : undefined}
-      detail={detailStatus.payload.reason}
-    >
-      {plainError(detailStatus.payload.reason)}
-    </StatusNotice>
+  ) : errorNotice !== null ? (
+    errorNotice
   ) : (
     <div className="surface tournaments-state muted">
       {detailStatus.type === "loading"

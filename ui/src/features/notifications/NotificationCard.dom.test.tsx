@@ -16,6 +16,10 @@ it("activates the action and dismisses the entry through independent controls", 
   const activate = vi.fn(), dismiss = vi.fn();
   const view = render(<NotificationCard item={item} artwork="/assets/mapgen-placeholder.png" history
     onActivate={activate} onDismiss={dismiss} />);
+  const activateButton = view.getByRole("button", { name: "Watch replay Watch friends playing live" });
+  expect(activateButton.getAttribute("aria-describedby")).toBeTruthy();
+  const bodyEl = document.getElementById(activateButton.getAttribute("aria-describedby")!);
+  expect(bodyEl?.textContent).toBe("A team game");
   fireEvent.click(view.getByText("Watch replay"));
   expect(activate).toHaveBeenCalledOnce();
   expect(dismiss).not.toHaveBeenCalled();
@@ -60,6 +64,7 @@ it("keeps inline body links outside button elements and does not fire card activ
     expect(link.closest("button")).toBeNull();
     fireEvent.click(link);
     expect(activate).not.toHaveBeenCalled();
+    expect(open).toHaveBeenCalledWith("https://faforever.com/", "_blank", "noopener,noreferrer");
   } finally {
     open.mockRestore();
   }

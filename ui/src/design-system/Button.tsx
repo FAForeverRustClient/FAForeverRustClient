@@ -3,7 +3,7 @@
 // call site. Variants map to token-driven CSS: `primary` and `ghost` in
 // styles.css, `danger` in modal.css beside the confirmation it belongs to.
 
-import type { ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "ghost" | "danger";
 
@@ -17,7 +17,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
-export function Button({ variant = "ghost", className, type = "button", ...rest }: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = "ghost", className, type = "button", ...rest },
+  ref,
+) {
   const base = CLASS[variant];
-  return <button type={type} className={className ? `${base} ${className}` : base} {...rest} />;
-}
+  return <button ref={ref} type={type} className={className ? `${base} ${className}` : base} {...rest} />;
+});

@@ -110,4 +110,19 @@ describe("Modal, mounted", () => {
     );
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Primary field" }));
   });
+
+  it("moves Tab from the dialog panel itself to the first focusable control", async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal ariaLabel="Form" onClose={() => undefined}>
+        <button type="button">First action</button>
+        <button type="button">Second action</button>
+      </Modal>,
+    );
+    const dialog = screen.getByRole("dialog", { name: "Form" });
+    dialog.focus();
+    expect(document.activeElement).toBe(dialog);
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Close" }));
+  });
 });

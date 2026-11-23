@@ -2292,10 +2292,6 @@
   padding: 0 var(--space-2);
 }
 
-:root[data-theme="forgeLight"] {
-  --tournament-picker-invert: 0;
-}
-
 .tournament-form h3 {
   margin: 0;
   font-size: 16px;
@@ -2364,11 +2360,9 @@
   gap: var(--space-2);
 }
 
-/* The native calendar and spinner glyphs are drawn dark on a dark control by
-   default, which makes them invisible rather than subtle. */
+/* Native calendar glyphs follow each theme's `color-scheme` declaration. */
 .tournament-field input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .tournament-field input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(var(--tournament-picker-invert, 1));
   cursor: pointer;
   opacity: 0.7;
 }

@@ -111,8 +111,10 @@ export function LiveReplayDetail({
   const simMods = Object.values(game.simMods);
   const [now, setNow] = useState(() => Date.now());
   const started = gameStartedAt(game);
-  const liveWait = started ? replayDelayRemaining(game, now) : waitSeconds;
-  useForegroundInterval(() => setNow(Date.now()), liveWait > 0 ? 1_000 : 60_000, started !== null);
+  const liveWait = started ? Math.min(replayDelayRemaining(game, now), waitSeconds) : waitSeconds;
+  // Keep ticking while this detail modal is visible even if another game or
+  // replay is running, so its countdown and Watch transition stay current.
+  useForegroundInterval(() => setNow(Date.now()), liveWait > 0 ? 1_000 : 60_000, started !== null, true);
 
   // The directory's avatars, keyed the way the roster asks for them. The lobby
   // sends no avatar with a game, so this is the only place one can come from.

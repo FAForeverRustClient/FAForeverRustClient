@@ -7,7 +7,7 @@
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
 
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -153,6 +153,8 @@ interface TournamentDetailPaneProps {
    */
   jump?: { section: string; nonce: number } | null;
   detailLoading: boolean;
+  /** Shown beside the cached detail when a refresh of this event fails. */
+  detailError?: ReactNode;
   /** Every series, for the organiser's picker. Loaded when Manage is opened. */
   series: TourneySeries[];
   /** The list behind this detail, as candidates for a qualifier link. */
@@ -609,6 +611,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           the moment the refresh took and pulled it back up, a jump for a
           reload that changes nothing the reader is looking at. */}
       {props.detailLoading && <p className="tournament-refresh-status" role="status">{t("tournaments.detailLoading")}</p>}
+      {props.detailError}
 
       {/* Everything but the bracket reads at a measure rather than at the
           window's width. The pane is as wide as the client, which on a wide

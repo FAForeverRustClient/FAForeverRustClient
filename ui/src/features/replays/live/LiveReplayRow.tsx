@@ -1,6 +1,6 @@
 import { useOverlayLayer } from "../../../design-system/useOverlayLayer";
 import { useMenuKeyboard } from "../../../shared/hooks/useMenuKeyboard";
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -146,9 +146,18 @@ export function LiveWatchButton({
   const target = { uid: game.id, modName: game.modName, map: game.map };
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const watchRef = useRef<HTMLButtonElement | null>(null);
+  const focusInsideDelayRef = useRef(false);
   const menuId = useId();
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  const handleDelayFocus = () => { focusInsideDelayRef.current = true; };
+  const handleDelayBlur = (event: FocusEvent<HTMLElement>) => {
+    const next = event.relatedTarget as Node | null;
+    if (next && (menuRef.current?.contains(next) || triggerRef.current?.contains(next))) return;
+    focusInsideDelayRef.current = false;
+  };
 
   const setMenuOpen = useCallback((next: boolean) => {
     setOpen(next);
@@ -209,10 +218,16 @@ export function LiveWatchButton({
     };
   }, [open, place, setMenuOpen]);
 
-  // A game that matured while its menu was open must not leave the menu
-  // orphaned above the "Watch" button that replaces the trigger.
+  // A game that matured while its menu or trigger held focus must close the
+  // menu and hand focus to the replacement "Watch" button.
   useEffect(() => {
-    if (!waiting && open) setMenuOpen(false);
+    if (!waiting) {
+      if (open) setMenuOpen(false);
+      if (focusInsideDelayRef.current) {
+        focusInsideDelayRef.current = false;
+        watchRef.current?.focus();
+      }
+    }
   }, [waiting, open, setMenuOpen]);
 
   if (waiting) {
@@ -221,7 +236,11 @@ export function LiveWatchButton({
       : "replays.live.autoWatchSet");
     const closeMenu = () => setMenuOpen(false);
     return (
-      <div className={`live-delay-actions${tracked ? " is-tracked" : ""}`}>
+      <div
+        className={`live-delay-actions${tracked ? " is-tracked" : ""}`}
+        onFocus={handleDelayFocus}
+        onBlur={handleDelayBlur}
+      >
         <button
           ref={triggerRef}
           type="button"
@@ -242,6 +261,8 @@ export function LiveWatchButton({
             className="live-delay-menu surface-raised"
             style={{ top: position.top, left: position.left }}
             onClick={(event) => event.stopPropagation()}
+            onFocus={handleDelayFocus}
+            onBlur={handleDelayBlur}
           >
             <strong>{t("replays.live.whenReady")}</strong>
             <Button
@@ -290,6 +311,7 @@ export function LiveWatchButton({
 
   return (
     <Button
+      ref={watchRef}
       variant="primary"
       className="live-watch-button"
       disabled={busy}

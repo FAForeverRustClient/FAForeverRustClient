@@ -9,11 +9,18 @@ import { en } from "../../i18n/catalog/en";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 
+const nativeMock = vi.hoisted(() => ({
+  listNotificationSounds: vi.fn<() => Promise<string[]>>(() => Promise.resolve([])),
+  notificationDisplays: vi.fn(() => Promise.resolve([])),
+  selectFile: vi.fn<() => Promise<string | null>>(() => Promise.resolve(null)),
+  importNotificationSound: vi.fn<(path: string) => Promise<string>>(() => Promise.resolve("")),
+}));
 vi.mock("../../ipc/client");
-vi.mock("../../ipc/native", () => ({ native: {
-  listNotificationSounds: () => Promise.resolve([]),
-  notificationDisplays: () => Promise.resolve([]),
-} }));
+vi.mock("../../ipc/native", () => ({ native: nativeMock }));
+vi.mock("../notifications/notificationSound", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../notifications/notificationSound")>();
+  return { ...actual, playNotificationSound: vi.fn() };
+});
 failOnConsoleError();
 
 async function mountNotifications() {
@@ -102,4 +109,64 @@ it("offers one shared popup duration control and saves a longer display time", a
   } } });
   fireEvent.blur(duration);
   expect(duration.value).toBe("15");
+});
+
+it("adds an imported custom sound to the dropdown immediately and selects it in the requesting row", async () => {
+  nativeMock.listNotificationSounds.mockReset().mockResolvedValueOnce([]).mockImplementationOnce(() => new Promise(() => undefined));
+  nativeMock.selectFile.mockResolvedValueOnce("/tmp/horn.wav");
+  nativeMock.importNotificationSound.mockResolvedValueOnce("horn.wav");
+  await mountNotifications();
+  const select = screen.getByRole<HTMLSelectElement>("combobox", {
+    name: `Sound for ${en["settings.notifications.matchFound"]}`,
+  });
+  await act(async () => {
+    fireEvent.change(select, { target: { value: "add-a-sound" } });
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(sentCommands()).toContainEqual({
+    kind: "Settings",
+    command: { type: "patchNotifications", payload: { patch: { sounds: { matchFound: { custom: "horn.wav" } } } } },
+  });
+  applyEvent({
+    kind: "Settings",
+    event: {
+      field: "notifications",
+      value: {
+        ...useAppStore.getState().state.settings.notifications,
+        sounds: { ...useAppStore.getState().state.settings.notifications.sounds, matchFound: { custom: "horn.wav" } },
+      },
+    },
+  });
+  expect(select.value).toBe("custom:horn.wav");
+  expect([...select.options].map((option) => option.textContent)).not.toContain("horn.wav (missing)");
+});
+
+it("does not overwrite a newer sound choice when an older file import finishes later", async () => {
+  let resolveImport!: (stored: string) => void;
+  nativeMock.listNotificationSounds.mockReset().mockResolvedValue([]);
+  nativeMock.selectFile.mockResolvedValueOnce("/tmp/slow.wav");
+  nativeMock.importNotificationSound.mockReturnValueOnce(
+    new Promise<string>((resolve) => { resolveImport = resolve; }),
+  );
+  await mountNotifications();
+  const select = screen.getByRole<HTMLSelectElement>("combobox", {
+    name: `Sound for ${en["settings.notifications.matchFound"]}`,
+  });
+  await act(async () => {
+    fireEvent.change(select, { target: { value: "add-a-sound" } });
+    await Promise.resolve();
+  });
+  clearSentCommands();
+  fireEvent.change(select, { target: { value: "ping" } });
+  expect(sentCommands()).toEqual([
+    { kind: "Settings", command: { type: "patchNotifications", payload: { patch: { sounds: { matchFound: "ping" } } } } },
+  ]);
+  clearSentCommands();
+  await act(async () => {
+    resolveImport("slow.wav");
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  expect(sentCommands()).toEqual([]);
 });

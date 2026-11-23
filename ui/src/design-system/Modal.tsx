@@ -124,14 +124,17 @@ export function Modal({
   const trapFocus = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") return;
     // React events bubble through portals along the component tree, so a Tab
-    // inside a dialog opened from this one arrives here too. Only the topmost
-    // dialog decides where Tab goes.
+    // inside a dialog, menu or popover opened from this one arrives here too.
+    // Only the topmost dialog traps focus, and only for events originating
+    // inside its own DOM panel so portalled children manage their own Tab order.
     if (overlayStack.topFocusTrap() !== layer) return;
-    const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+    const panel = panelRef.current;
+    if (!panel || !panel.contains(event.target as Node)) return;
+    const controls = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
       .filter((element) => element.offsetParent !== null && getComputedStyle(element).visibility !== "hidden");
     if (controls.length === 0) {
       event.preventDefault();
-      panelRef.current?.focus();
+      panel.focus();
       return;
     }
     const first = controls[0];

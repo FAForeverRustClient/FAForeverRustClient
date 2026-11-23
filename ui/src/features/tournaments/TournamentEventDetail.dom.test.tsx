@@ -244,4 +244,26 @@ describe("TournamentEventDetail, mounted", () => {
       command: { type: "select", payload: { tournamentId: "e1a2b" } },
     });
   });
+
+  it("shows the retry notice alongside cached detail when reloading the open tournament fails", async () => {
+    const user = userEvent.setup();
+    seedStore((state) => ({
+      ...state,
+      tourney: {
+        ...state.tourney,
+        events: [entered],
+        selectedId: entered.id,
+        detail: entered,
+        detailStatus: { type: "failed", payload: { reason: "Gateway timeout", kind: "offline" } },
+      },
+    }));
+    render(<TournamentEventDetail jump={null} onOpenPage={() => undefined} onSignUp={() => undefined} onReport={() => undefined} />);
+    expect(screen.getByRole("heading", { name: "Spring Cup" })).toBeDefined();
+    expect(screen.getByRole("alert")).toBeDefined();
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(sentCommands()).toContainEqual({
+      kind: "Tourney",
+      command: { type: "select", payload: { tournamentId: "e1a2b" } },
+    });
+  });
 });
