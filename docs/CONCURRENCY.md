@@ -69,7 +69,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Lane | Policy patterns |
 |---|---|
-| `Ordinary` | 244 |
+| `Ordinary` | 248 |
 | `Priority` | 34 |
 
 ### Priority commands
@@ -94,8 +94,8 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 
 | Admission | Policy patterns |
 |---|---|
-| `Concurrent` | 189 |
-| `SingleFlight` | 23 |
+| `Concurrent` | 192 |
+| `SingleFlight` | 24 |
 | `Serial` | 20 |
 | `Latest` | 5 |
 | `ServiceGuarded` | 41 |
@@ -131,6 +131,7 @@ Generated from `command_policy.rs`. Regenerate with `cargo test -p faf-app --lib
 | `TrainingLoad` | `SingleFlight` | `Training::Load` |
 | `ClanWrite` | `Serial` | `Clan::AcceptInvitation`, `Clan::Create`, `Clan::Disband`, `Clan::Edit`, `Clan::HandOver`, `Clan::Leave`, `Clan::Remove` |
 | `TourneyWrite` | `Serial` | `Tourney::Write` |
+| `TourneyHall` | `SingleFlight` | `Tourney::Read::LoadSite::HallOfFame` |
 | `PartyPlacements` | `Serial` | `PlayerCard::LoadPartyPlacements` |
 | `ConnectivityCheck` | `SingleFlight` | `Connectivity::RunCheck` |
 | `RelayStatus` | `SingleFlight` | `Connectivity::RefreshRelayStatus` |

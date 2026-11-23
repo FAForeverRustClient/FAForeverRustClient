@@ -3561,10 +3561,7 @@ impl faf_app::ports::TourneySitePort for HallSite {
 }
 
 #[tokio::test]
-async fn the_hall_of_fame_lands_first_and_then_with_each_players_faf_account() {
-    // The board is the tournament service's; the avatars are FAF's. The board
-    // must not wait on the second request, and a row FAF has no account for
-    // keeps its place without one.
+async fn hall_of_fame_refresh_preserves_profiles_while_faf_is_queried() {
     let base = fake_ports();
     let ports = Ports {
         tourney_site: Arc::new(HallSite(base.tourney_site.clone())),
@@ -3574,43 +3571,50 @@ async fn the_hall_of_fame_lands_first_and_then_with_each_players_faf_account() {
     sign_in(&app).await;
     let mut events = app.subscribe();
 
-    app.dispatch(
-        TourneyRead::LoadSite {
-            read: faf_domain::state::SiteRead::HallOfFame,
-        }
-        .into(),
-    )
-    .await
-    .unwrap();
+    let mut previous = None;
+    for _ in 0..2 {
+        app.dispatch_and_wait(
+            TourneyRead::LoadSite {
+                read: faf_domain::state::SiteRead::HallOfFame,
+            }
+            .into(),
+        )
+        .await
+        .unwrap();
 
-    let mut boards = Vec::new();
-    while boards.len() < 2 {
-        if let TourneyEvent::SiteLoaded {
-            document: faf_domain::state::SiteDocument::HallOfFame(hall),
-        } = next_event(&mut events).await
-        {
-            boards.push(hall);
+        let boards: Vec<_> = std::iter::from_fn(|| events.try_recv().ok())
+            .filter_map(|event| match event {
+                AppEvent::Tourney(TourneyEvent::SiteLoaded {
+                    document: faf_domain::state::SiteDocument::HallOfFame(hall),
+                }) => Some(hall),
+                _ => None,
+            })
+            .collect();
+        let [board, enriched] = boards.as_slice() else {
+            panic!(
+                "expected a board before and after profile lookup, got {}",
+                boards.len()
+            );
+        };
+        if let Some(previous) = &previous {
+            assert_eq!(
+                board, previous,
+                "refresh keeps the profiles already on screen"
+            );
+        } else {
+            assert!(board.players.iter().all(|player| player.profile.is_none()));
         }
-    }
-    assert!(
-        boards[0]
+        let logins: Vec<_> = enriched
             .players
             .iter()
-            .all(|player| player.profile.is_none()),
-        "the board first, as the service sent it"
-    );
-    let logins: Vec<Option<String>> = boards[1]
-        .players
-        .iter()
-        .map(|player| player.profile.as_ref().map(|profile| profile.login.clone()))
-        .collect();
-    assert_eq!(
-        logins,
-        vec![
-            Some("Ada_Lovelace".to_string()),
-            None,
-            Some("Nuggets".to_string())
-        ],
-        "then each row with its account, in the board's order"
-    );
+            .map(|player| {
+                player
+                    .profile
+                    .as_ref()
+                    .map(|profile| profile.login.as_str())
+            })
+            .collect();
+        assert_eq!(logins, vec![Some("Ada_Lovelace"), None, Some("Nuggets")]);
+        previous = Some(enriched.clone());
+    }
 }
