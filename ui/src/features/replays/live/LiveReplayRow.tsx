@@ -241,6 +241,7 @@ export function LiveWatchButton({
             role="menu"
             className="live-delay-menu surface-raised"
             style={{ top: position.top, left: position.left }}
+            onClick={(event) => event.stopPropagation()}
           >
             <strong>{t("replays.live.whenReady")}</strong>
             <Button

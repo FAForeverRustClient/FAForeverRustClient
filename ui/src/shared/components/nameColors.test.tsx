@@ -164,7 +164,7 @@ describe("nameColors", () => {
 
     const style = resolvePlayerStyle("Charlie", EMPTY_SOCIAL, prefs);
     expect(style).toBeDefined();
-    expect(style?.color).toMatch(/^hsl\(\d+, 75%, 65%\)$/);
+    expect(style?.color).toMatch(/^hsl\(\d+, var\(--chat-nick-saturation\), var\(--chat-nick-lightness\)\)$/);
   });
 
   it("returns undefined when no special color is configured and coloredNames is off", () => {

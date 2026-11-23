@@ -354,7 +354,11 @@
    the time. The columns are shares of the panel now, so they fit whatever it
    is. */
 .coop-board-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .coop-board {

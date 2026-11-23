@@ -175,6 +175,7 @@ export function UnitHistoryView({ onOpenRelease }: { onOpenRelease: (id: string)
                 type="button"
                 className={`unit-history-faction-choice faction-${name.toLowerCase()}${faction === name ? " is-active" : ""}`}
                 aria-pressed={faction === name}
+                aria-label={name}
                 title={name}
                 onClick={() => setFaction(faction === name ? "" : name)}
               >

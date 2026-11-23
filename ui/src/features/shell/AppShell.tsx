@@ -84,21 +84,22 @@ export function AppShell() {
     connecting: t("shell.sidebar.connecting"),
     online: t("shell.sidebar.online"),
   }[presence];
-  const social = useAppStore((s) => s.state.social);
   const player = auth.player;
+  const playerName = player?.name ?? null;
   // The menu on the player's own name (#514): sign out and play offline,
   // which otherwise live in Settings only.
   const [profileMenu, setProfileMenu] = useState<ProfileMenuTarget | null>(null);
   const logOut = () =>
     ipc.send({ kind: "Auth", command: { type: auth.mode === "account" ? "logout" : "logoutTest" } });
-  // The signed-in account's own entry in the live player directory, which is
-  // where the avatar the lobby knows about lives.
-  const ownProfile = player ? findPlayer(social, player.name) : null;
+  // Select only the signed-in account's own avatar fields so live lobby
+  // directory broadcasts do not re-render the shell on every player tick.
+  const ownAvatarUrl = useAppStore((s) => (playerName ? findPlayer(s.state.social, playerName)?.avatarUrl ?? null : null));
+  const ownAvatarTooltip = useAppStore((s) => (playerName ? findPlayer(s.state.social, playerName)?.avatarTooltip ?? null : null));
   // Seeded from the persisted value and written back when a drag ends: the
   // window's own geometry has been remembered for a while, and the panel inside
   // it going back to 224 px on every start was the odd one out.
-  const appearance = useAppStore((s) => s.state.settings.appearance);
-  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(appearance.sidebarWidth));
+  const persistedSidebarWidth = useAppStore((s) => s.state.settings.appearance.sidebarWidth);
+  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(persistedSidebarWidth));
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const resizeRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const contentRef = useRef<HTMLElement>(null);
@@ -138,9 +139,9 @@ export function AppShell() {
   // width the shell never read back.
   useEffect(() => {
     setSidebarWidth((current) =>
-      current === appearance.sidebarWidth ? current : clampSidebarWidth(appearance.sidebarWidth),
+      current === persistedSidebarWidth ? current : clampSidebarWidth(persistedSidebarWidth),
     );
-  }, [appearance.sidebarWidth]);
+  }, [persistedSidebarWidth]);
 
   useEffect(() => {
     if (!isResizingSidebar) return;
@@ -188,16 +189,8 @@ export function AppShell() {
     });
   };
 
-  // Everything the client tints "because a friend is involved" reads this one
-  // token, and the colour it holds is the one the reader chose for friends in
-  // chat. A second, fixed green for the same idea elsewhere in the client was
-  // a setting that only half applied.
-  const friendColor = useAppStore((state) => state.state.settings.chat.nameColors.friends);
-  const foeColor = useAppStore((state) => state.state.settings.chat.nameColors.foes);
   const shellStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
-    ...(friendColor ? { "--color-friend": friendColor } : {}),
-    ...(foeColor ? { "--color-foe": foeColor } : {}),
   } as CSSProperties;
 
   return (
@@ -242,8 +235,8 @@ export function AppShell() {
           >
             <ProfileAvatar
               name={player?.name ?? "F"}
-              avatarUrl={ownProfile?.avatarUrl}
-              tooltip={ownProfile?.avatarTooltip}
+              avatarUrl={ownAvatarUrl}
+              tooltip={ownAvatarTooltip}
             />
             <span className="profile-copy">
               <span className="player-name">

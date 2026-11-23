@@ -8,15 +8,18 @@
 // redraws that are about something else (a chat poll, the tab's minute tick).
 
 import { useMemo } from "react";
+import { StatusNotice } from "../../design-system/StatusNotice";
 import type { TourneyMatch } from "../../ipc/bindings";
 import { useTranslation } from "../../i18n/useTranslation";
 import { openHttpsUrl } from "../../shared/externalLinks";
+import { plainError } from "../../shared/plainError";
 import { busyMatchId, openEvent } from "../../shared/rules/tourneyRules";
 import { useAppStore } from "../../store/store";
 import { TournamentDetailPane } from "./detail/TournamentDetailPane";
 import type { MapImport } from "./manage/MapImportDialog";
 import type { SitePage } from "./site/sitePages";
 import { createTourneyActions } from "./tourneyActions";
+import { send } from "./tourneyCommands";
 import { useTourneyDraftRefresh } from "./useTourneyDraftRefresh";
 
 interface Props {
@@ -133,6 +136,14 @@ export function TournamentEventDetail({ jump, onOpenPage, onSignUp, onReport }: 
       playerRatingsStatus={playerRatingsStatus}
       mapImport={mapImport}
     />
+  ) : detailStatus.type === "failed" ? (
+    <StatusNotice
+      tone="error"
+      action={selectedId ? { label: t("common.retry"), onClick: () => send({ type: "select", payload: { tournamentId: selectedId } }) } : undefined}
+      detail={detailStatus.payload.reason}
+    >
+      {plainError(detailStatus.payload.reason)}
+    </StatusNotice>
   ) : (
     <div className="surface tournaments-state muted">
       {detailStatus.type === "loading"

@@ -395,7 +395,7 @@
   image-rendering: pixelated;
 }
 
-.sidebar-profile-button:hover {
+.sidebar-profile-button:hover:not(:disabled) {
   background: var(--color-surface-hover);
   border-color: var(--color-border);
 }
@@ -516,9 +516,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    padding-inline: 0;
   }
 
-  .sidebar-footer .profile-avatar {
+  .sidebar-profile-button {
+    grid-template-columns: auto;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .game-folders-caret {
     display: none;
   }
 

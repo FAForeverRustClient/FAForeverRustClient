@@ -97,13 +97,21 @@ export function Modal({
     const panel = panelRef.current;
     // The close button is the first control in the DOM, so focusing "the first
     // control" put the caret on it and every keystroke went nowhere: a dialog
-    // whose text field looked ready but silently ignored typing. A field the
-    // caller marked `autoFocus` wins, then any other control, and the close
-    // button only as a last resort.
-    const requested = panel?.querySelector<HTMLElement>("[autofocus]");
-    const firstControl = panel?.querySelector<HTMLElement>(CONTENT_FOCUSABLE);
-    const fallback = panel?.querySelector<HTMLElement>(FOCUSABLE);
-    (requested ?? firstControl ?? fallback ?? panel)?.focus();
+    // whose text field looked ready but silently ignored typing. React handles
+    // JSX `autoFocus` imperatively before effects run without leaving an HTML
+    // attribute, so keep focus when a descendant already holds it; otherwise
+    // prefer `[autofocus]`, then any content control, and the close button last.
+    const alreadyFocused =
+      panel !== null &&
+      document.activeElement instanceof HTMLElement &&
+      panel.contains(document.activeElement) &&
+      document.activeElement !== panel;
+    if (!alreadyFocused) {
+      const requested = panel?.querySelector<HTMLElement>("[autofocus]");
+      const firstControl = panel?.querySelector<HTMLElement>(CONTENT_FOCUSABLE);
+      const fallback = panel?.querySelector<HTMLElement>(FOCUSABLE);
+      (requested ?? firstControl ?? fallback ?? panel)?.focus();
+    }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -120,7 +128,7 @@ export function Modal({
     // dialog decides where Tab goes.
     if (overlayStack.topFocusTrap() !== layer) return;
     const controls = Array.from(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
-      .filter((element) => element.offsetParent !== null);
+      .filter((element) => element.offsetParent !== null && getComputedStyle(element).visibility !== "hidden");
     if (controls.length === 0) {
       event.preventDefault();
       panelRef.current?.focus();
@@ -128,10 +136,11 @@ export function Modal({
     }
     const first = controls[0];
     const last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    const index = controls.indexOf(document.activeElement as HTMLElement);
+    if (event.shiftKey && index <= 0) {
       event.preventDefault();
       last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
+    } else if (!event.shiftKey && (index === -1 || index === controls.length - 1)) {
       event.preventDefault();
       first.focus();
     }

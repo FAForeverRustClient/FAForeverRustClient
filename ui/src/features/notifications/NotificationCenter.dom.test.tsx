@@ -250,3 +250,12 @@ it("marks the bell's unread entries in one command and keeps their new markers",
   const entries = [...view.container.querySelectorAll(".notification-item")];
   expect(entries.map((item) => item.classList.contains("is-read"))).toEqual([false, true, false]);
 });
+
+it("closes the history panel when activating an actionable notification", async () => {
+  const view = render(<NotificationCenter />);
+  await act(async () => {});
+  act(() => view.container.querySelector<HTMLButtonElement>(".notification-bell")!.click());
+  expect(view.container.querySelector(".notification-panel")).not.toBeNull();
+  act(() => view.container.querySelector<HTMLButtonElement>(".notification-activate")!.click());
+  expect(view.container.querySelector(".notification-panel")).toBeNull();
+});

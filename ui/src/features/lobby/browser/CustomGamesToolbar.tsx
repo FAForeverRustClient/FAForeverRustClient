@@ -172,7 +172,7 @@ export function CustomGamesToolbar(props: Props) {
         </button>
       </div>
       {props.onRefresh && (
-        <Button onClick={props.onRefresh} title={t("lobby.coop.refresh")}>
+        <Button onClick={props.onRefresh} aria-label={t("lobby.coop.refresh")} title={t("lobby.coop.refresh")}>
           <Icon name="refresh" size={15} />
         </Button>
       )}

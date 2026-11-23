@@ -2292,7 +2292,7 @@
   padding: 0 var(--space-2);
 }
 
-:root[data-theme="light"] {
+:root[data-theme="forgeLight"] {
   --tournament-picker-invert: 0;
 }
 

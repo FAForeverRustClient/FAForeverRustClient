@@ -29,14 +29,38 @@ it("activates the action and dismisses the entry through independent controls", 
   expect(view.container.querySelector(".notification-text time")).not.toBeNull();
 });
 
-it("keeps recovery controls outside the entry's activation and dismissal row", () => {
+it("keeps recovery controls outside the entry's dismissal row and omits an activation button when non-actionable", () => {
   const retry = vi.fn();
+  const activate = vi.fn();
   const view = render(<NotificationCard item={{ ...item, action: null }} artwork={null} history
-    onActivate={vi.fn()} onDismiss={vi.fn()}
+    onActivate={activate} onDismiss={vi.fn()}
     recovery={<div className="notification-recovery"><button onClick={retry}>Retry</button></div>} />);
   const entry = view.container.querySelector(".notification-entry")!;
-  expect(entry.querySelectorAll("button")).toHaveLength(2);
+  expect(entry.querySelectorAll("button")).toHaveLength(1);
+  expect(entry.querySelector(".notification-activate")).toBeNull();
   expect(entry.querySelector(".notification-recovery")).toBeNull();
+  fireEvent.click(view.getByText("A team game"));
+  expect(activate).not.toHaveBeenCalled();
   fireEvent.click(view.getByRole("button", { name: "Retry" }));
   expect(retry).toHaveBeenCalledOnce();
+});
+
+it("keeps inline body links outside button elements and does not fire card activation when clicking a link", () => {
+  const activate = vi.fn();
+  const open = vi.spyOn(window, "open").mockReturnValue(null);
+  try {
+    const view = render(<NotificationCard
+      item={{ ...item, body: "See https://faforever.com for details" }}
+      artwork={null}
+      history
+      onActivate={activate}
+      onDismiss={vi.fn()}
+    />);
+    const link = view.getByRole("link", { name: "https://faforever.com" });
+    expect(link.closest("button")).toBeNull();
+    fireEvent.click(link);
+    expect(activate).not.toHaveBeenCalled();
+  } finally {
+    open.mockRestore();
+  }
 });

@@ -178,6 +178,7 @@
 }
 
 .notification-content {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -192,6 +193,34 @@
   background: transparent;
   border: 0;
   cursor: pointer;
+}
+
+.notification-content.is-static {
+  cursor: default;
+}
+
+/* Stretched activation trigger behind inline body links so links are never
+   nested inside a button and remain independently clickable. */
+.notification-activate {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+  cursor: pointer;
+}
+
+.notification-activate:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.notification-body a,
+.notification-body button {
+  position: relative;
+  z-index: 1;
 }
 
 /* Title, time and message, beside the picture and action when there are any. */
@@ -405,7 +434,9 @@
 }
 
 @media (max-width: 900px) {
-  .notification-panel {
+  .notification-panel,
+  .notification-toasts.is-topLeft,
+  .notification-toasts.is-bottomLeft {
     left: 58px;
   }
 }

@@ -39,6 +39,8 @@ interface Props {
    * apart from the checkboxes below, and choosing it closes the popover.
    */
   action?: { label: string; onSelect: () => void };
+  /** Whether the control is disabled. */
+  disabled?: boolean;
   /**
    * `inline` puts the label beside the trigger rather than above it, for a
    * toolbar row whose other controls are labelled that way.
@@ -54,12 +56,17 @@ export function MultiSelect({
   anyLabel,
   loading = false,
   action,
+  disabled = false,
   layout = "stacked",
 }: Props) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (disabled && open) setOpen(false);
+  }, [disabled, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -123,9 +130,12 @@ export function MultiSelect({
         ref={triggerRef}
         type="button"
         className={`search-panel-control multi-select-trigger${selected.length > 0 ? " is-active" : ""}`}
+        disabled={disabled}
         aria-expanded={open}
         aria-label={`${label}: ${summary}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          if (!disabled) setOpen((o) => !o);
+        }}
       >
         <span className="multi-select-summary">{summary}</span>
         <Icon name="filter" size={13} />

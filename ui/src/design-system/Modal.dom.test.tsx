@@ -100,4 +100,14 @@ describe("Modal, mounted", () => {
     unmount();
     expect(overlayStack.size()).toBe(0);
   });
+
+  it("preserves React autoFocus on a later control instead of snapping focus to the first control", () => {
+    render(
+      <Modal ariaLabel="Form" onClose={() => undefined}>
+        <button type="button">First action</button>
+        <input aria-label="Primary field" autoFocus />
+      </Modal>,
+    );
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Primary field" }));
+  });
 });

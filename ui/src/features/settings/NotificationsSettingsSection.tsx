@@ -105,7 +105,7 @@ function SoundChoice({
   /** The stored sounds, shared by every row: one list, one read from disk. */
   custom: readonly string[];
   onChange: (sound: NotificationSound) => void;
-  onAdd: () => void;
+  onAdd: (onPicked?: (sound: NotificationSound) => void) => void;
 }) {
   const { t } = useTranslation();
   const volume = useAppStore((state) => state.state.settings.notifications.volume);
@@ -126,7 +126,7 @@ function SoundChoice({
         aria-label={t("settings.notifications.soundFor", { what })}
         onChange={(event) => {
           if (event.target.value === ADD_VALUE) {
-            onAdd();
+            onAdd(onChange);
             return;
           }
           const sound = soundFromOptionValue(event.target.value);
@@ -198,7 +198,7 @@ export function NotificationsSettingsSection() {
    * choice is only written once the copy has succeeded: a row pointing at a
    * file that was never stored would be silence with no explanation.
    */
-  const addSound = useCallback(() => {
+  const addSound = useCallback((onPicked?: (sound: NotificationSound) => void) => {
     ipc.run((async () => {
       const picked = await native.selectFile({
         title: t("settings.notifications.sound.pickTitle"),
@@ -210,10 +210,12 @@ export function NotificationsSettingsSection() {
       if (picked === null) return;
       try {
         const stored = await native.importNotificationSound(picked);
+        const sound: NotificationSound = { custom: stored };
         forgetCustomSounds();
         reloadSounds();
         setSoundError("");
-        playNotificationSound({ custom: stored }, volume);
+        onPicked?.(sound);
+        playNotificationSound(sound, volume);
       } catch (error) {
         setSoundError(String(error));
       }
@@ -371,7 +373,7 @@ export function NotificationsSettingsSection() {
               </li>
             ))}
             <li>
-              <Button onClick={addSound}>{t("settings.notifications.sound.add")}</Button>
+              <Button onClick={() => addSound()}>{t("settings.notifications.sound.add")}</Button>
             </li>
           </ul>
         </SettingRow>
@@ -458,6 +460,7 @@ export function NotificationsSettingsSection() {
               anyLabel={t("settings.notifications.queueOpponentOff")}
               options={queueOpponentOptions}
               selected={preferences.queueOpponentQueues}
+              disabled={!preferences.enabled}
               onChange={(queueOpponentQueues) => update({ queueOpponentQueues })}
             />
           </div>
@@ -473,6 +476,7 @@ export function NotificationsSettingsSection() {
               selected={mapPoolOptions
                 .map((option) => option.value)
                 .filter((name) => !(preferences.mapPoolMutedQueues ?? []).includes(name))}
+              disabled={!preferences.enabled}
               onChange={(announced) =>
                 update({
                   mapPoolMutedQueues: mapPoolOptions
@@ -550,7 +554,7 @@ export function NotificationsSettingsSection() {
           <SettingsSwitch checked={preferences.friendReplayReady ?? true} disabled={!preferences.enabled} onChange={(friendReplayReady) => update({ friendReplayReady })} label={t("settings.notifications.friendReplayReady")} />
         </SettingRow>
         <SettingRow label={t("settings.notifications.friendJoinedGame")}>
-          <SoundChoice value={preferences.sounds.friendJoinedGame ?? "chime"} disabled={mute || !preferences.friendJoinedGame} what={t("settings.notifications.friendJoinedGame")} onChange={(friendJoinedGame) => setSound({ friendJoinedGame })} custom={choosableSounds} onAdd={addSound} />
+          <SoundChoice value={preferences.sounds.friendJoinedGame ?? "chime"} disabled={mute || !(preferences.friendJoinedGame ?? true)} what={t("settings.notifications.friendJoinedGame")} onChange={(friendJoinedGame) => setSound({ friendJoinedGame })} custom={choosableSounds} onAdd={addSound} />
           <SettingsSwitch checked={preferences.friendJoinedGame ?? true} disabled={!preferences.enabled} onChange={(friendJoinedGame) => update({ friendJoinedGame })} label={t("settings.notifications.friendJoinedGame")} />
         </SettingRow>
         {/* No sound picker, deliberately: a stream is the one kind here that is

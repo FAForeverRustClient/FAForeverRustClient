@@ -35,6 +35,7 @@ export function useInstalledModFilters({
   vaultFor,
   favorites,
   favoriteCount,
+  updatesCount = 0,
 }: {
   installed: InstalledMod[];
   /** The vault's record of an installed mod, by its counterpart: see `modIdentity`. */
@@ -42,6 +43,8 @@ export function useInstalledModFilters({
   favorites: ReadonlySet<string>;
   /** The starred mods that are installed. */
   favoriteCount: number;
+  /** Installed mods that have a newer version in the vault. */
+  updatesCount?: number;
 }) {
   // The filters, remembered as the setting says (#447). The sort is not one.
   const { filters, setFilter } = useRememberedFilters(INSTALLED_MOD_FILTERS, NO_INSTALLED_MOD_FILTERS);
@@ -49,8 +52,14 @@ export function useInstalledModFilters({
   const setSearch = (value: string) => setFilter("search", value);
   const setCreator = (value: string) => setFilter("creator", value);
   const setPreset = (value: InstalledModPreset) => setFilter("preset", value);
-  const setModType = (value: ModTypeFilter) => setFilter("modType", value);
-  const setEnabled = (value: EnabledFilter) => setFilter("enabled", value);
+  const setModType = (value: ModTypeFilter) => {
+    setFilter("modType", value);
+    if ((preset === "ui" || preset === "sim") && value !== preset) setFilter("preset", "all");
+  };
+  const setEnabled = (value: EnabledFilter) => {
+    setFilter("enabled", value);
+    if ((preset === "enabled" || preset === "disabled") && value !== preset) setFilter("preset", "all");
+  };
   const setRanked = (value: RankedFilter) => setFilter("ranked", value);
   const setMinimumRating = (value: number | null) => setFilter("minimumRating", value);
   const setMaximumRating = (value: number | null) => setFilter("maximumRating", value);
@@ -59,20 +68,20 @@ export function useInstalledModFilters({
   const choosePreset = (next: InstalledModPreset) => {
     setPreset(next);
     if (next === "enabled") {
-      setEnabled("enabled");
-      setModType("all");
+      setFilter("enabled", "enabled");
+      setFilter("modType", "all");
     } else if (next === "disabled") {
-      setEnabled("disabled");
-      setModType("all");
+      setFilter("enabled", "disabled");
+      setFilter("modType", "all");
     } else if (next === "ui") {
-      setModType("ui");
-      setEnabled("all");
+      setFilter("modType", "ui");
+      setFilter("enabled", "all");
     } else if (next === "sim") {
-      setModType("sim");
-      setEnabled("all");
-    } else if (next === "all" || next === "favorites") {
-      setEnabled("all");
-      setModType("all");
+      setFilter("modType", "sim");
+      setFilter("enabled", "all");
+    } else if (next === "all" || next === "favorites" || next === "updates") {
+      setFilter("enabled", "all");
+      setFilter("modType", "all");
     }
   };
 
@@ -119,7 +128,7 @@ export function useInstalledModFilters({
         if (preset === "disabled" && mod.enabled) return false;
         if (preset === "ui" && mod.modType !== "ui") return false;
         if (preset === "sim" && mod.modType !== "sim") return false;
-        if (preset === "updates" && !hasUpdate) return false;
+        if (preset === "updates" && updatesCount > 0 && !hasUpdate) return false;
 
         if (modType !== "all" && mod.modType !== modType) return false;
         if (enabled !== "all" && mod.enabled !== (enabled === "enabled")) return false;
@@ -176,7 +185,7 @@ export function useInstalledModFilters({
       });
   }, [
     installed, search, creator, preset, sort, modType, enabled, ranked,
-    minimumRating, maximumRating, vaultFor, favorites, favoriteCount,
+    minimumRating, maximumRating, vaultFor, favorites, favoriteCount, updatesCount,
   ]);
 
   return {

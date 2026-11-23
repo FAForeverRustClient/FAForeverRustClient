@@ -265,7 +265,8 @@ export function ChatView() {
   }, []);
 
   const activateGameLink = useCallback((link: ChatGameLink) => {
-    const game = (link.kind === "openGame" ? games : liveGames)
+    const lobby = useAppStore.getState().state.lobby;
+    const game = (link.kind === "openGame" ? lobby.games : lobby.liveGames)
       .find((candidate) => candidate.id === link.uid);
     if (!game) {
       setGameLinkNotice(t("chat.gameLink.unavailable"));
@@ -276,7 +277,7 @@ export function ChatView() {
     else void watchGame(game);
     // `t` is part of the identity: switching language must rebuild this so a
     // later click reports the failure in the language now selected.
-  }, [games, liveGames, t]);
+  }, [t]);
 
   // Where the conversation's own card starts, below the channel tabs and the
   // row of controls, so a private conversation's side panel can start level

@@ -152,6 +152,7 @@ export function NotificationCenter() {
   }, [hideToast]);
   const handleAction = useCallback((item: ClientNotification) => {
     hideToast(item.id);
+    if (item.action) setOpen(false);
     ipc.run(runAction(item, setGamePreviewId));
   }, [hideToast]);
   const toggleOpen = () => {
