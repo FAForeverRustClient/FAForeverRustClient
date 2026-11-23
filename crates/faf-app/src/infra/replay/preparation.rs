@@ -13,6 +13,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::infra::{cache_dir, game_updater};
 use crate::ports::{MapGeneratorPort, PreparationSink, PreparationStep};
+use crate::sync::LockExt;
 
 use super::ReplayConfig;
 
@@ -60,7 +61,7 @@ impl ReplayPreparation {
 
     /// Where the engine update and map staging go for the next launch.
     pub(super) fn install_dir(&self) -> Option<PathBuf> {
-        self.install_dir.lock().unwrap().clone()
+        self.install_dir.lock_or_recover().clone()
     }
 
     pub(super) fn set_install_dir(&self, dir: Option<PathBuf>) {
@@ -70,11 +71,11 @@ impl ReplayPreparation {
         if std::env::var("FAF_REPLAY_UPDATE_DIR").is_ok_and(|value| !value.is_empty()) {
             return;
         }
-        *self.install_dir.lock().unwrap() = dir;
+        *self.install_dir.lock_or_recover() = dir;
     }
 
     pub(super) fn set_sink(&self, sink: Option<PreparationSink>) {
-        *self.sink.lock().unwrap() = sink;
+        *self.sink.lock_or_recover() = sink;
     }
 
     pub(super) fn set_auto_generate_maps(&self, enabled: bool) {
@@ -84,7 +85,7 @@ impl ReplayPreparation {
     /// Pass one preparation step on to whoever is listening. See
     /// `ReplayPlaybackPort::set_preparation_progress`.
     pub(super) fn report(&self, step: PreparationStep) {
-        let sink = self.sink.lock().unwrap().clone();
+        let sink = self.sink.lock_or_recover().clone();
         if let Some(sink) = sink {
             sink(step);
         }

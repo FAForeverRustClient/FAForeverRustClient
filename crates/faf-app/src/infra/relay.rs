@@ -15,6 +15,8 @@ use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
+use crate::sync::LockExt;
+
 /// The live relay's endpoints, handed to the adapter that owns it.
 pub struct RelayChannels {
     /// Port the server is listening on: passed to the adapter as its GPGNet
@@ -62,7 +64,7 @@ impl GpgRelayServer {
         tracing::info!(port, "GPGNet relay server bound");
 
         let token = CancellationToken::new();
-        if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
+        if let Some(prev) = self.cancel.lock_or_recover().replace(token.clone()) {
             tracing::debug!("cancelling previous relay server instance");
             prev.cancel();
         }
@@ -86,7 +88,7 @@ impl GpgRelayServer {
 
     /// Tear down the server and any adapter connection. Idempotent.
     pub fn stop(&self) {
-        if let Some(token) = self.cancel.lock().unwrap().take() {
+        if let Some(token) = self.cancel.lock_or_recover().take() {
             tracing::info!("GPGNet relay server stop requested");
             token.cancel();
         }

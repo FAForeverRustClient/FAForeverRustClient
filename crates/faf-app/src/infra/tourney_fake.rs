@@ -38,6 +38,7 @@ use crate::ports::{
     RequestError, TourneyChatPort, TourneyEntryPort, TourneyMapsPort, TourneyMatchPort,
     TourneyOrganiserPort, TourneyReadPort, TourneySitePort,
 };
+use crate::sync::LockExt;
 
 /// Whoever is signed in offline. Taken from the bundle's one identity rather
 /// than declared here: the fake stands in for the server's *session*, and a
@@ -239,7 +240,7 @@ impl FakeTourney {
         tournament_id: &str,
         act: impl FnOnce(&mut FakeEvent) -> Result<T, RequestError>,
     ) -> Result<T, RequestError> {
-        let mut events = self.events.lock().expect("fake tournaments poisoned");
+        let mut events = self.events.lock_or_recover();
         let event = events
             .iter_mut()
             .find(|held| held.event.id == tournament_id)
@@ -257,7 +258,7 @@ impl TourneyReadPort for FakeTourney {
     }
 
     async fn list(&self) -> Result<Vec<Tourney>, RequestError> {
-        let events = self.events.lock().expect("fake tournaments poisoned");
+        let events = self.events.lock_or_recover();
         Ok(events
             .iter()
             .map(|held| {
@@ -313,8 +314,8 @@ impl TourneyReadPort for FakeTourney {
     }
 
     async fn series(&self) -> Result<Vec<TourneySeries>, RequestError> {
-        let events = self.events.lock().expect("fake tournaments poisoned");
-        let series = self.series.lock().expect("fake series poisoned");
+        let events = self.events.lock_or_recover();
+        let series = self.series.lock_or_recover();
         let mut rows: Vec<TourneySeries> = series
             .iter()
             .map(|held| summarise_series(held, &events))
@@ -333,8 +334,8 @@ impl TourneyReadPort for FakeTourney {
     }
 
     async fn series_detail(&self, series_id: &str) -> Result<SeriesDetail, RequestError> {
-        let events = self.events.lock().expect("fake tournaments poisoned");
-        let series = self.series.lock().expect("fake series poisoned");
+        let events = self.events.lock_or_recover();
+        let series = self.series.lock_or_recover();
         let held = series
             .iter()
             .find(|held| held.id == series_id)
@@ -1699,7 +1700,7 @@ impl TourneyOrganiserPort for FakeTourney {
             return Err(RequestError::rejected("Name required"));
         }
         let id = {
-            let mut counter = self.next_event.lock().expect("fake tournaments poisoned");
+            let mut counter = self.next_event.lock_or_recover();
             *counter += 1;
             format!("new{:03}", *counter)
         };
@@ -1724,14 +1725,11 @@ impl TourneyOrganiserPort for FakeTourney {
         event.veto_enabled = draft.veto.enabled;
         event.plan = draft.plan;
         event.series_id = draft.series_id.clone();
-        self.events
-            .lock()
-            .expect("fake tournaments poisoned")
-            .push(FakeEvent {
-                event,
-                chat: HashMap::new(),
-                next_id: 100,
-            });
+        self.events.lock_or_recover().push(FakeEvent {
+            event,
+            chat: HashMap::new(),
+            next_id: 100,
+        });
         Ok(id)
     }
 
@@ -1758,7 +1756,7 @@ impl TourneyOrganiserPort for FakeTourney {
     }
 
     async fn archive(&self, tournament_id: &str) -> Result<(), RequestError> {
-        let mut events = self.events.lock().expect("fake tournaments poisoned");
+        let mut events = self.events.lock_or_recover();
         let before = events.len();
         events.retain(|held| held.event.id != tournament_id);
         if events.len() == before {
@@ -1902,7 +1900,7 @@ impl TourneyOrganiserPort for FakeTourney {
         if draft.name.trim().is_empty() {
             return Err(RequestError::rejected("Enter a series name"));
         }
-        let mut series = self.series.lock().expect("fake series poisoned");
+        let mut series = self.series.lock_or_recover();
         // The service refuses a duplicate name outright, case-insensitively,
         // and it is the one refusal an organiser meets by accident: a series
         // per edition, all called the same thing.
@@ -1924,10 +1922,7 @@ impl TourneyOrganiserPort for FakeTourney {
             return Ok(());
         }
         let id = {
-            let mut next = self
-                .next_series
-                .lock()
-                .expect("fake series counter poisoned");
+            let mut next = self.next_series.lock_or_recover();
             *next += 1;
             format!("s{:04}", *next)
         };
@@ -1942,7 +1937,7 @@ impl TourneyOrganiserPort for FakeTourney {
     }
 
     async fn delete_series(&self, series_id: &str) -> Result<(), RequestError> {
-        let mut series = self.series.lock().expect("fake series poisoned");
+        let mut series = self.series.lock_or_recover();
         let before = series.len();
         series.retain(|held| held.id != series_id);
         if series.len() == before {
@@ -1950,7 +1945,7 @@ impl TourneyOrganiserPort for FakeTourney {
         }
         // Editions are unfiled, not deleted. The service does the same, and it
         // is the half an organiser worries about before pressing the button.
-        let mut events = self.events.lock().expect("fake tournaments poisoned");
+        let mut events = self.events.lock_or_recover();
         for held in events.iter_mut() {
             if held.event.series_id.as_deref() == Some(series_id) {
                 held.event.series_id = None;
@@ -1969,7 +1964,7 @@ impl TourneyOrganiserPort for FakeTourney {
         let named = match series_id {
             None => None,
             Some(id) => {
-                let series = self.series.lock().expect("fake series poisoned");
+                let series = self.series.lock_or_recover();
                 Some(
                     series
                         .iter()
@@ -2007,7 +2002,7 @@ impl TourneyOrganiserPort for FakeTourney {
                 "A tournament cannot qualify into itself",
             ));
         }
-        let mut events = self.events.lock().expect("fake tournaments poisoned");
+        let mut events = self.events.lock_or_recover();
         let child = events
             .iter()
             .map(|held| &held.event)
@@ -2234,7 +2229,7 @@ impl TourneyOrganiserPort for FakeTourney {
 #[async_trait]
 impl TourneySitePort for FakeTourney {
     async fn profile(&self) -> Result<String, RequestError> {
-        Ok(self.discord.lock().expect("fake profile poisoned").clone())
+        Ok(self.discord.lock_or_recover().clone())
     }
 
     async fn set_discord(&self, handle: &str) -> Result<String, RequestError> {
@@ -2246,7 +2241,7 @@ impl TourneySitePort for FakeTourney {
             .filter(|held| !"<>\"'&\\".contains(*held))
             .take(40)
             .collect();
-        *self.discord.lock().expect("fake profile poisoned") = stored.clone();
+        *self.discord.lock_or_recover() = stored.clone();
         Ok(stored)
     }
 

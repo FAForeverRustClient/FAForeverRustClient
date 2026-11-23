@@ -34,6 +34,7 @@ use url::Url;
 
 use crate::infra::session::TokenStore;
 use crate::ports::{AuthError, AuthPort, AuthResult};
+use crate::sync::LockExt;
 
 /// How long we wait for the user to finish the browser login before giving up.
 const LOGIN_TIMEOUT: Duration = Duration::from_secs(300);
@@ -301,7 +302,7 @@ impl OAuthAuth {
         let tokens = self.tokens.clone();
         let credentials = self.credentials.clone();
         let refresh_epoch = self.refresh_epoch.clone();
-        let epoch = *refresh_epoch.lock().unwrap();
+        let epoch = *refresh_epoch.lock_or_recover();
 
         let handle = tokio::spawn(async move {
             let mut due = SystemTime::now() + refresh_delay(lifetime);
@@ -311,7 +312,7 @@ impl OAuthAuth {
                 match exchange_refresh_token(&http, &config, &stored).await {
                     Ok(response) => {
                         {
-                            let current_epoch = refresh_epoch.lock().unwrap();
+                            let current_epoch = refresh_epoch.lock_or_recover();
                             if *current_epoch != epoch {
                                 return;
                             }
@@ -353,7 +354,7 @@ impl OAuthAuth {
     }
 
     fn cancel_refresh(&self) {
-        let mut epoch = self.refresh_epoch.lock().unwrap();
+        let mut epoch = self.refresh_epoch.lock_or_recover();
         *epoch = epoch.wrapping_add(1);
         if let Ok(mut slot) = self.refresh_task.lock() {
             if let Some(task) = slot.take() {

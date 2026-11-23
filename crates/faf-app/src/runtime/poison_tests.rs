@@ -286,10 +286,10 @@ fn poisoned_running_registry_still_tracks_and_finishes_commands() {
     assert_eq!(running.longest(1).0, 1);
     assert!(!running.0.is_poisoned());
     let second = running.start("Mods::LoadVault".into());
-    assert!(second > first);
+    assert!(second.id > first.id);
     assert_eq!(running.longest(2).0, 2);
-    running.finish(first);
-    running.finish(second);
+    drop(first);
+    drop(second);
     assert_eq!(running.longest(1), (0, vec![]));
 }
 

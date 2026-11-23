@@ -41,6 +41,7 @@ use crate::ports::{
     JavaRuntimeProblem, KnownRelayAddresses, ProbeAnswer, RelayAddresses, RelayListError,
     RelayServer,
 };
+use crate::sync::LockExt;
 
 /// How long a relay name may take to resolve.
 const RESOLVE_TIMEOUT: Duration = Duration::from_secs(3);
@@ -78,7 +79,7 @@ impl IceSessionMemory {
     /// A game started; its URLs, if they were remembered for an earlier game,
     /// no longer describe it.
     pub(crate) fn remember_game(&self, game_id: i32) {
-        let mut held = self.0.lock().unwrap();
+        let mut held = self.0.lock_or_recover();
         if held.as_ref().is_some_and(|held| held.game_id == game_id) {
             return;
         }
@@ -90,7 +91,7 @@ impl IceSessionMemory {
 
     /// The ICE servers of `game_id`'s session, as the API sent them.
     pub(crate) fn remember_servers(&self, game_id: i32, servers: &[Value]) {
-        *self.0.lock().unwrap() = Some(Remembered {
+        *self.0.lock_or_recover() = Some(Remembered {
             game_id,
             urls: Some(urls_of(servers)),
         });
@@ -102,7 +103,7 @@ impl IceSessionMemory {
     /// answer used to put the earlier game back, so every later check
     /// probed that game's relays and never asked about the new one.
     fn fill_in_servers(&self, game_id: i32, servers: &[Value]) {
-        if let Some(held) = self.0.lock().unwrap().as_mut() {
+        if let Some(held) = self.0.lock_or_recover().as_mut() {
             if held.game_id == game_id {
                 held.urls = Some(urls_of(servers));
             }
@@ -110,7 +111,7 @@ impl IceSessionMemory {
     }
 
     fn recall(&self) -> Option<Remembered> {
-        self.0.lock().unwrap().clone()
+        self.0.lock_or_recover().clone()
     }
 }
 

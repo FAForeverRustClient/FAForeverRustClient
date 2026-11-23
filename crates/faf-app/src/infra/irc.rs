@@ -71,6 +71,7 @@ use crate::infra::irc_session::{
 };
 use crate::infra::session::TokenStore;
 use crate::ports::{ChatPort, ChatUpdate};
+use crate::sync::LockExt;
 
 /// The IRCv3 binary websocket subprotocol FAF's chat server requires.
 /// <https://ircv3.net/specs/extensions/websocket>
@@ -135,12 +136,12 @@ impl ConnectionSlots {
     /// replaced these slots owns them now; clearing them would tear down the
     /// *new* connection on behalf of the dead one.
     fn release(&self, stream: &mpsc::Sender<ChatUpdate>) {
-        let mut updates = self.updates.lock().unwrap();
+        let mut updates = self.updates.lock_or_recover();
         if !updates.as_ref().is_some_and(|tx| tx.same_channel(stream)) {
             return;
         }
         *updates = None;
-        *self.outgoing.lock().unwrap() = None;
+        *self.outgoing.lock_or_recover() = None;
     }
 }
 
@@ -209,8 +210,7 @@ impl IrcClient {
     fn send(&self, frame: irc_session::Outgoing) -> bool {
         let sent = self
             .outgoing
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .map(|tx| tx.try_send(frame).is_ok())
             .unwrap_or(false);
@@ -230,8 +230,7 @@ impl IrcClient {
     fn push(&self, update: ChatUpdate) -> bool {
         let sent = self
             .updates
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .map(|tx| tx.try_send(update).is_ok())
             .unwrap_or(false);
@@ -273,7 +272,9 @@ impl IrcClient {
         reply_to: &str,
     ) {
         if !channel.starts_with('#') {
-            self.wanted_channels.lock().unwrap().insert(channel.clone());
+            self.wanted_channels
+                .lock_or_recover()
+                .insert(channel.clone());
             self.send(irc_session::Outgoing::PrivateHistory(channel.clone()));
         }
         // The reply anchor rides as a client tag on the message itself, unlike
@@ -300,7 +301,7 @@ impl IrcClient {
         }
         let message = ChatMessage {
             id: self.next_id.fetch_add(1, Ordering::SeqCst).to_string(),
-            sender: self.username.lock().unwrap().clone(),
+            sender: self.username.lock_or_recover().clone(),
             content: display,
             timestamp: chrono::Utc::now().to_rfc3339(),
             kind,
@@ -325,25 +326,24 @@ impl IrcClient {
 impl ChatPort for IrcClient {
     async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
         let token = CancellationToken::new();
-        if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
+        if let Some(prev) = self.cancel.lock_or_recover().replace(token.clone()) {
             prev.cancel();
         }
-        let mut account = self.account.lock().unwrap();
+        let mut account = self.account.lock_or_recover();
         if !account.is_empty() && !account.eq_ignore_ascii_case(&username) {
-            self.wanted_channels.lock().unwrap().clear();
+            self.wanted_channels.lock_or_recover().clear();
         }
         *account = username.clone();
         drop(account);
-        *self.username.lock().unwrap() = username.clone();
+        *self.username.lock_or_recover() = username.clone();
         self.wanted_channels
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .insert(DEFAULT_CHANNEL.to_string());
 
         let (tx, rx) = mpsc::channel(256);
-        *self.updates.lock().unwrap() = Some(tx.clone());
+        *self.updates.lock_or_recover() = Some(tx.clone());
         let (out_tx, out_rx) = mpsc::channel::<irc_session::Outgoing>(64);
-        *self.outgoing.lock().unwrap() = Some(out_tx);
+        *self.outgoing.lock_or_recover() = Some(out_tx);
 
         let supervisor = Supervisor {
             config: self.config.clone(),
@@ -393,7 +393,9 @@ impl ChatPort for IrcClient {
     }
 
     fn join_channel(&self, channel: String) {
-        self.wanted_channels.lock().unwrap().insert(channel.clone());
+        self.wanted_channels
+            .lock_or_recover()
+            .insert(channel.clone());
         if !channel.starts_with('#') {
             // Private conversations have no server JOIN. Open locally and
             // ask for their history once the connection is ready.
@@ -401,7 +403,9 @@ impl ChatPort for IrcClient {
             self.push(ChatUpdate::ChannelJoined(channel));
             return;
         }
-        self.wanted_channels.lock().unwrap().insert(channel.clone());
+        self.wanted_channels
+            .lock_or_recover()
+            .insert(channel.clone());
         // Logged so a channel that never confirms can be told apart from one
         // that was never asked for: the JOIN itself is the only half of this
         // exchange the client controls.
@@ -420,7 +424,7 @@ impl ChatPort for IrcClient {
     }
 
     fn leave_channel(&self, channel: String, reason: String) {
-        self.wanted_channels.lock().unwrap().remove(&channel);
+        self.wanted_channels.lock_or_recover().remove(&channel);
         if !channel.starts_with('#') {
             self.send(irc_session::Outgoing::ClosePrivate(channel.clone()));
         }
@@ -470,7 +474,7 @@ impl ChatPort for IrcClient {
             channel,
             msgid,
             emoji,
-            sender: self.username.lock().unwrap().clone(),
+            sender: self.username.lock_or_recover().clone(),
         });
     }
 
@@ -486,12 +490,12 @@ impl ChatPort for IrcClient {
     }
 
     fn disconnect(&self) {
-        if let Some(token) = self.cancel.lock().unwrap().take() {
+        if let Some(token) = self.cancel.lock_or_recover().take() {
             token.cancel();
         }
-        *self.outgoing.lock().unwrap() = None;
-        *self.updates.lock().unwrap() = None;
-        self.wanted_channels.lock().unwrap().clear();
+        *self.outgoing.lock_or_recover() = None;
+        *self.updates.lock_or_recover() = None;
+        self.wanted_channels.lock_or_recover().clear();
     }
 }
 
@@ -854,11 +858,11 @@ where
             None
         }
         Effect::NickChanged(nick) => {
-            *params.current_nick.lock().unwrap() = nick;
+            *params.current_nick.lock_or_recover() = nick;
             None
         }
         Effect::ForgetChannel(channel) => {
-            params.wanted_channels.lock().unwrap().remove(&channel);
+            params.wanted_channels.lock_or_recover().remove(&channel);
             None
         }
         Effect::Stop(reason) => Some(reason),
@@ -885,8 +889,7 @@ where
         // line is being handled.
         wanted_channels: params
             .wanted_channels
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .iter()
             .cloned()
             .collect(),

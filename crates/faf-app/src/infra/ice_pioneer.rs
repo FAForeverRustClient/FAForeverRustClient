@@ -31,6 +31,7 @@ use crate::infra::free_port;
 use crate::infra::relay::GpgRelayServer;
 use crate::infra::session::TokenStore;
 use crate::ports::{ConnectivitySession, IceParams, IcePort, RelayMsg};
+use crate::sync::LockExt;
 
 /// Configuration for the real adapter.
 #[derive(Debug, Clone)]
@@ -231,7 +232,7 @@ impl IcePort for PioneerAdapter {
             }
         }
 
-        if let Some(mut prev) = self.child.lock().unwrap().replace(child) {
+        if let Some(mut prev) = self.child.lock_or_recover().replace(child) {
             let _ = prev.start_kill();
         }
 
@@ -317,7 +318,7 @@ impl IcePort for PioneerAdapter {
     }
 
     fn stop(&self) {
-        if let Some(mut child) = self.child.lock().unwrap().take() {
+        if let Some(mut child) = self.child.lock_or_recover().take() {
             let _ = child.start_kill();
         }
         self.relay.stop();

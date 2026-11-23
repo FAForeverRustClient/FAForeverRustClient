@@ -15,6 +15,7 @@ use faf_domain::AppState;
 
 use crate::runtime::EventSink;
 use crate::services::notifications;
+use crate::sync::LockExt;
 
 #[derive(Debug, Clone)]
 pub(super) enum GameNotificationSignal {
@@ -73,14 +74,14 @@ impl FullAnnouncements {
     /// record that it was. With `quiet_repeats`, a lobby announced less than
     /// [`GAME_FULL_QUIET`] ago is not.
     fn announce(&self, game_id: i32, now: Instant, quiet_repeats: bool) -> bool {
-        let mut record = self.0.lock().unwrap();
+        let mut record = self.0.lock_or_recover();
         Self::announce_in(&mut record, game_id, now, quiet_repeats)
     }
 
     /// The same for the game list, which leaves the lobby the player's own
     /// game reports on to the game.
     fn announce_from_list(&self, game_id: i32, now: Instant, quiet_repeats: bool) -> bool {
-        let mut record = self.0.lock().unwrap();
+        let mut record = self.0.lock_or_recover();
         if record.reported_by_game == Some(game_id) {
             return false;
         }
@@ -101,15 +102,15 @@ impl FullAnnouncements {
     }
 
     fn forget(&self, game_id: i32) {
-        self.0.lock().unwrap().announced_at.remove(&game_id);
+        self.0.lock_or_recover().announced_at.remove(&game_id);
     }
 
     fn begin_report(&self, game_id: i32) {
-        self.0.lock().unwrap().reported_by_game = Some(game_id);
+        self.0.lock_or_recover().reported_by_game = Some(game_id);
     }
 
     fn end_report(&self, game_id: i32) {
-        let mut record = self.0.lock().unwrap();
+        let mut record = self.0.lock_or_recover();
         if record.reported_by_game == Some(game_id) {
             record.reported_by_game = None;
         }

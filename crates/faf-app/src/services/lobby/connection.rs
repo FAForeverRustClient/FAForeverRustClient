@@ -7,6 +7,7 @@ use faf_domain::state::{LobbyEvent, SocialEvent};
 use crate::ports::LobbyUpdate;
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher::LaunchSession;
+use crate::sync::LockExt;
 
 use super::game_notifications::GameNotificationTracker;
 use super::launch::{Background, LaunchSlot};
@@ -58,7 +59,7 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     let mut launch = LaunchSlot::default();
     // A game still running from before this connection gets its adapter link
     // back, so the relay for the restored session reaches the adapter.
-    let kept = ctx.lobby.kept_session.lock().unwrap().take();
+    let kept = ctx.lobby.kept_session.lock_or_recover().take();
     if ctx.lobby.running_game.id().is_some() {
         launch.session = kept;
     }
@@ -130,7 +131,7 @@ async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
 
     // The game outlives the connection: keep its adapter link for the next.
     if ctx.lobby.running_game.id().is_some() {
-        *ctx.lobby.kept_session.lock().unwrap() = launch.session.take();
+        *ctx.lobby.kept_session.lock_or_recover() = launch.session.take();
     }
 
     // The connection a join was being prepared for is gone, so the join is

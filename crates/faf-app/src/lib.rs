@@ -12,6 +12,7 @@ pub mod infra;
 pub mod ports;
 pub mod runtime;
 pub mod services;
+pub mod sync;
 
 pub use ports::Ports;
 pub use runtime::{App, AppLoop, EventSink, ServiceCtx, VersionedEvent, VersionedSnapshot};

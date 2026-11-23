@@ -31,6 +31,7 @@ use crate::infra::jsonrpc::{JsonRpcClient, RpcNotification};
 use crate::infra::session::TokenStore;
 use crate::infra::{console_window, free_ports};
 use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort, RelayMsg};
+use crate::sync::LockExt;
 
 /// How long to wait for the adapter's RPC port to come up.
 const RPC_CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
@@ -252,7 +253,7 @@ impl JavaAdapter {
 
     /// Stop bringing an adapter up, and close the game's GPGNet port.
     fn halt_bring_up(&self) {
-        if let Some((running, proxy)) = self.bring_up.lock().unwrap().take() {
+        if let Some((running, proxy)) = self.bring_up.lock_or_recover().take() {
             running.abort();
             drop(proxy);
         }
@@ -351,7 +352,7 @@ impl AdapterProcess {
         }
         // An adapter still recorded here is one nothing speaks to any more:
         // stopped, not merely forgotten, which would leave its JVM running.
-        if let Some(mut previous) = self.child.lock().unwrap().replace(child) {
+        if let Some(mut previous) = self.child.lock_or_recover().replace(child) {
             let _ = previous.start_kill();
         }
 
@@ -417,7 +418,7 @@ impl AdapterProcess {
 
     /// Stop the adapter process this start launched, if one is running.
     fn kill_child(&self) {
-        if let Some(mut child) = self.child.lock().unwrap().take() {
+        if let Some(mut child) = self.child.lock_or_recover().take() {
             let _ = child.start_kill();
         }
     }
@@ -788,7 +789,7 @@ impl BringUp {
             tracing::warn!("Java ICE adapter notification stream ended");
         });
 
-        *rpc_slot.lock().unwrap() = Some(rpc.clone());
+        *rpc_slot.lock_or_recover() = Some(rpc.clone());
         let _ = answered.send(rpc.clone());
         // The game's connection goes through from here, or right away when
         // the game connects later, which is the usual order.
@@ -881,7 +882,7 @@ impl IcePort for JavaAdapter {
             process: AdapterProcess {
                 config: self.config.clone(),
                 child: self.child.clone(),
-                windows: *self.debug_windows.lock().unwrap(),
+                windows: *self.debug_windows.lock_or_recover(),
                 allow_ipv6: self.allow_ipv6.load(Ordering::Relaxed),
             },
             params,
@@ -896,7 +897,7 @@ impl IcePort for JavaAdapter {
             failed: failed_tx,
         };
         let running = tokio::spawn(bring_up.run(session));
-        *self.bring_up.lock().unwrap() = Some((running.abort_handle(), proxy));
+        *self.bring_up.lock_or_recover() = Some((running.abort_handle(), proxy));
         tracing::info!(
             game_id,
             milliseconds = asked.elapsed().as_millis() as u64,
@@ -914,16 +915,16 @@ impl IcePort for JavaAdapter {
     fn stop(&self) {
         // First, so that nothing it was about to start outlives the kill below.
         self.halt_bring_up();
-        if let Some(rpc) = self.rpc.lock().unwrap().take() {
+        if let Some(rpc) = self.rpc.lock_or_recover().take() {
             rpc.call("quit", vec![]);
         }
-        if let Some(mut child) = self.child.lock().unwrap().take() {
+        if let Some(mut child) = self.child.lock_or_recover().take() {
             let _ = child.start_kill();
         }
     }
 
     fn set_debug_windows(&self, windows: IceDebugWindows) {
-        *self.debug_windows.lock().unwrap() = windows;
+        *self.debug_windows.lock_or_recover() = windows;
     }
 
     fn set_allow_ipv6(&self, allow: bool) {
@@ -933,7 +934,7 @@ impl IcePort for JavaAdapter {
     /// The adapter's `status` call, read into the live relay view. The Python
     /// client's connectivity dialog polls the same call for the same table.
     async fn relay_status(&self) -> RelayStatus {
-        let Some(rpc) = self.rpc.lock().unwrap().clone() else {
+        let Some(rpc) = self.rpc.lock_or_recover().clone() else {
             return RelayStatus::Idle;
         };
         match rpc.request("status", vec![], STATUS_TIMEOUT).await {
