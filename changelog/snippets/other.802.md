@@ -1,0 +1,1 @@
+- No visible changes from the cookie library security update.
