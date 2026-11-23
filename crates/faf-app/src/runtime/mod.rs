@@ -901,18 +901,22 @@ impl Running {
         lock_runtime(&self.0, "running command registry")
     }
 
-    fn start(&self, name: String) -> u64 {
+    /// Record a command as running until the returned entry is dropped.
+    ///
+    /// An entry rather than a `finish` call after the work: a command that
+    /// panicked skipped that call, and stayed listed as running for the rest of
+    /// the session in every late-start warning after it.
+    fn start(&self, name: String) -> RunningEntry {
         let mut running = self.lock();
         running.next += 1;
         let id = running.next;
         running
             .commands
             .insert(id, (name, std::time::Instant::now()));
-        id
-    }
-
-    fn finish(&self, id: u64) {
-        self.lock().commands.remove(&id);
+        RunningEntry {
+            running: self.clone(),
+            id,
+        }
     }
 
     /// The longest-running few, as "Maps::LoadVault 12.3s".
@@ -926,6 +930,19 @@ impl Running {
             .map(|(name, started)| format!("{name} {:.1}s", started.elapsed().as_secs_f32()))
             .collect();
         (all.len(), listed)
+    }
+}
+
+/// One command's place in [`Running`], removed when the command's task ends,
+/// whether it returned or unwound.
+struct RunningEntry {
+    running: Running,
+    id: u64,
+}
+
+impl Drop for RunningEntry {
+    fn drop(&mut self) {
+        self.running.lock().commands.remove(&self.id);
     }
 }
 
@@ -989,14 +1006,13 @@ fn spawn_command<H, F>(
             "a command waited for a free slot before it could start"
         );
     }
-    let id = running.start(name);
+    let entry = running.start(name);
     let work = handle(queued.command, queued.account);
     let completion = queued.completion;
-    let running = running.clone();
     tokio::spawn(async move {
         let _permit = permit;
+        let _entry = entry;
         work.await;
-        running.finish(id);
         if let Some(completion) = completion {
             let _ = completion.send(());
         }
@@ -1236,6 +1252,30 @@ mod tests {
             .unwrap();
         assert_eq!(app.snapshot().nav.active_tab, Tab::Replays);
         task.abort();
+    }
+
+    #[tokio::test]
+    async fn a_command_that_panics_is_no_longer_listed_as_running() {
+        let running = Running::default();
+        let (completion, finished) = oneshot::channel();
+        let queued = QueuedCommand {
+            command: faf_domain::state::MapsCommand::LoadVault.into(),
+            account: CancellationToken::new(),
+            completion: Some(completion),
+            seq: 1,
+            queued_at: std::time::Instant::now(),
+        };
+        let panicking = |_: AppCommand, _: CancellationToken| async {
+            panic!("simulated command panic");
+        };
+
+        spawn_command(queued, None, &panicking, &running);
+
+        assert!(
+            finished.await.is_err(),
+            "a panicked command never reports completion"
+        );
+        assert_eq!(running.longest(10), (0, Vec::new()));
     }
 
     #[test]

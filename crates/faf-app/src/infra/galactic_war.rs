@@ -53,6 +53,7 @@ use crate::infra::{
     is_loopback, vault_install,
 };
 use crate::ports::{GalacticWarPort, InstallProgress};
+use crate::sync::LockExt;
 
 /// Generous for a ~45 MB archive, bounded enough that a broken or hostile
 /// server cannot exhaust memory.
@@ -434,7 +435,7 @@ impl GalacticWarGateway {
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 let finished = {
-                    let mut guard = child.lock().unwrap();
+                    let mut guard = child.lock_or_recover();
                     match guard.as_mut() {
                         None => true,
                         Some(process) => match process.try_wait() {
@@ -611,13 +612,13 @@ impl GalacticWarPort for GalacticWarGateway {
             .spawn()
             .map_err(|error| format!("could not start Galactic War: {error}"))?;
 
-        *self.child.lock().unwrap() = Some(child);
+        *self.child.lock_or_recover() = Some(child);
         self.watch_for_exit();
         Ok(())
     }
 
     fn is_running(&self) -> bool {
-        self.child.lock().unwrap().is_some()
+        self.child.lock_or_recover().is_some()
     }
 
     async fn wait_for_exit(&self) {

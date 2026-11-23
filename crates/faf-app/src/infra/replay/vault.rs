@@ -25,6 +25,7 @@ use crate::infra::vault_install::{
 };
 use crate::ports::replay::VaultSearchResult;
 use crate::ports::ReplayVaultPort;
+use crate::sync::LockExt;
 
 use super::library::{local_metadata_for_path, ReplayLibrary};
 use super::scfa_header::{map_name_from_replay_head, sim_mods_from_replay_head, REPLAY_HEAD_BYTES};
@@ -506,8 +507,7 @@ impl ReplayVault {
         let key = shared_games_key(query);
         let cached = self
             .shared_games
-            .lock()
-            .expect("shared games cache poisoned")
+            .lock_or_recover()
             .as_ref()
             .filter(|(cached_key, _)| *cached_key == key)
             .map(|(_, ids)| ids.clone());
@@ -574,10 +574,7 @@ impl ReplayVault {
                         shared
                     }
                 };
-                *self
-                    .shared_games
-                    .lock()
-                    .expect("shared games cache poisoned") = Some((key, ids.clone()));
+                *self.shared_games.lock_or_recover() = Some((key, ids.clone()));
                 ids
             }
         };
@@ -591,8 +588,7 @@ impl ReplayVault {
         };
         let ordered = self
             .shared_order
-            .lock()
-            .expect("shared order cache poisoned")
+            .lock_or_recover()
             .as_ref()
             .filter(|order| order.query == order_key && order.membership == membership)
             .map(|order| order.ids.clone());
@@ -602,10 +598,7 @@ impl ReplayVault {
                 let ids = self
                     .sort_shared_games(query, membership.clone(), token)
                     .await?;
-                *self
-                    .shared_order
-                    .lock()
-                    .expect("shared order cache poisoned") = Some(SharedOrder {
+                *self.shared_order.lock_or_recover() = Some(SharedOrder {
                     query: order_key,
                     membership,
                     ids: ids.clone(),
@@ -682,8 +675,7 @@ impl ReplayVault {
         let key = local_filter_key(query);
         let cached = self
             .local_filtered
-            .lock()
-            .expect("local filter cache poisoned")
+            .lock_or_recover()
             .as_ref()
             .filter(|(cached_key, _)| *cached_key == key)
             .map(|(_, scan)| scan.clone());
@@ -691,10 +683,7 @@ impl ReplayVault {
         let scan = self
             .scan_locally_filtered(query, token, needed, cached)
             .await?;
-        *self
-            .local_filtered
-            .lock()
-            .expect("local filter cache poisoned") = Some((key, scan.clone()));
+        *self.local_filtered.lock_or_recover() = Some((key, scan.clone()));
 
         let total = i32::try_from(scan.matched.len()).unwrap_or(i32::MAX);
         let total_pages = local_filter_total_pages(&scan, page, page_size);

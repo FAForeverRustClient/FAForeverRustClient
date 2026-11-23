@@ -15,6 +15,7 @@ use faf_domain::state::{IceAdapter, RelayStatus};
 
 use crate::infra::env_or;
 use crate::ports::{ConnectivitySession, IceDebugWindows, IceParams, IcePort};
+use crate::sync::LockExt;
 
 /// Development override. When set, it wins over the stored preference: a
 /// developer testing one backend should not have it silently swapped when
@@ -76,7 +77,9 @@ impl SelectableIce {
         if params.hosted {
             return self.hosting_adapter();
         }
-        self.preferred.lock().unwrap().for_game(&params.game_title)
+        self.preferred
+            .lock_or_recover()
+            .for_game(&params.game_title)
     }
 
     fn backend(&self, adapter: IceAdapter) -> &Arc<dyn IcePort> {
@@ -105,14 +108,14 @@ impl IcePort for SelectableIce {
             .map_err(|error| format!("{} could not start: {error}", adapter.label()))?;
         // Only recorded on success: a failed start leaves nothing to stop, and
         // claiming otherwise would send a later `stop` to the wrong backend.
-        *self.running.lock().unwrap() = Some(adapter);
+        *self.running.lock_or_recover() = Some(adapter);
         Ok(session)
     }
 
     fn stop(&self) {
         // Stop whichever one is up, not whichever one is currently preferred,
         // the user may have switched between starting a game and leaving it.
-        match self.running.lock().unwrap().take() {
+        match self.running.lock_or_recover().take() {
             Some(adapter) => self.backend(adapter).stop(),
             // Nothing recorded: a start that failed part-way may still have
             // left a process behind, so stop both rather than guess.
@@ -125,15 +128,15 @@ impl IcePort for SelectableIce {
     }
 
     fn set_backend(&self, adapter: IceAdapter) {
-        *self.preferred.lock().unwrap() = adapter;
+        *self.preferred.lock_or_recover() = adapter;
     }
 
     fn set_host_backend(&self, adapter: IceAdapter) {
-        *self.preferred_host.lock().unwrap() = adapter;
+        *self.preferred_host.lock_or_recover() = adapter;
     }
 
     fn hosting_adapter(&self) -> IceAdapter {
-        match adapter_override().unwrap_or_else(|| *self.preferred_host.lock().unwrap()) {
+        match adapter_override().unwrap_or_else(|| *self.preferred_host.lock_or_recover()) {
             IceAdapter::Go => IceAdapter::Go,
             IceAdapter::ExpJava => IceAdapter::ExpJava,
             _ => IceAdapter::Java,
@@ -157,7 +160,7 @@ impl IcePort for SelectableIce {
     /// Asked of whichever backend is running. Pioneer has no status call, and
     /// saying so is more use than an empty table that looks like no peers.
     async fn relay_status(&self) -> RelayStatus {
-        let running = *self.running.lock().unwrap();
+        let running = *self.running.lock_or_recover();
         match running {
             Some(IceAdapter::Go) => RelayStatus::Unsupported {
                 adapter: IceAdapter::Go,

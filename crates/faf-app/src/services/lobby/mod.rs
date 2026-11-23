@@ -40,6 +40,7 @@ use crate::runtime::{
     account::AccountConnection, Cancellable, EventSink, LatestRequest, LobbyOperations,
     RunningGame, ServiceCtx,
 };
+use crate::sync::LockExt;
 
 pub use connection::reconnect;
 pub use game_notifications::GameFullReport;
@@ -143,7 +144,7 @@ impl LobbyContext {
     /// whether it is starting that game. Taken either way: the next launch is
     /// somebody else's game unless a new host request says otherwise.
     pub fn take_hosted(&self) -> Option<HostedGame> {
-        self.hosted.lock().unwrap().take()
+        self.hosted.lock_or_recover().take()
     }
 
     /// The game this client is playing, if any. Auth reads it so an offline

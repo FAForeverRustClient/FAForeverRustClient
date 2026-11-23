@@ -66,6 +66,7 @@ use tokio::sync::Notify;
 use crate::infra::env_or;
 use crate::ports::guides::LOGIN_CANCELLED;
 use crate::ports::{DeviceCode, GuidesPort};
+use crate::sync::LockExt;
 
 /// The scope a catalogue maintainer needs: read and write a public repository's
 /// contents and issues. Deliberately the narrowest scope that can do the job;
@@ -266,17 +267,17 @@ impl GuidesClient {
     }
 
     fn stored_token(&self) -> Option<String> {
-        if let Some(token) = self.token.lock().expect("guides token lock").clone() {
+        if let Some(token) = self.token.lock_or_recover().clone() {
             return Some(token);
         }
         let token = self.keyring_entry()?.get_password().ok()?;
-        *self.token.lock().expect("guides token lock") = Some(token.clone());
+        *self.token.lock_or_recover() = Some(token.clone());
         Some(token)
     }
 
     fn remember(&self, token: &str) {
-        *self.token.lock().expect("guides token lock") = Some(token.to_string());
-        *self.lost_session.lock().expect("guides session lock") = None;
+        *self.token.lock_or_recover() = Some(token.to_string());
+        *self.lost_session.lock_or_recover() = None;
         // Best effort, exactly like the FAF refresh token: a machine with no
         // credential store still works for the session, it just asks again
         // next time.
@@ -288,7 +289,7 @@ impl GuidesClient {
     }
 
     fn forget(&self) {
-        *self.token.lock().expect("guides token lock") = None;
+        *self.token.lock_or_recover() = None;
         if let Some(entry) = self.keyring_entry() {
             let _ = entry.delete_credential();
         }
@@ -303,7 +304,7 @@ impl GuidesClient {
     fn session_rejected(&self, failure: &Failure) {
         tracing::info!(reason = %failure, "GitHub no longer accepts the stored token");
         self.forget();
-        *self.lost_session.lock().expect("guides session lock") = Some(format!(
+        *self.lost_session.lock_or_recover() = Some(format!(
             "the saved GitHub sign-in no longer works and was removed ({failure}); sign in again to review submissions"
         ));
     }
@@ -1468,14 +1469,11 @@ impl GuidesPort for GuidesClient {
 
     async fn sign_out(&self) {
         self.forget();
-        *self.lost_session.lock().expect("guides session lock") = None;
+        *self.lost_session.lock_or_recover() = None;
     }
 
     fn take_lost_session(&self) -> Option<String> {
-        self.lost_session
-            .lock()
-            .expect("guides session lock")
-            .take()
+        self.lost_session.lock_or_recover().take()
     }
 
     async fn list_submissions(&self) -> Result<Vec<GuideSubmission>, String> {
@@ -2346,7 +2344,7 @@ mod tests {
                         body: String::from_utf8_lossy(&raw[head_end..]).to_string(),
                     };
                     let (status, reply, link) = route(&request);
-                    log.lock().unwrap().push(request);
+                    log.lock_or_recover().push(request);
                     let link = link.map(|l| format!("Link: {l}\r\n")).unwrap_or_default();
                     let response = format!(
                         "HTTP/1.1 {status} Stand-in\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n{link}\r\n{reply}",
@@ -2372,7 +2370,7 @@ mod tests {
     }
 
     fn holding(client: &GuidesClient, token: &str) {
-        *client.token.lock().unwrap() = Some(token.into());
+        *client.token.lock_or_recover() = Some(token.into());
     }
 
     fn reply(status: u16, body: &str) -> Reply {
@@ -2421,7 +2419,7 @@ mod tests {
             rows.iter().map(|row| row.number).collect::<Vec<_>>(),
             vec![1, 2]
         );
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         let issue_pages = seen
             .iter()
             .filter(|request| request.target.contains("/issues?"))
@@ -2453,7 +2451,7 @@ mod tests {
         assert_eq!(client.take_lost_session(), None, "said once");
         // The refused read, its anonymous repeat, and the pull requests, read
         // anonymously from the start because the token is gone by then.
-        assert_eq!(seen.lock().unwrap().len(), 3);
+        assert_eq!(seen.lock_or_recover().len(), 3);
     }
 
     #[tokio::test]
@@ -2494,7 +2492,7 @@ mod tests {
             .await
             .expect_err("refused");
         assert!(refused.contains("passer-by"));
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         assert!(
             seen.iter().all(|request| request.method == "GET"),
             "{seen:?}"
@@ -2521,7 +2519,7 @@ mod tests {
                     ),
                 ),
                 ("PUT", "/repos/o/r/contents/catalogue.json") => {
-                    let mut left = conflicts.lock().unwrap();
+                    let mut left = conflicts.lock_or_recover();
                     if *left > 0 {
                         *left -= 1;
                         reply(409, r#"{"message":"catalogue.json does not match sha1"}"#)
@@ -2557,7 +2555,7 @@ mod tests {
 
         client.accept(submission()).await.expect("accepted");
 
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         let puts: Vec<&Seen> = seen.iter().filter(|r| r.method == "PUT").collect();
         assert_eq!(puts.len(), 2, "one conflict, one retry");
         let catalogue: serde_json::Value = serde_json::from_str(&committed(puts[1])).unwrap();
@@ -2597,7 +2595,7 @@ mod tests {
 
         client.accept(submission()).await.expect("finished");
 
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         assert!(seen.iter().all(|r| r.method != "PUT"), "no second commit");
         assert!(
             seen.iter()
@@ -2620,7 +2618,7 @@ mod tests {
 
         let refused = client.accept(submission()).await.expect_err("refused");
         assert!(refused.contains("declined"));
-        assert!(seen.lock().unwrap().iter().all(|r| r.method == "GET"));
+        assert!(seen.lock_or_recover().iter().all(|r| r.method == "GET"));
     }
 
     #[tokio::test]
@@ -2643,7 +2641,7 @@ mod tests {
 
         client.accept(submission()).await.expect("accepted");
 
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         assert!(
             seen.iter()
                 .any(|r| r.method == "PUT" && r.target.ends_with("/contents/catalogue.json")),
@@ -2666,7 +2664,7 @@ mod tests {
         }
         let refused = client.accept(plain_http).await.expect_err("refused");
         assert!(refused.contains("https://"), "{refused}");
-        assert!(seen.lock().unwrap().iter().all(|r| r.method == "GET"));
+        assert!(seen.lock_or_recover().iter().all(|r| r.method == "GET"));
     }
 
     // -- guides proposed as pull requests -----------------------------------
@@ -2753,8 +2751,7 @@ mod tests {
         assert!(row.is_acceptable());
         // The guide came from the raw host, never through the API's allowance.
         assert!(seen
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .iter()
             .all(|request| !request.target.contains("/contents/")));
     }
@@ -2830,7 +2827,7 @@ mod tests {
 
         client.accept(proposed()).await.expect("accepted");
 
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         let merge = seen
             .iter()
             .position(|r| r.method == "PUT" && r.target.ends_with("/merge"))
@@ -2880,7 +2877,7 @@ mod tests {
         let refused = client.accept(proposed()).await.expect_err("refused");
         assert!(refused.contains("changed since"), "{refused}");
         assert!(
-            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            seen.lock_or_recover().iter().all(|r| r.method == "GET"),
             "nothing written"
         );
     }
@@ -2903,7 +2900,7 @@ mod tests {
         let refused = client.accept(proposed()).await.expect_err("refused");
         assert!(refused.contains("catalogue.json"), "{refused}");
         assert!(
-            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            seen.lock_or_recover().iter().all(|r| r.method == "GET"),
             "nothing written"
         );
     }
@@ -2923,7 +2920,7 @@ mod tests {
         let refused = client.accept(proposed()).await.expect_err("refused");
         assert!(refused.contains("only part"), "{refused}");
         assert!(
-            seen.lock().unwrap().iter().all(|r| r.method == "GET"),
+            seen.lock_or_recover().iter().all(|r| r.method == "GET"),
             "nothing written"
         );
     }
@@ -2947,7 +2944,7 @@ mod tests {
                 }
                 ("POST", "/repos/o/r/forks") => reply(202, r#"{"full_name":"author/r"}"#),
                 ("POST", "/repos/author/r/git/blobs") => {
-                    let mut count = counter.lock().unwrap();
+                    let mut count = counter.lock_or_recover();
                     *count += 1;
                     if *count == 1 {
                         // GitHub is still making the fork.
@@ -2990,7 +2987,7 @@ mod tests {
             .expect("proposed, though the label was refused");
         assert_eq!(url, "https://github.com/o/r/pull/9");
 
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         let body_of = |method: &str, target: &str| -> serde_json::Value {
             let request = seen
                 .iter()
@@ -3079,7 +3076,7 @@ mod tests {
             .await
             .expect("opened");
         assert!(url.ends_with("/issues/3"));
-        let seen = seen.lock().unwrap();
+        let seen = seen.lock_or_recover();
         assert_eq!(seen.len(), 1);
         assert_eq!(seen[0].target, "/repos/o/r/issues");
     }

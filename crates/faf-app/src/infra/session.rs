@@ -11,6 +11,8 @@
 
 use std::sync::{Arc, RwLock};
 
+use crate::sync::RwLockExt;
+
 /// A cheap-to-clone handle to the current access token (all clones share state).
 #[derive(Clone, Default)]
 pub struct TokenStore {
@@ -25,36 +27,36 @@ impl TokenStore {
 
     /// Store (or replace) the current access token.
     pub fn set(&self, token: impl Into<String>) {
-        *self.inner.write().expect("token store poisoned") = Some(token.into());
+        *self.inner.write_or_recover() = Some(token.into());
     }
 
     /// The current access token, if logged in.
     pub fn get(&self) -> Option<String> {
-        self.inner.read().expect("token store poisoned").clone()
+        self.inner.read_or_recover().clone()
     }
 
     /// Store (or replace) the current ID token. A renewal that brings none
     /// keeps the previous one, which then simply runs out.
     pub fn set_id_token(&self, token: Option<&str>) {
         if let Some(token) = token {
-            *self.id.write().expect("token store poisoned") = Some(token.to_owned());
+            *self.id.write_or_recover() = Some(token.to_owned());
         }
     }
 
     /// A new session's ID token, replacing whatever an earlier one left.
     pub fn start_id_token(&self, token: Option<&str>) {
-        *self.id.write().expect("token store poisoned") = token.map(str::to_owned);
+        *self.id.write_or_recover() = token.map(str::to_owned);
     }
 
     /// The current ID token, if logged in and Hydra issued one.
     pub fn id_token(&self) -> Option<String> {
-        self.id.read().expect("token store poisoned").clone()
+        self.id.read_or_recover().clone()
     }
 
     /// Forget both tokens (on logout).
     pub fn clear(&self) {
-        *self.inner.write().expect("token store poisoned") = None;
-        *self.id.write().expect("token store poisoned") = None;
+        *self.inner.write_or_recover() = None;
+        *self.id.write_or_recover() = None;
     }
 }
 

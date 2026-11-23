@@ -42,6 +42,7 @@ use tokio::sync::mpsc;
 
 use crate::infra::vault_install::MAX_DOWNLOAD_BYTES;
 use crate::ports::{GeneratorUpdate, MapGeneratorPort};
+use crate::sync::LockExt;
 
 /// How long an option query (`--styles` etc.) may take. Much shorter than a
 /// generation run: it only prints a list. The Java client uses six seconds.
@@ -1182,7 +1183,7 @@ impl NeroxisMapGenerator {
 
     fn generation_worker(&self) -> Self {
         let worker = self.launch_worker();
-        let mut active = self.active_runs.lock().unwrap();
+        let mut active = self.active_runs.lock_or_recover();
         active.retain(|signal| signal.strong_count() > 0);
         active.push(Arc::downgrade(&worker.cancel));
         worker
@@ -1832,8 +1833,7 @@ impl MapGeneratorPort for NeroxisMapGenerator {
         self.cancel.raise();
         for signal in self
             .active_runs
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .iter()
             .filter_map(|run| run.upgrade())
         {

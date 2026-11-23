@@ -21,6 +21,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::{mpsc, oneshot};
 
+use crate::sync::LockExt;
+
 /// Requests sent and not yet answered, by id. The reader pump resolves them;
 /// when the connection ends it drops them all, which fails every waiter at
 /// once rather than leaving each to its timeout.
@@ -102,7 +104,7 @@ impl JsonRpcClient {
                     }
                     if let Some(note) = route(&value, &reply_tx) {
                         if note_tx.send(note).await.is_err() {
-                            answers.lock().unwrap().clear();
+                            answers.lock_or_recover().clear();
                             return; // consumer gone
                         }
                     }
@@ -119,7 +121,7 @@ impl JsonRpcClient {
                     break;
                 }
             }
-            answers.lock().unwrap().clear();
+            answers.lock_or_recover().clear();
         });
 
         Ok((
@@ -147,17 +149,17 @@ impl JsonRpcClient {
     ) -> Result<Value, String> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (answered, answer) = oneshot::channel();
-        self.pending.lock().unwrap().insert(id, answered);
+        self.pending.lock_or_recover().insert(id, answered);
         let frame = json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
         if self.out.send(format!("{frame}\n")).is_err() {
-            self.pending.lock().unwrap().remove(&id);
+            self.pending.lock_or_recover().remove(&id);
             return Err("the adapter's control connection is closed".into());
         }
         match tokio::time::timeout(timeout, answer).await {
             Ok(Ok(result)) => result,
             Ok(Err(_)) => Err("the adapter's control connection closed".into()),
             Err(_) => {
-                self.pending.lock().unwrap().remove(&id);
+                self.pending.lock_or_recover().remove(&id);
                 Err(format!(
                     "the adapter did not answer `{method}` within {} seconds",
                     timeout.as_secs()
@@ -176,7 +178,7 @@ fn answer(value: &Value, pending: &Pending) -> bool {
     let Some(id) = value.get("id").and_then(Value::as_u64) else {
         return false;
     };
-    let Some(waiter) = pending.lock().unwrap().remove(&id) else {
+    let Some(waiter) = pending.lock_or_recover().remove(&id) else {
         return false;
     };
     let result = match value.get("error") {
@@ -452,7 +454,7 @@ mod tests {
             .unwrap_err();
         assert!(silent.contains("did not answer"), "{silent}");
         assert!(
-            client.pending.lock().unwrap().is_empty(),
+            client.pending.lock_or_recover().is_empty(),
             "nothing left waiting"
         );
     }

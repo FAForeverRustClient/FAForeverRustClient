@@ -48,12 +48,54 @@ pub fn init(log_dir: &Path) -> Result<DiagnosticsGuard, String> {
         .try_init()
         .map_err(|error| format!("could not install the diagnostics subscriber: {error}"))?;
 
+    install_panic_hook();
+
     tracing::info!(
         retained_files = MAX_LOG_FILES,
         max_file_bytes = MAX_LOG_FILE_BYTES,
         "client diagnostics initialized"
     );
     Ok(DiagnosticsGuard { _writer: guard })
+}
+
+/// Write every panic to the client log before the default hook runs.
+///
+/// The default hook prints to stderr, and a Windows release build has no
+/// console, so a command task that panicked left nothing behind: the task was
+/// gone and the log did not say why. The previous hook still runs afterwards,
+/// so a development build prints to the terminal as before.
+fn install_panic_hook() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let thread = std::thread::current();
+        let location = info
+            .location()
+            .map(|location| format!("{}:{}", location.file(), location.line()))
+            .unwrap_or_else(|| "unknown".to_string());
+        // Forced rather than left to RUST_BACKTRACE, which nobody sets on a
+        // player's machine. A panic is rare enough for the cost not to matter.
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        tracing::error!(
+            thread = thread.name().unwrap_or("unnamed"),
+            %location,
+            %backtrace,
+            "panic: {}",
+            panic_message(info.payload()),
+        );
+        previous(info);
+    }));
+}
+
+/// The text a panic was raised with. `panic!` with a literal carries a
+/// `&str`, with format arguments a `String`; anything else is a custom payload.
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> &str {
+    if let Some(message) = payload.downcast_ref::<&str>() {
+        message
+    } else if let Some(message) = payload.downcast_ref::<String>() {
+        message
+    } else {
+        "non-string panic payload"
+    }
 }
 
 fn build_appender(log_dir: &Path) -> Result<SizeAndDateRollingAppender, String> {
@@ -273,6 +315,19 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
+
+    #[test]
+    fn panic_message_reads_literal_and_formatted_payloads() {
+        let literal = std::panic::catch_unwind(|| panic!("literal")).unwrap_err();
+        assert_eq!(panic_message(literal.as_ref()), "literal");
+
+        let value = 7;
+        let formatted = std::panic::catch_unwind(|| panic!("formatted {value}")).unwrap_err();
+        assert_eq!(panic_message(formatted.as_ref()), "formatted 7");
+
+        let custom = std::panic::catch_unwind(|| std::panic::panic_any(7_u8)).unwrap_err();
+        assert_eq!(panic_message(custom.as_ref()), "non-string panic payload");
+    }
 
     #[test]
     fn rolling_writer_creates_a_client_log() {

@@ -52,6 +52,7 @@ use tokio_util::sync::CancellationToken;
 use crate::infra::session::TokenStore;
 use crate::infra::{env_or, fetch_access_url, validated_ws_url};
 use crate::ports::{LobbyPort, LobbySendError, LobbyUpdate};
+use crate::sync::LockExt;
 
 mod session;
 use session::{Effect, SessionState};
@@ -196,7 +197,7 @@ impl LobbyClient {
     }
 
     fn try_send(&self, request: Outgoing) -> Result<(), LobbySendError> {
-        let guard = self.outgoing.lock().unwrap();
+        let guard = self.outgoing.lock_or_recover();
         let Some(tx) = guard.as_ref() else {
             return Err(LobbySendError::Disconnected);
         };
@@ -225,11 +226,14 @@ impl LobbyPort for LobbyClient {
     async fn resolve_contacts(&self, ids: &[i32]) -> Result<(), String> {
         let outgoing = self
             .outgoing
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .clone()
             .ok_or("not connected")?;
-        let cancel = self.cancel.lock().unwrap().clone().ok_or("not connected")?;
+        let cancel = self
+            .cancel
+            .lock_or_recover()
+            .clone()
+            .ok_or("not connected")?;
         let token = self.tokens.get();
         let ids: Vec<i64> = ids.iter().map(|id| i64::from(*id)).collect();
         let names = tokio::select! {
@@ -244,7 +248,7 @@ impl LobbyPort for LobbyClient {
 
     async fn connect(&self) -> mpsc::Receiver<LobbyUpdate> {
         let token = CancellationToken::new();
-        if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
+        if let Some(prev) = self.cancel.lock_or_recover().replace(token.clone()) {
             prev.cancel();
         }
 
@@ -259,7 +263,7 @@ impl LobbyPort for LobbyClient {
         // the server ends a player's game on. Java's lobby writer queues
         // without a bound.
         let (out_tx, out_rx) = mpsc::channel::<Outgoing>(OUTGOING_FRAME_CAPACITY);
-        *self.outgoing.lock().unwrap() = Some(out_tx);
+        *self.outgoing.lock_or_recover() = Some(out_tx);
 
         let config = self.config.clone();
         let http = self.http.clone();
@@ -349,7 +353,7 @@ impl LobbyPort for LobbyClient {
     }
 
     fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
-        let outgoing = self.outgoing.lock().unwrap();
+        let outgoing = self.outgoing.lock_or_recover();
         let tx = outgoing.as_ref().ok_or(LobbySendError::Disconnected)?;
         // Reserve before sending the first frame. A saturated queue must
         // never leave the player searching only some of the requested queues.
@@ -396,7 +400,7 @@ impl LobbyPort for LobbyClient {
         member: bool,
         remove: Option<Relation>,
     ) -> bool {
-        let outgoing = self.outgoing.lock().unwrap();
+        let outgoing = self.outgoing.lock_or_recover();
         let Some(tx) = outgoing.as_ref() else {
             return false;
         };
@@ -453,11 +457,11 @@ impl LobbyPort for LobbyClient {
     }
 
     fn disconnect(&self) {
-        if let Some(token) = self.cancel.lock().unwrap().take() {
+        if let Some(token) = self.cancel.lock_or_recover().take() {
             token.cancel();
         }
         // Drop the outgoing sender so a `join` before reconnect is a no-op.
-        *self.outgoing.lock().unwrap() = None;
+        *self.outgoing.lock_or_recover() = None;
     }
 }
 
