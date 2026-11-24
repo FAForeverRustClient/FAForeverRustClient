@@ -73,6 +73,8 @@ pub(super) struct LocalBodyArmy {
     pub(super) rating: Option<i32>,
     /// `Country` in the army table: the two-letter code the lobby had.
     pub(super) country: Option<String>,
+    /// `StartSpot` in the army table: the lobby slot, 1-based.
+    pub(super) start_spot: Option<i32>,
 }
 
 fn extract_map_folder(path: &str) -> String {
@@ -388,6 +390,10 @@ fn parse_local_body_info(body: &[u8]) -> LocalBodyInfo {
             faction,
             rating,
             country: country.clone(),
+            start_spot: data
+                .get("StartSpot")
+                .and_then(replay_i32_value)
+                .filter(|spot| *spot > 0),
         });
         stats.insert(
             name,

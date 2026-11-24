@@ -1420,6 +1420,19 @@ button.vault-input {
   white-space: nowrap;
 }
 
+/* Square-cornered, like every tag in the client. */
+.replay-player-slot {
+  display: inline-block;
+  padding: 2px 5px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
 .replay-player-rating-change {
   display: inline-block;
   font-size: 12px;

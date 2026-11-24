@@ -251,6 +251,8 @@ fn resolve_teams(
                 .to_string(),
             score: value_i32(&stat.attributes, "score"),
             country: None,
+            // 0 is what the server stores when it recorded no slot.
+            start_spot: value_i32(&stat.attributes, "startSpot").filter(|spot| *spot > 0),
         });
     }
     let mut teams: Vec<ReplayTeam> = by_team
@@ -620,7 +622,9 @@ mod tests {
                 {
                     "type": "gamePlayerStats",
                     "id": "100",
-                    "attributes": { "team": 2, "faction": 1, "result": "VICTORY", "score": 3210 },
+                    "attributes": {
+                        "team": 2, "faction": 1, "result": "VICTORY", "score": 3210, "startSpot": 8
+                    },
                     "relationships": {
                         "player": { "data": { "type": "player", "id": "500" } },
                         "ratingChanges": { "data": [{ "type": "leaderboardRatingJournal", "id": "700" }] }
@@ -631,6 +635,7 @@ mod tests {
                     "id": "101",
                     "attributes": {
                         "team": 3,
+                        "startSpot": 0,
                         "faction": "RANDOM",
                         "beforeMean": 1600.0,
                         "beforeDeviation": 100.0
@@ -719,6 +724,9 @@ mod tests {
         assert_eq!(replay.teams[0].players[0].rating_change, Some(21));
         assert_eq!(replay.teams[0].players[0].outcome, "VICTORY");
         assert_eq!(replay.teams[0].players[0].score, Some(3210));
+        assert_eq!(replay.teams[0].players[0].start_spot, Some(8));
+        // 0 is the server's "no slot recorded", not a slot.
+        assert_eq!(replay.teams[1].players[0].start_spot, None);
         assert_eq!(replay.average_rating, Some(1300));
         assert_eq!(replay.teams[1].team, 3);
         assert_eq!(replay.teams[1].players[0].name, "Nomander");

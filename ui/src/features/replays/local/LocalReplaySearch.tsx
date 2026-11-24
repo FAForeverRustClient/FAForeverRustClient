@@ -25,6 +25,7 @@ import {
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { DateInput } from "../../../design-system/DateInput";
+import { ReplaySlotField } from "../SlotPositionsInfo";
 
 const SORT_LABELS: Record<LocalReplaySortField, MessageKey> = {
   date: "replays.search.sort.datePlayed",
@@ -101,6 +102,7 @@ export function LocalReplaySearch({
       ...form,
       player: EMPTY_LOCAL_REPLAY_QUERY.player,
       exactPlayer: EMPTY_LOCAL_REPLAY_QUERY.exactPlayer,
+      playerSlot: EMPTY_LOCAL_REPLAY_QUERY.playerSlot,
       after: EMPTY_LOCAL_REPLAY_QUERY.after,
       ...fields,
     });
@@ -146,6 +148,7 @@ export function LocalReplaySearch({
             onChange={(event) => set("player", event.target.value)}
           />
         </label>
+
 
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
           <span className="vault-field-label search-panel-label">{t("replays.search.map")}</span>
@@ -314,6 +317,9 @@ export function LocalReplaySearch({
       {advanced && (
         <div className="vault-search-advanced search-panel-advanced">
           <div className="vault-search-fields local-vault-search-fields">
+            {/* The slot of the player named above (#791): "Seraphim-Noob in
+                slot 8" is one question, matched on the same player. */}
+            <ReplaySlotField value={form.playerSlot} onChange={(slot) => set("playerSlot", slot)} />
             <label className="vault-field">
               <span className="vault-field-label">{t("replays.search.gameTitle")}</span>
               <input className="vault-input" type="search" value={form.title} onChange={(event) => set("title", event.target.value)} />

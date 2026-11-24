@@ -6,6 +6,7 @@ import { factionOptions } from "../../../shared/factions";
 import { kilometres } from "../../../shared/mapPresentation";
 import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
+import { ReplaySlotField } from "../SlotPositionsInfo";
 
 /** The host dialog's game types, in its order. */
 const GAME_TYPES: { id: string; label: MessageKey }[] = [
@@ -199,6 +200,12 @@ export function AdvancedReplayFilters({ form, set, setRange, tagOptions, selecte
       </div>
 
       <div className="vault-search-fields">
+        {/* The slot of the player named in the search bar (#791):
+            "Seraphim-Noob in slot 8" is one question, matched on the same
+            player row (`ReplayQuery::player_slot`). In here because it only
+            narrows a name, and it counts on the "More filters" button. */}
+        <ReplaySlotField value={form.playerSlot ?? null} onChange={(slot) => set("playerSlot", slot)} />
+
         {/* The lobby title: what tells apart the many games two players have
             played against each other ("... Cup Final", "Round 3"). Back in
             here to keep the always-visible search short; a title typed here

@@ -125,6 +125,18 @@ pub struct ReplayQuery {
     /// getting Delio's games back is the more surprising of the two defaults,
     /// and the box is right there to widen the search again.
     pub exact_player: bool,
+    /// The lobby slot the first named player sat in, 1-based, which is also
+    /// their start position on the map (`playerStats.startSpot`, issue 791).
+    /// With no name, a game where anybody sat in that slot.
+    ///
+    /// The slot and the login are matched on the same `playerStats` row:
+    /// Elide aliases a join by its path (see the module docs), and both
+    /// clauses go through `playerStats`. That is what makes "Seraphim-Noob in
+    /// slot 8" one question rather than "Seraphim-Noob played, and somebody
+    /// sat in slot 8". The same aliasing is why it narrows the first name
+    /// only: every name searched with it would have to sit in the one slot.
+    #[serde(default)]
+    pub player_slot: Option<i32>,
     pub map: String,
     pub map_author: String,
     /// The host-chosen lobby title (`game.attributes.name`).
@@ -213,6 +225,7 @@ impl Default for ReplayQuery {
         Self {
             player: String::new(),
             exact_player: true,
+            player_slot: None,
             map: String::new(),
             map_author: String::new(),
             title: String::new(),
@@ -251,6 +264,7 @@ impl ReplayQuery {
     /// Whether the user narrowed the search at all (dates aside).
     fn has_narrowing_filter(&self) -> bool {
         !self.player.is_empty()
+            || self.player_slot.is_some_and(|slot| slot > 0)
             || !self.map.is_empty()
             || !self.map_author.is_empty()
             || !self.title.is_empty()
@@ -421,6 +435,7 @@ pub fn build_filter(
             clauses.push(format!(r#"playerStats.player.login=="{pattern}""#));
         }
     }
+    clauses.extend(slot_clause(query));
     clauses.extend(common_clauses(query, fallback_after));
     join_clauses(clauses)
 }
@@ -454,11 +469,22 @@ pub fn build_scan_filter(
         "playerStats.player.id",
         &player_ids.iter().map(i32::to_string).collect::<Vec<_>>(),
     )?);
+    clauses.extend(slot_clause(query));
     if let Some(id) = before_id {
         clauses.push(format!(r#"id=lt="{id}""#));
     }
     clauses.extend(common_clauses(query, None));
     join_clauses(clauses)
+}
+
+/// The slot clause, written beside the player's own so that the two land on
+/// the same `playerStats` row: see [`ReplayQuery::player_slot`]. A shared-games
+/// scan clears the slot on every name but the first before it gets here.
+fn slot_clause(query: &ReplayQuery) -> Option<String> {
+    query
+        .player_slot
+        .filter(|slot| *slot > 0)
+        .map(|slot| format!(r#"playerStats.startSpot=="{slot}""#))
 }
 
 /// The featured mod `co-op` games are identified by. They are on no rating
@@ -848,6 +874,43 @@ mod tests {
     #[test]
     fn an_empty_query_has_no_filter() {
         assert_eq!(build_filter(&query(), None, None), None);
+    }
+
+    #[test]
+    fn a_slot_narrows_the_named_player_on_the_same_stats_row() {
+        // Issue 791: "Seraphim-Noob Slot 8". Both clauses go through
+        // `playerStats`, which Elide joins once, so this is the player in
+        // that slot and not the player plus somebody in it.
+        let q = ReplayQuery {
+            player: "Seraphim-Noob".into(),
+            player_slot: Some(8),
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&q, None, None).unwrap(),
+            r#"(playerStats.player.login=="Seraphim-Noob";playerStats.startSpot=="8")"#
+        );
+        assert_eq!(
+            build_scan_filter(&q, &[42], None).unwrap(),
+            r#"(playerStats.player.id=in=("42");playerStats.startSpot=="8")"#
+        );
+        // On its own it still narrows, and it counts as narrowing for the
+        // date floor an unbounded search gets.
+        let alone = ReplayQuery {
+            player_slot: Some(3),
+            ..query()
+        };
+        assert_eq!(
+            build_filter(&alone, None, None).unwrap(),
+            r#"(playerStats.startSpot=="3")"#
+        );
+        assert_eq!(alone.fallback_months(), Some(3));
+        // Nothing below slot 1 is a slot.
+        let zero = ReplayQuery {
+            player_slot: Some(0),
+            ..query()
+        };
+        assert_eq!(build_filter(&zero, None, None), None);
     }
 
     #[test]

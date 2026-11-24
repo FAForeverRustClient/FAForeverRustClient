@@ -246,6 +246,7 @@ fn local_teams(header: &Value) -> Vec<LocalReplayTeam> {
                             rating: None,
                             ai: false,
                             country: None,
+                            start_spot: None,
                         })
                         .collect();
                     (!players.is_empty()).then(|| LocalReplayTeam {
@@ -289,6 +290,7 @@ fn body_teams(armies: &[LocalBodyArmy], mission: bool) -> Vec<LocalReplayTeam> {
             rating: army.rating,
             ai: army.computer,
             country: army.country.clone(),
+            start_spot: army.start_spot,
         };
         match teams.iter_mut().find(|team| team.team == key) {
             Some(team) => team.players.push(player),
@@ -915,6 +917,7 @@ mod tests {
             faction: Some(2),
             rating: Some(1_500),
             country: None,
+            start_spot: None,
         }
     }
 

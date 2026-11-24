@@ -5355,6 +5355,11 @@ export type LocalReplayPlayer = {
 	ai?: boolean,
 	/**  Two-letter country code from the army table, where the file has one. */
 	country?: string | null,
+	/**
+	 *  `StartSpot` in the army table: the lobby slot, 1-based. `None` where
+	 *  the file only had the header's name list to go on.
+	 */
+	startSpot?: number | null,
 };
 
 /**
@@ -9765,6 +9770,12 @@ export type ReplayPlayer = {
 	 *  has no country for an account, so an online listing never carries one.
 	 */
 	country?: string | null,
+	/**
+	 *  The lobby slot the player sat in, which is also their start position
+	 *  on the map: `playerStats.startSpot`, 1-based. `None` where the server
+	 *  recorded none, which it stores as 0.
+	 */
+	startSpot?: number | null,
 };
 
 /**
@@ -9830,6 +9841,19 @@ export type ReplayQuery = {
 	 *  and the box is right there to widen the search again.
 	 */
 	exactPlayer: boolean,
+	/**
+	 *  The lobby slot the first named player sat in, 1-based, which is also
+	 *  their start position on the map (`playerStats.startSpot`, issue 791).
+	 *  With no name, a game where anybody sat in that slot.
+	 *
+	 *  The slot and the login are matched on the same `playerStats` row:
+	 *  Elide aliases a join by its path (see the module docs), and both
+	 *  clauses go through `playerStats`. That is what makes "Seraphim-Noob in
+	 *  slot 8" one question rather than "Seraphim-Noob played, and somebody
+	 *  sat in slot 8". The same aliasing is why it narrows the first name
+	 *  only: every name searched with it would have to sit in the one slot.
+	 */
+	playerSlot?: number | null,
 	map: string,
 	mapAuthor: string,
 	/**  The host-chosen lobby title (`game.attributes.name`). */
