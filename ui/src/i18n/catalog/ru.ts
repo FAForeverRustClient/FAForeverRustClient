@@ -294,6 +294,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.clientUpdate.body": "«Обновить сейчас» скачает её и перезапустит клиент.",
   "notifications.msg.clientUpdateFrom.title": "Доступна версия {version}",
   "notifications.msg.clientUpdateFrom.body": "У вас версия {current}. «Обновить сейчас» скачает новую и перезапустит клиент.",
+  "notifications.msg.clientUpdateManual.title": "Доступна версия {version}",
+  "notifications.msg.clientUpdateManual.body": "Клиент не может установить её здесь. Она есть на странице выпуска.",
   "notifications.msg.replayFailed.title": "Ошибка повтора",
   "notifications.msg.liveReplayDelayed.title": "Ошибка повтора",
   "notifications.msg.liveReplayDelayed.body": "Просмотр трансляции задерживается на пять минут, чтобы нельзя было следить за текущей игрой и получать преимущество. Повтор можно будет посмотреть через {minutes} мин {seconds} с.",

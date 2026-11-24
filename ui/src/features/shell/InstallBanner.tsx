@@ -107,7 +107,7 @@ export function InstallBanner() {
         {/* Not the primary action any more when the client is about to do
             this itself: the button is there for somebody who keeps their
             install somewhere else, not for somebody who has to find one. */}
-        <Button variant={pending ? "ghost" : "primary"} onClick={() => void pickInstall()}>
+        <Button variant={pending ? "ghost" : "primary"} onClick={() => ipc.run(pickInstall())}>
           {t("shell.install.locate")}
         </Button>
         <Button onClick={() => void openSettings()}>{t("shell.install.settings")}</Button>

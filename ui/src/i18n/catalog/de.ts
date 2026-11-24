@@ -3553,6 +3553,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.clientUpdate.body": "„Jetzt aktualisieren“ lädt sie herunter und startet den Client neu.",
   "notifications.msg.clientUpdateFrom.title": "Version {version} ist verfügbar",
   "notifications.msg.clientUpdateFrom.body": "Du nutzt {current}. „Jetzt aktualisieren“ lädt sie herunter und startet den Client neu.",
+  "notifications.msg.clientUpdateManual.title": "Version {version} ist verfügbar",
+  "notifications.msg.clientUpdateManual.body": "Der Client kann sie hier nicht installieren. Sie liegt auf ihrer Release-Seite.",
   "notifications.msg.replayFailed.title": "Replay fehlgeschlagen",
   "notifications.msg.liveReplayDelayed.title": "Replay fehlgeschlagen",
   "notifications.msg.liveReplayDelayed.body": "Live-Replays sind um fünf Minuten verzögert, damit niemand ein laufendes Spiel zu seinem Vorteil beobachten kann. Versuche es in {minutes} Min. {seconds} Sek. erneut.",

@@ -318,6 +318,10 @@ pub(crate) fn reevaluate_overdue(
 /// update announcements off. A required release is announced regardless: they
 /// are about to meet the gate, and meeting it with no idea why would be worse.
 ///
+/// A release with no installer for this platform, every release on Android,
+/// is never overdue, so it is announced as an optional one, and its notice
+/// offers no install: that button would only fail ([`download`]).
+///
 /// Announced once per release rather than once per check. Two reasons to skip:
 /// the version was dismissed, which is the user saying they know, or it is
 /// already the release on offer, which means this check told us nothing new and
@@ -334,6 +338,18 @@ fn announce(release: &ClientRelease, current: &str, out: &EventSink, required: b
                     .is_some_and(|known| known.version == release.version))
     });
     if skip {
+        return;
+    }
+    if !release.is_installable() {
+        services::notifications::add_text(
+            out,
+            NotificationKind::ClientUpdate,
+            services::notifications::Text::new("notifications.msg.clientUpdateManual")
+                .with("version", &release.version),
+            format!("Version {} is available", release.version),
+            "The client cannot install it here. Its release page has it.",
+            None,
+        );
         return;
     }
     let text = if current.is_empty() {

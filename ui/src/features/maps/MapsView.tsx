@@ -1217,7 +1217,7 @@ export function MapsView() {
           onChange={selectSubView}
           idPrefix="maps-section"
         />
-        <Button variant="ghost" className="maps-header-action" onClick={() => void openUploadFromDisk("map")}>
+        <Button variant="ghost" className="maps-header-action" onClick={() => ipc.run(openUploadFromDisk("map"))}>
           <Icon name="upload" size={15} /> {t("maps.view.uploadFromDisk")}
         </Button>
       </header>

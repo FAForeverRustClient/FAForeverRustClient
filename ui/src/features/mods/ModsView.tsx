@@ -645,7 +645,7 @@ export function ModsView() {
           onChange={selectSubView}
           idPrefix="mods-section"
         />
-        <Button variant="ghost" className="mods-header-action" onClick={() => void openUploadFromDisk("mod")}>
+        <Button variant="ghost" className="mods-header-action" onClick={() => ipc.run(openUploadFromDisk("mod"))}>
           <Icon name="upload" size={15} /> {t("mods.view.uploadFromDisk")}
         </Button>
       </header>

@@ -35,18 +35,21 @@ pub const RELEASES_BEHIND_LIMIT: usize = 2;
 /// player is [`RELEASES_BEHIND_LIMIT`] releases behind, or it was published at
 /// least [`GRACE_PERIOD_DAYS`] ago. A publish date the client cannot read, or
 /// one in the future, never makes it overdue: nobody is locked out on data the
-/// client does not understand.
+/// client does not understand. Nor does a release with no installer for this
+/// platform, every release on Android: the client cannot insist on what it
+/// cannot install.
 pub fn is_overdue(
     release: &ClientRelease,
     now: chrono::DateTime<chrono::Utc>,
     behind: usize,
     required: bool,
 ) -> bool {
-    required
-        || behind >= RELEASES_BEHIND_LIMIT
-        || chrono::DateTime::parse_from_rfc3339(&release.published_at).is_ok_and(|published| {
-            now.signed_duration_since(published) >= chrono::Duration::days(GRACE_PERIOD_DAYS)
-        })
+    release.is_installable()
+        && (required
+            || behind >= RELEASES_BEHIND_LIMIT
+            || chrono::DateTime::parse_from_rfc3339(&release.published_at).is_ok_and(|published| {
+                now.signed_duration_since(published) >= chrono::Duration::days(GRACE_PERIOD_DAYS)
+            }))
 }
 
 /// How many published releases on the player's channel are newer than the
@@ -706,6 +709,13 @@ mod tests {
             candidate.published_at = date.into();
             assert!(!is_overdue(&candidate, now, 1, false));
         }
+        let mut elsewhere = release("1.0.0");
+        elsewhere.published_at = "2026-01-01T00:00:00Z".into();
+        elsewhere.download_url = String::new();
+        assert!(
+            !is_overdue(&elsewhere, now, 5, true),
+            "nothing here can install it, so nothing insists"
+        );
         let mut published = vec![notes("0.9.0"), notes("1.0.0"), notes("1.1.0"), notes("bad")];
         published[1].pre_release = false;
         published.push(published[1].clone());

@@ -17,7 +17,7 @@ Nothing in this section needs doing.
 |---|---|---|
 | CI | `.github/workflows/ci.yml` | Every check already runs on `ubuntu-latest`: tests, clippy, architecture, bindings drift, the frontend gate. Nothing in the checks is Windows-only. |
 | Release packaging | `.github/workflows/release.yml` | The matrix builds `ubuntu-22.04` alongside Windows and both macOS architectures, with the webkit2gtk/appindicator/rsvg/patchelf dependencies installed. |
-| Self-update | `infra/client_update.rs` | `ASSET_SUFFIXES` picks `.AppImage`, `.deb` and `.rpm` on anything that is not Windows or macOS, so the updater already looks for the right artifacts. |
+| Self-update | `infra/client_update.rs` | `ASSET_SUFFIXES` picks `.AppImage`, `.deb` and `.rpm` on anything that is not Windows, macOS or Android (which has no installer kinds), so the updater already looks for the right artifacts. |
 | Anti-smurf id | `scripts/ensure-faf-uid.mjs` | A Linux `faf-uid` asset is downloaded and hash-checked next to the Windows and macOS ones. |
 | Galactic War | `protocol/galactic_war.rs` | `faf_galactic_war_client_linux.zip` and its `.x86_64` executable are already the non-Windows constants. |
 | Discord presence | `infra/discord.rs` | The Windows named pipe has a `#[cfg(unix)]` counterpart. |

@@ -95,13 +95,13 @@ pub(crate) async fn pick_path(
     window: tauri::Window,
     picked: tauri::State<'_, PickedPaths>,
 ) -> Result<Option<String>, String> {
-    // Android's dialog has no folder picker. There the app's own import
-    // chooses Supreme Commander's folder and the app owns the game's
-    // folders, so a request for a folder is refused rather than answered
-    // with a file.
-    #[cfg(mobile)]
-    if request.directory {
-        return Err("folders cannot be picked on Android".into());
+    // Android's dialog has no folder picker, and the file it hands back is a
+    // content address, not a path this client or its backend can read: a pick
+    // would end in an error only after the player had chosen. So every request
+    // is refused before the dialog opens, until an import copies such a file
+    // into the app's own folders.
+    if cfg!(mobile) {
+        return Err("Choosing files and folders is not available on Android.".into());
     }
     let mut dialog = window.dialog().file();
     #[cfg(any(windows, target_os = "macos"))]

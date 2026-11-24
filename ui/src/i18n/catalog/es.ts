@@ -286,6 +286,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.clientUpdate.body": "«Actualizar ahora» la descarga y reinicia el cliente.",
   "notifications.msg.clientUpdateFrom.title": "La versión {version} está disponible",
   "notifications.msg.clientUpdateFrom.body": "Usas la versión {current}. «Actualizar ahora» la descarga y reinicia el cliente.",
+  "notifications.msg.clientUpdateManual.title": "La versión {version} está disponible",
+  "notifications.msg.clientUpdateManual.body": "El cliente no puede instalarla aquí. Está en su página de la versión.",
   "notifications.msg.replayFailed.title": "Falló la repetición",
   "notifications.msg.liveReplayDelayed.title": "Falló la repetición",
   "notifications.msg.liveReplayDelayed.body": "Las repeticiones en directo se retrasan cinco minutos para que nadie pueda observar una partida en curso y obtener ventaja. Inténtalo de nuevo en {minutes} min {seconds} s.",

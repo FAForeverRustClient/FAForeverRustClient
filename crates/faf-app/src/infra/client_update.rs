@@ -67,8 +67,14 @@ use crate::ports::{ClientUpdatePort, DownloadProgress};
 pub const ASSET_SUFFIXES: [&str; 2] = ["-setup.exe", ".msi"];
 #[cfg(target_os = "macos")]
 pub const ASSET_SUFFIXES: [&str; 2] = [".dmg", ".app.tar.gz"];
-#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+#[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "android")))]
 pub const ASSET_SUFFIXES: [&str; 3] = [".AppImage", ".deb", ".rpm"];
+/// None on Android: an APK goes through the system's package installer, which
+/// this updater does not drive, and the Linux bundles above would be offered
+/// to a phone. A newer release is still announced there, without an install
+/// button and without the gate (`ClientRelease::is_installable`).
+#[cfg(target_os = "android")]
+pub const ASSET_SUFFIXES: [&str; 0] = [];
 
 /// The default source of releases: this client's own repository.
 ///
@@ -920,7 +926,16 @@ mod tests {
     /// A release whose asset name ends in whatever this platform accepts, so
     /// the tests below exercise the same path on every runner.
     fn asset_name(stem: &str) -> String {
-        format!("{stem}{}", ASSET_SUFFIXES[0])
+        format!("{stem}{}", installer_suffix())
+    }
+
+    /// The installer kind this platform prefers. Not indexed directly, so the
+    /// tests still build for Android, which has none.
+    fn installer_suffix() -> &'static str {
+        ASSET_SUFFIXES
+            .first()
+            .copied()
+            .expect("this platform installs updates")
     }
 
     fn release_json(tag: &str, pre_release: bool, with_asset: bool) -> Value {
@@ -1426,12 +1441,12 @@ mod tests {
         let client = GitHubUpdates::new(config());
         let release = ClientRelease {
             version: "1.2.3".into(),
-            asset_name: format!("../../../../evil{}", ASSET_SUFFIXES[0]),
+            asset_name: format!("../../../../evil{}", installer_suffix()),
             ..ClientRelease::default()
         };
         let path = client.installer_path(&release).expect("a path");
         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-        assert_eq!(name, format!("faf-client-1.2.3{}", ASSET_SUFFIXES[0]));
+        assert_eq!(name, format!("faf-client-1.2.3{}", installer_suffix()));
         assert!(!path.to_string_lossy().contains(".."));
     }
 

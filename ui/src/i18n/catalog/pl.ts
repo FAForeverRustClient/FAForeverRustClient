@@ -288,6 +288,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.clientUpdate.body": "„Aktualizuj teraz” pobierze ją i uruchomi klienta ponownie.",
   "notifications.msg.clientUpdateFrom.title": "Dostępna jest wersja {version}",
   "notifications.msg.clientUpdateFrom.body": "Używasz wersji {current}. „Aktualizuj teraz” pobierze ją i uruchomi klienta ponownie.",
+  "notifications.msg.clientUpdateManual.title": "Dostępna jest wersja {version}",
+  "notifications.msg.clientUpdateManual.body": "Klient nie może jej tu zainstalować. Jest na jej stronie wydania.",
   "notifications.msg.replayFailed.title": "Powtórka nie powiodła się",
   "notifications.msg.liveReplayDelayed.title": "Powtórka nie powiodła się",
   "notifications.msg.liveReplayDelayed.body": "Powtórki na żywo są opóźnione o pięć minut, aby nikt nie mógł obserwować trwającej gry i zyskać przewagi. Spróbuj ponownie za {minutes} min {seconds} s.",

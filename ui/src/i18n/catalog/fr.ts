@@ -287,6 +287,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "notifications.msg.clientUpdate.body": "« Mettre à jour » la télécharge et redémarre le client.",
   "notifications.msg.clientUpdateFrom.title": "La version {version} est disponible",
   "notifications.msg.clientUpdateFrom.body": "Vous utilisez la version {current}. « Mettre à jour » la télécharge et redémarre le client.",
+  "notifications.msg.clientUpdateManual.title": "La version {version} est disponible",
+  "notifications.msg.clientUpdateManual.body": "Le client ne peut pas l'installer ici. Elle se trouve sur sa page de version.",
   "notifications.msg.replayFailed.title": "Échec du replay",
   "notifications.msg.liveReplayDelayed.title": "Échec du replay",
   "notifications.msg.liveReplayDelayed.body": "Les replays en direct sont retardés de cinq minutes afin que personne ne puisse observer une partie en cours pour en tirer un avantage. Réessayez dans {minutes} min {seconds} s.",

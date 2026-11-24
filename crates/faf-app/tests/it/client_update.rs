@@ -546,6 +546,55 @@ async fn an_optional_update_is_not_announced_when_announcements_are_off() {
 }
 
 #[tokio::test]
+async fn a_release_this_platform_cannot_install_is_announced_without_an_install_button() {
+    // Every release on Android: the notice tells them it exists, and offers no
+    // button that could only fail.
+    let mut elsewhere = release("0.3.0");
+    elsewhere.download_url = String::new();
+    let h = harness("0.2.0", Ok(Some(elsewhere)), Ok("installer".into()));
+    h.app
+        .dispatch(ClientUpdateCommand::Check.into())
+        .await
+        .unwrap();
+    for _ in 0..300 {
+        let notice = h
+            .app
+            .snapshot()
+            .notifications
+            .items
+            .into_iter()
+            .find(|item| item.kind == faf_domain::state::NotificationKind::ClientUpdate);
+        if let Some(notice) = notice {
+            assert_eq!(notice.action, None, "an install that can only fail");
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
+    panic!("a release without an installer here was never announced");
+}
+
+#[tokio::test]
+async fn a_release_this_platform_cannot_install_is_not_forced_past_announcements_off() {
+    // Overdue by its date, but with no installer here no gate follows, so it
+    // is the optional kind of update the preference is about.
+    let mut elsewhere = release("0.3.0");
+    elsewhere.download_url = String::new();
+    let h = announcements_off(Ok(Some(elsewhere))).await;
+
+    settle(
+        &h.app,
+        |state| state.status == ClientUpdateStatus::Available,
+        "the startup check",
+    )
+    .await;
+    tokio::time::sleep(Duration::from_millis(60)).await;
+    assert!(
+        !announced(&h.app),
+        "an update the client cannot install was announced past the preference",
+    );
+}
+
+#[tokio::test]
 async fn a_required_update_is_announced_even_when_announcements_are_off() {
     // They are about to meet a dialog they cannot dismiss. Meeting it with no
     // idea why would be worse than one notification they did not ask for.
