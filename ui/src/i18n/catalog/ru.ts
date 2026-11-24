@@ -3844,6 +3844,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "maps.generate.issue.spawnsNotDivisible": "{spawns} точек старта нельзя поровну разделить на {teams} команд.",
   "maps.generate.issue.mapSizeNotMultiple": "Размер карты {size} не кратен {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} не может дать {teams} команд.",
+  "maps.generate.issue.symmetryIncompatibleFitting": "{symmetries} не может дать {teams} команд: симметрия делит карту на равные части, и команды должны делить их поровну. Для {teams} команд выберите {fitting}.",
+  "maps.generate.issue.fittingAndMore": "{list} или ещё {count}",
   "maps.generate.issue.outOfRange": "{field} {value} вне диапазона {min}-{max}.",
   "maps.generate.field.spawnCount": "Число точек старта",
   "maps.generate.field.teamCount": "Число команд",

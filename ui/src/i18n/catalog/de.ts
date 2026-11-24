@@ -3174,6 +3174,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
   "maps.generate.issue.spawnsNotDivisible": "{spawns} Startpunkte lassen sich nicht gleichmäßig auf {teams} Teams aufteilen.",
   "maps.generate.issue.mapSizeNotMultiple": "Kartengröße {size} ist kein Vielfaches von {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} kann keine {teams} Teams erzeugen.",
+  "maps.generate.issue.symmetryIncompatibleFitting": "{symmetries} kann keine {teams} Teams erzeugen: Eine Symmetrie teilt die Karte in gleiche Teile, und die Teams müssen sie gleichmäßig unter sich aufteilen. Für {teams} Teams wähle {fitting}.",
+  "maps.generate.issue.fittingAndMore": "{list} oder {count} weitere",
   "maps.generate.issue.outOfRange": "{field} {value} liegt außerhalb von {min}-{max}.",
   "maps.generate.field.spawnCount": "Anzahl Startpositionen",
   "maps.generate.field.teamCount": "Anzahl Teams",

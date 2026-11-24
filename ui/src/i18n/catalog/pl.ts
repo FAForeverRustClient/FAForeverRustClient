@@ -3407,6 +3407,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
   "maps.generate.issue.spawnsNotDivisible": "{spawns} punktów startowych nie da się rozdzielić równo między {teams} drużyn.",
   "maps.generate.issue.mapSizeNotMultiple": "Rozmiar mapy {size} nie jest wielokrotnością {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} nie da {teams} drużyn.",
+  "maps.generate.issue.symmetryIncompatibleFitting": "{symmetries} nie da {teams} drużyn: symetria dzieli mapę na równe części, a drużyny muszą podzielić je po równo. Dla {teams} drużyn wybierz {fitting}.",
+  "maps.generate.issue.fittingAndMore": "{list} lub jeszcze {count}",
   "maps.generate.issue.outOfRange": "{field} {value} jest poza zakresem {min}-{max}.",
   "maps.generate.issue.styleOutsideRange": "{style} pomyślano dla map od {from} do {to}. Wygeneruje się mimo to, ale nie będzie wyglądać zgodnie ze swoją nazwą.",
   "maps.generate.issue.seedNotInteger": "Ziarno musi być liczbą całkowitą. „{seed}” nią nie jest.",

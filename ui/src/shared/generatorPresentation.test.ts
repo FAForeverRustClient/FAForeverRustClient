@@ -121,9 +121,29 @@ describe("validation messages", () => {
   it("explains an incompatible symmetry", () => {
     const issue: ValidationIssue = {
       kind: "symmetryIncompatible",
-      payload: { symmetries: ["POINT3"], numTeams: 2 },
+      payload: { symmetries: ["POINT3"], numTeams: 2, fitting: [] },
     };
     expect(describeIssue(issue, t)).toBe("POINT3 cannot produce 2 teams.");
+  });
+
+  it("names the symmetries that would fit (#803)", () => {
+    const twelve: ValidationIssue = {
+      kind: "symmetryIncompatible",
+      payload: { symmetries: ["ZX", "XZ"], numTeams: 12, fitting: ["POINT12"] },
+    };
+    expect(describeIssue(twelve, t)).toBe(
+      "ZX, XZ cannot produce 12 teams: a symmetry splits the map into equal parts, and the teams have to share them evenly. For 12 teams, pick POINT12.",
+    );
+
+    const two: ValidationIssue = {
+      kind: "symmetryIncompatible",
+      payload: {
+        symmetries: ["POINT3"],
+        numTeams: 2,
+        fitting: ["POINT2", "POINT4", "POINT6", "POINT8", "POINT10", "POINT12", "XZ"],
+      },
+    };
+    expect(describeIssue(two, t)).toContain("pick POINT2, POINT4, POINT6, POINT8, POINT10 or 2 more.");
   });
 
   it("treats a style outside its range as advice, not a blocker", () => {

@@ -3373,6 +3373,8 @@ export const fr: Partial<Record<MessageKey, Message>> = {
   "maps.generate.issue.spawnsNotDivisible": "{spawns} points de départ ne peuvent pas se répartir également entre {teams} équipes.",
   "maps.generate.issue.mapSizeNotMultiple": "La taille de carte {size} n'est pas un multiple de {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} ne peut pas produire {teams} équipes.",
+  "maps.generate.issue.symmetryIncompatibleFitting": "{symmetries} ne peut pas produire {teams} équipes. Une symétrie divise la carte en parties égales, que les équipes doivent se répartir également. Pour {teams} équipes, choisissez {fitting}.",
+  "maps.generate.issue.fittingAndMore": "{list} ou {count} autres",
   "maps.generate.issue.outOfRange": "{field} {value} est hors de {min}-{max}.",
   "maps.generate.issue.styleOutsideRange": "{style} est conçu pour des cartes de {from} à {to}. La carte sera quand même générée, mais ne ressemblera pas à son nom.",
   "maps.generate.issue.seedNotInteger": "Le seed doit être un nombre entier. \"{seed}\" n'en est pas un.",

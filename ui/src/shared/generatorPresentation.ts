@@ -42,6 +42,9 @@ export const TEAM_COUNTS: number[] = [0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
 /** The generator's ceiling on maps produced in a single run. */
 export const MAX_MAPS_PER_RUN = 50;
 
+/** How many fitting symmetries an incompatible-symmetry message names. */
+const MAX_FITTING_SHOWN = 5;
+
 export function sizeInKm(units: number): number {
   return units / UNITS_PER_KM;
 }
@@ -97,11 +100,26 @@ export function describeIssue(issue: ValidationIssue, t: Translation["t"]): stri
         size: issue.payload.mapSize,
         step: MAP_SIZE_STEP,
       });
-    case "symmetryIncompatible":
-      return t("maps.generate.issue.symmetryIncompatible", {
-        symmetries: issue.payload.symmetries.join(", "),
-        teams: issue.payload.numTeams,
+    case "symmetryIncompatible": {
+      // Say what would work, not only what will not (#803): "ZX, XZ cannot
+      // produce 12 teams" on its own read as the client refusing something
+      // the generator allows. Two teams fit a dozen symmetries; the first
+      // few make the point.
+      const { symmetries, numTeams, fitting } = issue.payload;
+      if (fitting.length === 0) {
+        return t("maps.generate.issue.symmetryIncompatible", {
+          symmetries: symmetries.join(", "),
+          teams: numTeams,
+        });
+      }
+      const shown = fitting.slice(0, MAX_FITTING_SHOWN).join(", ");
+      const rest = fitting.length - MAX_FITTING_SHOWN;
+      return t("maps.generate.issue.symmetryIncompatibleFitting", {
+        symmetries: symmetries.join(", "),
+        teams: numTeams,
+        fitting: rest > 0 ? t("maps.generate.issue.fittingAndMore", { list: shown, count: rest }) : shown,
       });
+    }
     case "outOfRange":
       return t("maps.generate.issue.outOfRange", {
         field: rangeFieldLabel(issue.payload.field, t),
