@@ -879,6 +879,12 @@
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
 }
 
+@media (max-width: 900px) {
+  .changelog-view.unit-history-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Faction and tech level as two rows of exclusive choices, each the panel's
    full width, so the grid below is filtered with one click. */
 .unit-history-filters {

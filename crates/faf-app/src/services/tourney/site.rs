@@ -70,7 +70,28 @@ pub(super) async fn load_site(read: SiteRead, ctx: &ServiceCtx, out: &EventSink)
         return;
     }
     match ctx.ports.tourney_site.site_read(read).await {
-        Ok(SiteDocument::HallOfFame(hall)) => {
+        Ok(SiteDocument::HallOfFame(mut hall)) => {
+            // Publish the new standings promptly and keep the known profiles
+            // visible until FAF finishes refreshing them.
+            out.with_state(|state| {
+                if let Some(prior) = &state.tourney.site.hall {
+                    let profiles: HashMap<_, _> = prior
+                        .players
+                        .iter()
+                        .filter_map(|player| {
+                            player
+                                .profile
+                                .as_ref()
+                                .map(|profile| (player.faf_id, profile))
+                        })
+                        .collect();
+                    for player in &mut hall.players {
+                        if player.profile.is_none() {
+                            player.profile = profiles.get(&player.faf_id).copied().cloned();
+                        }
+                    }
+                }
+            });
             out.emit(TourneyEvent::SiteLoaded {
                 document: SiteDocument::HallOfFame(hall.clone()),
             });

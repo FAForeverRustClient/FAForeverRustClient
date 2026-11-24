@@ -33,7 +33,7 @@ use faf_domain::state::{
     ConnectivityCommand, CoopCommand, EventsCommand, GalacticWarCommand, GuidesCommand,
     LeaderboardCommand, LinuxRuntimeCommand, LobbyCommand, MapGeneratorCommand, MapsCommand,
     ModsCommand, NavCommand, NotificationCommand, PlayerCardCommand, ReplayCommand,
-    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SocialCommand,
+    ReportingCommand, ReviewsCommand, SessionCommand, SettingsCommand, SiteRead, SocialCommand,
     StreamsCommand, TourneyCommand, TourneyRead, TrainingCommand, TutorialsCommand,
     UnitHistoryCommand, UploadsCommand,
 };
@@ -115,6 +115,8 @@ pub(crate) enum Key {
     ClanWrite,
     /// Tournament writes: the server recomputes the bracket on every one.
     TourneyWrite,
+    /// The Hall of Fame board and its profile lookup refresh together.
+    TourneyHall,
     /// Party placement lookups: serialising them turns "already known" into
     /// "asked once".
     PartyPlacements,
@@ -666,6 +668,7 @@ fn tourney(command: &TourneyCommand) -> CommandPolicy {
 
 fn tourney_read(command: &TourneyRead) -> CommandPolicy {
     match command {
+        TourneyRead::LoadSite { read } => tourney_site_read(read),
         TourneyRead::Load
         | TourneyRead::Select { .. }
         | TourneyRead::RefreshDetail { .. }
@@ -673,7 +676,6 @@ fn tourney_read(command: &TourneyRead) -> CommandPolicy {
         | TourneyRead::LoadPlayerRatings { .. }
         | TourneyRead::LoadCopySources
         | TourneyRead::LoadPresets
-        | TourneyRead::LoadSite { .. }
         | TourneyRead::LoadTemplate { .. }
         | TourneyRead::LoadCopySource { .. }
         | TourneyRead::LoadChat { .. }
@@ -692,6 +694,15 @@ fn tourney_read(command: &TourneyRead) -> CommandPolicy {
         | TourneyRead::CloseSeries
         | TourneyRead::MarkNewsRead { .. }
         | TourneyRead::DismissActionError => ORDINARY,
+    }
+}
+
+fn tourney_site_read(command: &SiteRead) -> CommandPolicy {
+    match command {
+        SiteRead::HallOfFame => single_flight(Key::TourneyHall),
+        SiteRead::Account | SiteRead::Pending | SiteRead::Console | SiteRead::Access { .. } => {
+            ORDINARY
+        }
     }
 }
 

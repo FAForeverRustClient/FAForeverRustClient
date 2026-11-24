@@ -1,0 +1,1 @@
+- An error inside one action no longer breaks related features until the client is restarted, and it is now written to the client log.

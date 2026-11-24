@@ -1,0 +1,23 @@
+- Fixed the narrow sidebar hiding the profile button.
+- Fixed the narrow sidebar crowding the update button.
+- Fixed left-side notification toasts overlapping the narrow sidebar.
+- Clicking an actionable notification in the bell history now closes the panel.
+- Links inside notification messages now open independently without activating the card.
+- Non-actionable notifications no longer appear clickable.
+- The Co-op mission leaderboard now scrolls vertically when rows exceed the window height.
+- Unit History now stacks into a single column on narrow windows instead of squeezing the chart.
+- Enlarging a replay heatmap now displays the heatmap instead of a blank frame.
+- Pressing Enter or Space on Replay List row buttons now activates the button instead of opening details.
+- Live Replay details now keep the watch-delay countdown and elapsed time up to date.
+- Clicking inside the Live Replay delay menu no longer opens the detail window behind it.
+- Failed tournament loads now show an error with a Retry button instead of hiding the failure.
+- Tournament date picker icons now follow the active theme in both light and dark modes.
+- Adding a custom notification sound from a row dropdown now selects it automatically.
+- Turning notifications off now disables the queue-opponent and map-pool lists in Settings, Notifications.
+- Changing Type or State filters in Installed Mods now clears conflicting preset chips.
+- Hovering an installed mod name now shows its title instead of an internal ID.
+- Coloured player names now follow the active theme for readability in Forge Light.
+- The random-faction icon now follows the active theme's faction colours.
+- Dialogs now preserve initial field focus when opened.
+- Dialogs now wrap Tab focus cleanly inside the active dialog.
+- Dropdown menus now stay open when clicking or dragging their scrollbar.

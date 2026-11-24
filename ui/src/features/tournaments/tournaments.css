@@ -490,8 +490,15 @@
   padding: var(--space-4);
   padding-right: var(--detail-pad-right);
   overflow-y: auto;
+  overflow-anchor: none;
   scrollbar-gutter: stable;
   min-height: 0;
+}
+
+/* The active section may be taller than the pane. Keep the header and
+   navigation at their natural height so a shorter tab cannot move them. */
+.tournament-detail > :not(.tournament-body-row) {
+  flex-shrink: 0;
 }
 
 .tournament-detail header {
@@ -579,7 +586,14 @@
 .tournament-bracket {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-3);
+}
+
+.tournament-division-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .tournament-bracket-side {
@@ -611,20 +625,33 @@
    header`, which spreads a header's two ends apart. */
 .tournament-bracket .tournament-bracket-side-head {
   display: flex;
-  align-items: baseline;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: flex-start;
+  gap: 2px;
+}
+
+.tournament-bracket-side-title {
+  display: flex;
+  align-items: baseline;
   gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
 .tournament-bracket-side-head h4 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 650;
   letter-spacing: -0.005em;
 }
 
 .tournament-bracket-side-head span {
   color: var(--color-subtle);
+  font-size: 12px;
+}
+
+.tournament-playoffs-origin {
+  margin: 0;
   font-size: 12px;
 }
 
@@ -2265,10 +2292,6 @@
   padding: 0 var(--space-2);
 }
 
-:root[data-theme="light"] {
-  --tournament-picker-invert: 0;
-}
-
 .tournament-form h3 {
   margin: 0;
   font-size: 16px;
@@ -2337,11 +2360,9 @@
   gap: var(--space-2);
 }
 
-/* The native calendar and spinner glyphs are drawn dark on a dark control by
-   default, which makes them invisible rather than subtle. */
+/* Native calendar glyphs follow each theme's `color-scheme` declaration. */
 .tournament-field input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 .tournament-field input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(var(--tournament-picker-invert, 1));
   cursor: pointer;
   opacity: 0.7;
 }
@@ -3112,8 +3133,34 @@
   overflow-wrap: anywhere;
 }
 
-/* The standings table. Plain rows, because the ranking is the content and a
-   striped or boxed table would compete with the podium marks for attention. */
+/* Standings keep the entrant column flexible and the results easy to scan. */
+.tournament-standings-layout {
+  display: grid;
+  gap: var(--space-3);
+  width: min(100%, 780px);
+}
+
+.tournament-standings-layout.is-split {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  width: min(100%, 1160px);
+}
+
+.tournament-panel.tournament-standings-panel {
+  padding: var(--space-3) var(--space-4);
+}
+
+.tournament-panel.tournament-standings-panel h4 {
+  color: var(--color-text);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.tournament-standings {
+  overflow-x: auto;
+}
+
 .tournament-standings table {
   width: 100%;
   border-collapse: collapse;
@@ -3121,31 +3168,89 @@
 
 .tournament-standings th,
 .tournament-standings td {
-  text-align: left;
-  padding: var(--space-2) var(--space-3);
+  padding: 8px var(--space-2);
+  text-align: start;
   border-bottom: 1px solid var(--color-border);
 }
 
-.tournament-standings th {
+.tournament-standings thead th {
+  color: var(--color-muted);
   font-size: 12px;
   font-weight: 600;
+}
+
+.tournament-standings thead {
+  background: var(--color-surface);
+}
+
+.tournament-standings tbody th {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tournament-standings tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.tournament-standings .tournament-standings-place {
+  width: 1%;
+}
+
+.tournament-standings .tournament-standings-number {
+  width: 1%;
+  padding-inline-start: var(--space-3);
+  text-align: end;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tournament-standings-number[data-diff="1"] {
+  color: var(--color-ok-text);
+}
+
+.tournament-standings-number[data-diff="-1"] {
+  color: var(--color-error-text);
+}
+
+.tournament-standings-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+}
+
+.tournament-standings-name > svg {
+  flex: none;
+  color: var(--color-league-gold);
+}
+
+.tournament-standings-rank {
+  display: inline-grid;
+  min-width: 24px;
+  min-height: 22px;
+  padding-inline: 4px;
+  place-items: center;
+  border-radius: var(--radius-sm);
   color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
 }
 
-/* Only the podium is marked, and only on the left edge: a hairline in gold,
-   silver and bronze in front of the row. A full row highlight on three of four
-   rows in a small bracket reads as noise rather than rank. The league tokens,
-   because they are this client's medal colours already. */
-.tournament-standings tr.rank-1 td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-league-gold);
+.tournament-standings .rank-1 {
+  --standings-medal: var(--color-league-gold);
 }
 
-.tournament-standings tr.rank-2 td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-league-silver);
+.tournament-standings .rank-2 {
+  --standings-medal: var(--color-league-silver);
 }
 
-.tournament-standings tr.rank-3 td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-league-bronze);
+.tournament-standings .rank-3 {
+  --standings-medal: var(--color-league-bronze);
+}
+
+.tournament-standings :is(.rank-1, .rank-2, .rank-3) .tournament-standings-rank {
+  color: var(--standings-medal);
+  background: color-mix(in srgb, var(--standings-medal) 12%, transparent);
+  font-weight: 650;
 }
 
 /* An event nobody but its organiser can see. The lifecycle tile wears this
@@ -3381,6 +3486,26 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-3);
+}
+
+.tournament-team-section:has(> .tournament-team-grid) {
+  container: tourney-roster / inline-size;
+}
+
+.tournament-team-section > .tournament-team-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container tourney-roster (min-width: 492px) {
+  .tournament-team-section > .tournament-team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container tourney-roster (min-width: 768px) {
+  .tournament-team-section > .tournament-team-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .tournament-team-card {
@@ -3767,6 +3892,62 @@
   border-top: 1px solid var(--color-border);
 }
 
+.tournament-panel.tournament-team-field.is-compact {
+  padding-block: var(--space-3);
+}
+
+.tournament-team-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+}
+
+.tournament-team-field-size {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.tournament-team-field.is-compact .tournament-team-field-size {
+  flex: 1 1 160px;
+  max-width: 300px;
+}
+
+.tournament-team-field.is-compact .tournament-field-number {
+  font-size: 24px;
+}
+
+.tournament-teams .tournament-team-field.is-compact .tournament-field-ratings {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.tournament-team-field-reserve-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-inline-start: auto;
+}
+
+.tournament-team-field-reserve-toggle .mono {
+  color: var(--color-muted);
+}
+
+.tournament-team-field-reserve-list:not([hidden]) {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-team-field-reserve-list > p {
+  margin: 0;
+  font-size: 12px;
+}
+
 .tournament-team-create {
   display: flex;
   flex-direction: column;
@@ -4009,56 +4190,47 @@
   min-width: 0;
 }
 
-/* The latest announcement as one strip: what it is and when, the text, and
-   the way to the rest. Stacks where the pane is narrow. */
-.tournament-panel.tournament-latest {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: var(--space-2) 20px;
-  padding: 14px 20px;
+/* Keep room for three team cards before placing the sidebar alongside them. */
+.tournament-columns.tournament-teams {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.tournament-teams > .tournament-columns-main {
+  flex: 1 1 700px;
+}
+
+.tournament-teams > .tournament-columns-aside {
+  flex: 1 1 260px;
+}
+
+.tournament-panel.tournament-latest.is-important {
+  border-color: var(--color-border);
+  border-inline-start: 2px solid var(--color-warn);
 }
 
 .tournament-latest-head {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-right: 20px;
-  border-right: 1px solid var(--color-border);
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px var(--space-3);
 }
 
 .tournament-latest-when {
-  color: var(--color-subtle);
+  color: var(--color-muted);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .tournament-latest-body {
-  min-width: 0;
-}
-
-.tournament-latest-all {
-  white-space: nowrap;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  overflow-wrap: anywhere;
 }
 
 /* A link under a panel's text sits at its start, not stretched to its width. */
 .tournament-panel > .tournament-link-button {
   align-self: flex-start;
-}
-
-@container tourney-detail (max-width: 620px) {
-  .tournament-panel.tournament-latest {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tournament-latest-head {
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--space-3);
-    padding-right: 0;
-    border-right: 0;
-  }
 }
 
 /* The game setup's lobby options and mods, side by side as the website's
@@ -5232,28 +5404,107 @@
 }
 
 /* -- The Swiss stage --------------------------------------------------------
-   One block per round, newest on top, and each round a list: the website's
-   layout. A match row reads left to right as the question a Swiss round asks,
-   "which record, who against whom, how did it end", so the record chip leads
-   and the controls trail. */
+   One compact panel per active stage, with round controls in its header,
+   symmetric hairline rows aligned on a shared score centerline, and score
+   groups marked once in the left gutter rather than repeated in divider bars
+   and per-row chips. */
 
-.tournament-swiss {
+.tournament-panel.tournament-swiss-panel {
+  width: min(100%, 880px);
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+  container-type: inline-size;
+  container-name: tourney-swiss;
+}
+
+.tournament-panel.tournament-swiss-panel.is-all {
+  width: min(100%, 1240px);
+}
+
+.tournament-swiss-panel .tournament-swiss-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  max-width: 1180px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+}
+
+.tournament-swiss-toolbar-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tournament-panel.tournament-swiss-panel .tournament-swiss-toolbar h4 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.tournament-swiss-toolbar-meta {
+  color: var(--color-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tournament-swiss-toolbar-tools {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.tournament-swiss-panel .tournament-round-nav button {
+  height: 28px;
+  padding: 0 11px;
+  font-size: 12px;
+}
+
+.tournament-swiss-panel .tournament-round-nav button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+.tournament-swiss-rounds-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+
+@container tourney-swiss (min-width: 920px) {
+  .tournament-swiss-rounds-grid.is-multi-round {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-3) var(--space-4);
+  }
 }
 
 .tournament-swiss-round {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  min-width: 0;
+  container-type: inline-size;
+  container-name: tourney-swiss-round;
 }
 
-.tournament-swiss-head {
+.tournament-swiss-rounds-grid.is-multi-round .tournament-swiss-round {
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.tournament-swiss-panel .tournament-swiss-head {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  justify-content: flex-start;
+  gap: var(--space-2) var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -5264,10 +5515,15 @@
 
 .tournament-swiss-head h5 {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.tournament-swiss-head-note {
+  font-size: 12px;
 }
 
 .tournament-swiss-note {
@@ -5275,145 +5531,376 @@
   font-size: 12px;
 }
 
-/* Rows close together, as a list and not a stack of cards: a round of eight
-   matches should read at a glance (issue 367). Held to a width that keeps
-   the controls near the result they belong to, rather than across a wide
-   pane from it. */
+/* Hairline match rows inside the panel: every row in a round shares the same
+   record and actions track widths so the score pill stays on one straight
+   vertical spine down the round. */
 .tournament-swiss-list {
-  max-width: 900px;
+  --swiss-record-col: 48px;
+  --swiss-actions-col: 64px;
+  --swiss-cols: minmax(0, 1fr);
   display: flex;
   flex-direction: column;
-  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+  border-top: 1px solid var(--color-border);
 }
 
-/* The left edge says where a match stands: accent while it can be played, the
-   warning colour while it is live, and quiet once it is over. */
+.tournament-swiss-list.has-record {
+  --swiss-cols: var(--swiss-record-col) minmax(0, 1fr);
+}
+
+.tournament-swiss-list.has-float {
+  --swiss-record-col: 94px;
+}
+
+.tournament-swiss-list.has-actions {
+  --swiss-cols: minmax(0, 1fr) var(--swiss-actions-col);
+}
+
+.tournament-swiss-list.has-record.has-actions {
+  --swiss-cols: var(--swiss-record-col) minmax(0, 1fr) var(--swiss-actions-col);
+}
+
+.tournament-swiss-list.has-wide-actions {
+  --swiss-actions-col: clamp(148px, 24cqi, 210px);
+}
+
 .tournament-swiss-match {
-  display: flex;
+  display: grid;
+  grid-template-columns: var(--swiss-cols);
   align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-3);
-  min-height: 36px;
-  padding: var(--space-1) var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-accent);
-  border-radius: var(--radius-sm);
+  gap: 4px var(--space-3);
+  min-height: 38px;
+  padding: 6px var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  transition: background 100ms ease;
 }
 
-.tournament-swiss-match.is-live {
-  border-left-color: var(--color-accent);
+.tournament-swiss-match:hover {
+  background: color-mix(in srgb, var(--color-surface-hover) 55%, transparent);
 }
 
-.tournament-swiss-match.is-done,
-.tournament-swiss-match.is-waiting {
-  border-left-color: var(--color-border-strong);
+.tournament-swiss-match:last-child {
+  border-bottom: 0;
+}
+
+/* Subtle heavier rule where one score group ends and the next begins. */
+.tournament-swiss-match.is-group-start:not(:first-child) {
+  border-top: 1px solid var(--color-border-strong);
 }
 
 .tournament-swiss-match.is-mine {
-  background: var(--color-surface-raised);
+  background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--color-accent);
+}
+
+.tournament-swiss-match.is-live {
+  box-shadow: inset 2px 0 0 var(--color-warn);
 }
 
 .tournament-swiss-record {
-  flex: none;
-  min-width: 44px;
-  text-align: center;
-  padding: 1px var(--space-2);
-  border: 1px solid var(--color-border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-width: 40px;
+  padding: 2px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  font-size: 12px;
-  color: var(--color-text);
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-/* A score group's divider: the record everyone under it brought in. */
-.tournament-swiss-group {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
+.tournament-swiss-rounds-grid.is-multi-round .tournament-swiss-record {
+  background: var(--color-surface-raised);
 }
 
-.tournament-swiss-group::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--color-border);
+.tournament-swiss-record.is-float {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
-.tournament-swiss-group:first-child {
-  margin-top: 0;
+.tournament-swiss-record.is-continuation {
+  visibility: hidden;
+  min-width: 0;
+  padding: 0;
+  border: 0;
 }
 
-/* Round 1 has no record to show: everybody starts at 0-0. */
-.tournament-swiss-record:empty {
-  display: none;
+.tournament-swiss-main {
+  min-width: 0;
 }
 
-/* One fixed width rather than stretched across the row, so the score sits
-   just after the names instead of at the far edge, a pane's width away from
-   them, and the scores of a round still line up in a column (issue 367). The
-   controls trail at the right. */
-.tournament-swiss-teams {
-  flex: 0 1 360px;
-  display: flex;
+.tournament-swiss-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px minmax(0, 1fr);
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  flex-wrap: wrap;
-  font-weight: 600;
 }
 
 .tournament-swiss-side {
+  display: flex;
+  align-items: center;
   min-width: 0;
-  overflow-wrap: anywhere;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.tournament-swiss-side.is-left {
+  justify-content: flex-end;
+  text-align: end;
+}
+
+.tournament-swiss-side.is-right {
+  justify-content: flex-start;
+  text-align: start;
 }
 
 .tournament-swiss-side.is-winner {
-  color: var(--color-ok-text);
+  color: var(--color-text);
+  font-weight: 650;
 }
 
 .tournament-swiss-match.is-done .tournament-swiss-side:not(.is-winner) {
   color: var(--color-muted);
+  font-weight: 450;
 }
 
-.tournament-swiss-vs {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--color-muted);
-  text-transform: uppercase;
+.tournament-swiss-side .player-chip {
+  max-width: 100%;
 }
 
 .tournament-swiss-score {
-  min-width: 56px;
-  font-size: 15px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  gap: 2px;
+  min-width: 58px;
+  padding: 2px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.tournament-swiss-actions {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  justify-content: flex-end;
-  flex-wrap: wrap;
+.tournament-swiss-rounds-grid.is-multi-round .tournament-swiss-score {
+  background: var(--color-surface-raised);
 }
 
-.tournament-swiss-actions:empty {
-  display: none;
+.tournament-swiss-score .is-win {
+  color: var(--color-ok-text);
+  font-weight: 700;
+}
+
+.tournament-swiss-dash {
+  color: var(--color-subtle);
+  font-weight: 400;
+}
+
+.tournament-swiss-score.is-live {
+  gap: 5px;
+  border-color: color-mix(in srgb, var(--color-warn) 55%, var(--color-border));
+  color: var(--color-warn-text);
+}
+
+.tournament-swiss-score.is-live::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.tournament-swiss-score.is-masked {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tournament-swiss-vs {
+  justify-self: center;
+  color: var(--color-subtle);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tournament-swiss-vs.is-bye {
+  padding: 1px 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-muted);
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.tournament-swiss-pending {
+  margin-top: 2px;
+  color: var(--color-warn-text);
+  font-size: 11px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Compact row actions: passive tools (replays, chat, host, veto) stay quiet
+   icon buttons matching Playoffs cards, while active next-step actions keep a
+   compact sentence-case label. */
+.tournament-swiss-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tournament-swiss-actions > button,
+.tournament-swiss-actions > .tournament-round-pool-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 26px;
+  height: 26px;
+  min-height: 26px;
+  padding: 0 6px;
+  color: var(--color-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 550;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tournament-swiss-actions > button:hover:not(:disabled),
+.tournament-swiss-actions > button:focus-visible,
+.tournament-swiss-actions > button.is-open {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.tournament-swiss-actions > button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.tournament-swiss-actions > button:not(.btn-primary):not(.is-due) .tournament-action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.tournament-swiss-actions > .btn-primary {
+  padding: 0 9px;
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  font-weight: 600;
+}
+
+.tournament-swiss-actions > .btn-primary:hover:not(:disabled) {
+  color: var(--color-bg);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  opacity: 0.88;
+}
+
+.tournament-swiss-actions > .tournament-round-pool-toggle.is-due {
+  padding: 0 8px;
+  color: var(--color-warn-text);
+  border-color: color-mix(in srgb, var(--color-warn) 55%, var(--color-border));
+  background: color-mix(in srgb, var(--color-warn) 10%, transparent);
+}
+
+.tournament-swiss-actions .tournament-badge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .tournament-swiss-round.is-upcoming .tournament-swiss-head h5 {
   color: var(--color-muted);
+}
+
+@container tourney-swiss-round (max-width: 500px) {
+  .tournament-swiss-match {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px var(--space-2);
+    padding: 8px var(--space-2);
+  }
+
+  .tournament-swiss-main {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .tournament-swiss-record {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .tournament-swiss-record.is-continuation {
+    display: none;
+  }
+
+  .tournament-swiss-actions {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: end;
+  }
+
+  .tournament-swiss-actions:empty {
+    display: none;
+  }
+}
+
+@container tourney-swiss-round (max-width: 380px) {
+  .tournament-swiss-matchup {
+    grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .tournament-swiss-actions .tournament-action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tournament-swiss-actions > .btn-primary,
+  .tournament-swiss-actions > .tournament-round-pool-toggle.is-due {
+    padding: 0 6px;
+  }
 }
 
 /* -- The veto panel ---------------------------------------------------------
@@ -7265,65 +7752,146 @@
   transition: outline-color 0.4s ease;
 }
 
+.tournament-results-panel {
+  container: tourney-results / inline-size;
+}
+
+.tournament-overview-panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tournament-overview-panel-heading h4 {
+  color: var(--color-text);
+  font-size: 15px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.tournament-overview-panel-heading .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .tournament-recent {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
 }
 
 .tournament-recent-row {
+  display: grid;
+  align-items: start;
+  gap: var(--space-2);
+  padding-block: 7px;
+}
+
+.tournament-recent-row + .tournament-recent-row {
+  border-top: 1px solid var(--color-border);
+}
+
+.tournament-recent-row:last-child {
+  padding-bottom: 0;
+}
+
+.tournament-recent-stage {
   display: flex;
-  align-items: center;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
+  gap: 2px var(--space-2);
+  color: var(--color-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .tournament-recent-round {
-  flex: none;
-  min-width: 110px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-muted);
-}
-
-.tournament-recent-teams {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  color: var(--color-muted);
-}
-
-.tournament-recent-teams .is-winner {
   color: var(--color-text);
-  font-weight: 700;
+  font-weight: 600;
 }
 
-.tournament-recent-vs {
-  font-size: 11px;
-  text-transform: uppercase;
+.tournament-recent-result {
+  min-width: 0;
+}
+
+.tournament-recent-matchup {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.tournament-recent-matchup > :first-child {
+  text-align: end;
+}
+
+.tournament-recent-matchup > :last-child {
+  text-align: start;
+}
+
+.tournament-recent-matchup > :is(:first-child, :last-child),
+.tournament-recent-entrants {
   color: var(--color-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tournament-recent-entrants {
+  text-align: center;
+}
+
+.tournament-recent-result .is-winner {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.tournament-recent-score,
+.tournament-recent-vs {
+  justify-self: center;
+  text-align: center;
 }
 
 .tournament-recent-score {
-  font-weight: 700;
+  min-width: 48px;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-weight: 650;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.tournament-recent-maps {
+.tournament-recent-vs {
+  color: var(--color-muted);
   font-size: 12px;
 }
 
-.tournament-recent-footer {
-  margin: 0;
-  font-size: 12px;
+.tournament-recent-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px var(--space-3);
+  margin-top: 3px;
+  color: var(--color-muted);
+  font-size: 11px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+@container tourney-results (min-width: 480px) {
+  .tournament-recent-row {
+    grid-template-columns: 8rem minmax(0, 1fr);
+    column-gap: var(--space-3);
+  }
+
+  .tournament-recent-stage {
+    flex-direction: column;
+    padding-top: 2px;
+  }
 }
 
 /* The Stats tab and an import's placings. */
@@ -7680,6 +8248,8 @@
 /* A chat pinned beside the sections. */
 .tournament-body-row {
   display: flex;
+  flex: none;
+  min-height: var(--tournament-scroll-floor, 0px);
   align-items: flex-start;
   gap: var(--space-3);
   min-width: 0;
@@ -7690,20 +8260,12 @@
   min-width: 0;
 }
 
-/* At least a window tall under the tabs, so a short section (News, say)
-   opened while the page is scrolled down a little leaves the page where it
-   was. Shorter, the page could not stay scrolled that far, snapped back, and
-   the title slid down into view on every switch. */
-.tournament-body-row:not(.is-fill) {
-  min-height: 100vh;
-}
-
 /* Preserve the page's scroll range, while the chat section itself is sized
    to the visible space by useTournamentChatViewport. */
 .tournament-body-row.is-fill {
   flex: 1 1 0;
   align-items: stretch;
-  min-height: max(420px, 100vh);
+  min-height: max(420px, 100vh, var(--tournament-scroll-floor, 0px));
 }
 
 .tournament-pinned-chat {
@@ -7865,15 +8427,23 @@
   gap: var(--space-2);
 }
 
-.tournament-playoffs-head {
+.tournament-bracket .tournament-playoffs-head {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 2px;
 }
 
-.tournament-playoffs-head h4,
+.tournament-playoffs-head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+
 .tournament-playoffs-head p {
   margin: 0;
+  font-size: 12px;
 }
 
 /* -- Format extras: cuts, playoffs, picking, ends early, FFA -------------
@@ -7979,7 +8549,25 @@
 }
 
 .tournament-team-link {
+  max-width: 100%;
+  overflow: hidden;
   color: inherit;
+  border-radius: var(--radius-sm);
+  text-align: inherit;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tournament-team-link:hover,
+.tournament-team-link:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.tournament-team-link:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 /* -- The site around the tournaments ------------------------------------
@@ -8018,8 +8606,15 @@
   max-width: 1100px;
 }
 
-.tournament-site-page > h2 {
+.tournament-site-page > h2,
+.tournament-site-panel > h2,
+.tournament-console-head h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
 
 .tournament-site-panel {
@@ -8029,7 +8624,21 @@
 }
 
 .tournament-site-panel h3,
-.tournament-site-panel h4,
+.tournament-site-panel h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.tournament-site-panel h3 {
+  font-size: 16px;
+}
+
+.tournament-site-panel h4 {
+  font-size: 14px;
+}
+
 .tournament-site-panel p {
   margin: 0;
 }
@@ -8281,13 +8890,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
-}
-
-.tournament-console-head h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
 }
 
 /* A note that is about the whole page rather than one card. */

@@ -315,4 +315,13 @@ describe("Select keyboard, mounted", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  it("stays open when focus blurs to null, such as clicking the listbox scrollbar", async () => {
+    const user = userEvent.setup();
+    const { trigger } = mount();
+    await user.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    trigger.blur();
+    expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  });
 });

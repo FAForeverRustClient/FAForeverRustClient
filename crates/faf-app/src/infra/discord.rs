@@ -29,6 +29,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::{mpsc, Notify};
 
 use crate::ports::{DiscordPort, DiscordRequest};
+use crate::sync::LockExt;
 
 /// How long to wait before looking for Discord again. Long enough that a
 /// machine without Discord is not probing ten socket paths in a tight loop,
@@ -94,10 +95,7 @@ impl DiscordClient {
 #[async_trait]
 impl DiscordPort for DiscordClient {
     fn set_presence(&self, activity: Option<Activity>) {
-        let mut presence = self
-            .presence
-            .lock()
-            .expect("discord presence lock poisoned");
+        let mut presence = self.presence.lock_or_recover();
         if presence.activity == activity {
             return; // Nothing changed; don't wake the connection.
         }
@@ -196,7 +194,7 @@ async fn session(
                 handle_frames(&mut buffer, requests).await?;
             }
             _ = changed.notified() => {
-                let revision = presence.lock().expect("discord presence lock poisoned").revision;
+                let revision = presence.lock_or_recover().revision;
                 if revision != published {
                     published = publish(&mut writer, presence, &next_nonce()).await?;
                 }
@@ -252,7 +250,7 @@ async fn publish<W: tokio::io::AsyncWrite + Unpin>(
     nonce: &str,
 ) -> Result<u64, String> {
     let (activity, revision) = {
-        let presence = presence.lock().expect("discord presence lock poisoned");
+        let presence = presence.lock_or_recover();
         (presence.activity.clone(), presence.revision)
     };
     let payload = discord::set_activity(std::process::id(), activity.as_ref(), nonce);
@@ -533,12 +531,12 @@ mod tests {
         };
 
         client.set_presence(Some(activity.clone()));
-        let first = client.presence.lock().unwrap().revision;
+        let first = client.presence.lock_or_recover().revision;
         client.set_presence(Some(activity));
-        assert_eq!(client.presence.lock().unwrap().revision, first);
+        assert_eq!(client.presence.lock_or_recover().revision, first);
 
         client.set_presence(None);
-        assert_eq!(client.presence.lock().unwrap().revision, first + 1);
+        assert_eq!(client.presence.lock_or_recover().revision, first + 1);
     }
 
     #[tokio::test]

@@ -38,6 +38,7 @@ use tokio::sync::{mpsc, Notify};
 
 use crate::infra::companions::{Companions, LaunchId};
 use crate::ports::{DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort};
+use crate::sync::LockExt;
 
 const MANAGED_EXE: &str = "ForgedAlliance.exe";
 const MAX_REFERENCE_CONFIG_BYTES: u64 = 2 * 1024 * 1024;
@@ -264,7 +265,7 @@ impl GameProcess {
             Slot::Game => &self.replay_child,
             Slot::Replay => &self.game_child,
         };
-        let mut guard = other.lock().unwrap();
+        let mut guard = other.lock_or_recover();
         let Some(running) = guard.as_mut() else {
             return false;
         };
@@ -303,7 +304,7 @@ impl GameProcess {
     /// replay's exit watcher finishes cleanly while the service keeps the
     /// replacement's status under its newer launch id.
     async fn end_previous(&self, slot: Slot) {
-        let Some(mut previous) = self.slot(slot).lock().unwrap().take() else {
+        let Some(mut previous) = self.slot(slot).lock_or_recover().take() else {
             return;
         };
         if slot == Slot::Replay {
@@ -337,9 +338,9 @@ impl GameProcess {
         what: &str,
         beside: bool,
     ) -> Result<(), String> {
-        let _launch = self.launching.lock().unwrap();
+        let _launch = self.launching.lock_or_recover();
         let multiple = self.multiple_instances.load(Ordering::Relaxed);
-        let mut current = self.slot(slot).lock().unwrap();
+        let mut current = self.slot(slot).lock_or_recover();
         if slot == Slot::Game && !beside {
             if let Some(running) = current.as_mut() {
                 match running.child.try_wait() {
@@ -399,7 +400,7 @@ impl GameProcess {
             }
         }
 
-        let config = self.config.lock().unwrap();
+        let config = self.config.lock_or_recover();
         let wrapper = split_command(&config.launch_wrapper);
         // Wrapped the way `game_argument_path` decides it: under a launch
         // command or the Linux runtime the game is a Windows program.
@@ -574,7 +575,7 @@ impl GameProcess {
     /// Keep a replay's companions for the replay replacing it, letting go of
     /// any earlier one still waiting: only the latest replacement is pending.
     fn hold_for_replacement(&self, launch: LaunchId) {
-        let superseded = self.pending_replacement.lock().unwrap().replace(launch);
+        let superseded = self.pending_replacement.lock_or_recover().replace(launch);
         if let Some(superseded) = superseded {
             end_launch(self.companions.clone(), superseded);
         }
@@ -586,14 +587,14 @@ impl GameProcess {
     /// can see it.
     fn keep_beside(&self, slot: Slot, running: Running) {
         let launch = running.launch;
-        self.beside.lock().unwrap().push(Beside { slot, running });
+        self.beside.lock_or_recover().push(Beside { slot, running });
         let beside = self.beside.clone();
         let companions = self.companions.clone();
         tokio::spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_millis(500)).await;
                 let ended = {
-                    let mut list = beside.lock().unwrap();
+                    let mut list = beside.lock_or_recover();
                     let Some(index) = list.iter().position(|copy| copy.running.launch == launch)
                     else {
                         return;
@@ -619,8 +620,7 @@ impl GameProcess {
     /// Whether a copy of the game of this kind runs beside the slots.
     fn runs_beside(&self, slot: Slot) -> bool {
         self.beside
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .iter()
             .any(|copy| copy.slot == slot)
     }
@@ -634,7 +634,7 @@ impl GameProcess {
         beside: bool,
     ) -> Result<Option<PathBuf>, String> {
         require_init_name(&featured_mod)?;
-        let path = self.config.lock().unwrap().game_path.clone();
+        let path = self.config.lock_or_recover().game_path.clone();
         crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("offline", None)?;
         allow_second_instance(&path).await;
@@ -676,7 +676,7 @@ impl GameProcess {
                 let mut ended = None;
                 let mut notify = false;
                 let finished = {
-                    let mut guard = child.lock().unwrap();
+                    let mut guard = child.lock_or_recover();
                     match guard.as_mut() {
                         // Taken by `kill` or `end_previous`: wake any waiter
                         // on this slot and stop polling.
@@ -730,16 +730,16 @@ impl ProcessPort for GameProcess {
     /// the player's own mods back to `game.prefs`, and a replay window still
     /// open writes its own over them when it closes.
     fn replay_running(&self) -> bool {
-        self.replay_child.lock().unwrap().is_some() || self.runs_beside(Slot::Replay)
+        self.replay_child.lock_or_recover().is_some() || self.runs_beside(Slot::Replay)
     }
 
     fn game_running(&self) -> bool {
-        self.game_child.lock().unwrap().is_some() || self.runs_beside(Slot::Game)
+        self.game_child.lock_or_recover().is_some() || self.runs_beside(Slot::Game)
     }
 
     fn game_slot_taken(&self) -> bool {
         if self.multiple_instances.load(Ordering::Relaxed) {
-            self.game_child.lock().unwrap().is_some()
+            self.game_child.lock_or_recover().is_some()
         } else {
             self.game_running()
         }
@@ -755,8 +755,7 @@ impl ProcessPort for GameProcess {
 
     fn game_is_focused(&self) -> bool {
         self.game_child
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .is_some_and(|running| {
                 running.child.id().is_some_and(|pid| {
@@ -767,14 +766,14 @@ impl ProcessPort for GameProcess {
     }
 
     fn focus_game(&self) -> Result<(), String> {
-        let game = self.game_child.lock().unwrap();
+        let game = self.game_child.lock_or_recover();
         let running = game.as_ref().ok_or("No running game is available")?;
         let pid = running.child.id().ok_or("The game has already ended")?;
         crate::infra::borderless::game_attention(pid, &running.exe, true, false).map(|_| ())
     }
 
     fn request_game_attention(&self) {
-        if let Some(running) = self.game_child.lock().unwrap().as_ref() {
+        if let Some(running) = self.game_child.lock_or_recover().as_ref() {
             if let Some(pid) = running.child.id() {
                 let _ = crate::infra::borderless::game_attention(pid, &running.exe, false, true);
             }
@@ -783,15 +782,14 @@ impl ProcessPort for GameProcess {
 
     fn replay_upload_pending(&self) -> bool {
         self.replay_recorder
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .is_some_and(|recorder| !recorder.is_finished())
     }
 
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         require_init_name(&params.featured_mod)?;
-        let path = self.config.lock().unwrap().game_path.clone();
+        let path = self.config.lock_or_recover().game_path.clone();
         // Before the game can rewrite it on exit (issue 750).
         crate::infra::game_prefs_backup::backup_if_due();
         let log_path = crate::infra::game_logs::next_path("game", Some(params.game_id))?;
@@ -833,7 +831,7 @@ impl ProcessPort for GameProcess {
         // Held for the game's lifetime: dropping the recorder aborts its
         // listener, and FA connects seconds after launch.
         if let (Ok(()), Some(recorder)) = (&result, recorder) {
-            *self.replay_recorder.lock().unwrap() = Some(recorder);
+            *self.replay_recorder.lock_or_recover() = Some(recorder);
         }
         result
     }
@@ -863,7 +861,7 @@ impl ProcessPort for GameProcess {
         if !self.multiple_instances.load(Ordering::Relaxed) {
             self.end_previous(Slot::Replay).await;
         }
-        let path = self.config.lock().unwrap().replay_game_path.clone();
+        let path = self.config.lock_or_recover().replay_game_path.clone();
         allow_second_instance(&path).await;
         self.spawn(Slot::Replay, &path, &args, "replay", false)
     }
@@ -873,7 +871,7 @@ impl ProcessPort for GameProcess {
     /// This is the lobby service tearing a game session down, and a replay the
     /// user is watching in a second window is no part of that session.
     fn kill(&self) {
-        let taken = self.game_child.lock().unwrap().take();
+        let taken = self.game_child.lock_or_recover().take();
         if let Some(mut running) = taken {
             let _ = running.child.start_kill();
             end_launch(self.companions.clone(), running.launch);
@@ -886,7 +884,7 @@ impl ProcessPort for GameProcess {
         let exited = self.exited.notified();
         tokio::pin!(exited);
         exited.as_mut().enable();
-        if self.game_child.lock().unwrap().is_none() {
+        if self.game_child.lock_or_recover().is_none() {
             return;
         }
         exited.await;
@@ -898,24 +896,24 @@ impl ProcessPort for GameProcess {
         let exited = self.replay_exited.notified();
         tokio::pin!(exited);
         exited.as_mut().enable();
-        if self.replay_child.lock().unwrap().is_none() {
+        if self.replay_child.lock_or_recover().is_none() {
             return;
         }
         exited.await;
     }
 
     fn set_paths(&self, game_path: String, replay_game_path: String) {
-        let mut config = self.config.lock().unwrap();
+        let mut config = self.config.lock_or_recover();
         config.game_path = game_path;
         config.replay_game_path = replay_game_path;
     }
 
     fn set_additional_arguments(&self, arguments: Vec<String>) {
-        self.config.lock().unwrap().additional_arguments = arguments;
+        self.config.lock_or_recover().additional_arguments = arguments;
     }
 
     fn set_launch_wrapper(&self, wrapper: String, wine_prefix: String) {
-        let mut config = self.config.lock().unwrap();
+        let mut config = self.config.lock_or_recover();
         config.launch_wrapper = wrapper;
         config.wine_prefix = wine_prefix;
     }
@@ -945,21 +943,26 @@ impl ProcessPort for GameProcess {
     }
 
     fn game_argument_path(&self, path: &Path) -> String {
-        let wrapped = !self.config.lock().unwrap().launch_wrapper.trim().is_empty()
+        let wrapped = !self
+            .config
+            .lock_or_recover()
+            .launch_wrapper
+            .trim()
+            .is_empty()
             || crate::infra::linux_runtime::active().is_some();
         game_visible_path(path, wrapped)
     }
 
     fn game_install_dir(&self) -> Option<PathBuf> {
-        managed_install_dir_of(&self.config.lock().unwrap().game_path)
+        managed_install_dir_of(&self.config.lock_or_recover().game_path)
     }
 
     fn replay_install_dir(&self) -> Option<PathBuf> {
-        managed_install_dir_of(&self.config.lock().unwrap().replay_game_path)
+        managed_install_dir_of(&self.config.lock_or_recover().replay_game_path)
     }
 
     fn installs_present(&self) -> InstallPresence {
-        let config = self.config.lock().unwrap();
+        let config = self.config.lock_or_recover();
         let present = managed_executable_is_present;
         InstallPresence {
             game: present(&config.game_path),
@@ -990,7 +993,7 @@ impl ProcessPort for GameProcess {
     }
 
     fn is_live_install(&self, path: &str) -> bool {
-        same_install(path, &self.config.lock().unwrap().game_path)
+        same_install(path, &self.config.lock_or_recover().game_path)
     }
 
     async fn stop_replay(&self) {
@@ -998,7 +1001,7 @@ impl ProcessPort for GameProcess {
     }
 
     fn release_replay_replacement(&self) {
-        let pending = self.pending_replacement.lock().unwrap().take();
+        let pending = self.pending_replacement.lock_or_recover().take();
         if let Some(pending) = pending {
             end_launch(self.companions.clone(), pending);
         }

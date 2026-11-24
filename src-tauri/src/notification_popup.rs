@@ -11,6 +11,8 @@ use serde::Serialize;
 use std::{collections::VecDeque, sync::Mutex};
 use tauri::{Emitter, Manager};
 
+use faf_app::sync::LockExt;
+
 pub(crate) const LABEL: &str = "notification-popup";
 const UPDATE: &str = "notifications://popup";
 const ACTIVATION_READY: &str = "notifications://activation-ready";
@@ -480,7 +482,7 @@ pub(crate) async fn show_notification_popup(
     let window = popup_window(&app)?;
     tracing::debug!("desktop popup window ready");
     let admitted = {
-        let mut queue = popups.queue.lock().unwrap();
+        let mut queue = popups.queue.lock_or_recover();
         core.with_state(|state| {
             queue.admit(
                 state,
@@ -593,7 +595,7 @@ async fn display(app: &tauri::AppHandle, requested_ids: &[String]) -> Result<(),
     let popups = app.state::<Popups>();
     let mut confirmed = popups.confirmed.subscribe();
     let batch = {
-        let mut queue = popups.queue.lock().unwrap();
+        let mut queue = popups.queue.lock_or_recover();
         if !queue.contains_any(requested_ids) {
             // Read, cleared or switched off while the window was getting ready.
             tracing::info!(
@@ -611,7 +613,7 @@ async fn display(app: &tauri::AppHandle, requested_ids: &[String]) -> Result<(),
     let waited = tokio::time::timeout(std::time::Duration::from_secs(3), async {
         loop {
             let on_screen = confirmed.borrow().on_screen(batch.revision);
-            if on_screen || !popups.queue.lock().unwrap().contains_any(requested_ids) {
+            if on_screen || !popups.queue.lock_or_recover().contains_any(requested_ids) {
                 return Ok::<(), String>(());
             }
             confirmed.changed().await.map_err(|e| e.to_string())?;
@@ -631,7 +633,11 @@ async fn display(app: &tauri::AppHandle, requested_ids: &[String]) -> Result<(),
 #[tauri::command]
 pub(crate) fn notification_popup_snapshot(app: tauri::AppHandle) -> NotificationPopupBatch {
     refresh(&app);
-    app.state::<Popups>().queue.lock().unwrap().visible.clone()
+    app.state::<Popups>()
+        .queue
+        .lock_or_recover()
+        .visible
+        .clone()
 }
 
 #[tauri::command]
@@ -645,7 +651,7 @@ pub(crate) fn notification_popup_size(
         return Err("Invalid popup height".into());
     }
     let popups = app.state::<Popups>();
-    let mut queue = popups.queue.lock().unwrap();
+    let mut queue = popups.queue.lock_or_recover();
     let (changed, preferences) = app
         .state::<crate::Core>()
         .0
@@ -761,7 +767,7 @@ pub(crate) fn notification_popup_next_activation(
     popups: tauri::State<'_, Popups>,
     acknowledged_id: Option<String>,
 ) -> Option<ClientNotification> {
-    let mut queue = popups.queue.lock().unwrap();
+    let mut queue = popups.queue.lock_or_recover();
     core.0
         .with_state(|state| queue.next_activation(state, acknowledged_id.as_deref()))
 }
@@ -779,7 +785,7 @@ pub(crate) fn notification_popup_interact(
     let core = app.state::<crate::Core>();
     let preview = is_preview(&id);
     let (batch, interaction_result) = {
-        let mut queue = popups.queue.lock().unwrap();
+        let mut queue = popups.queue.lock_or_recover();
         // A card made visible by reconciliation has not been shown yet.
         let was_visible = queue.visible.cards.iter().any(|card| card.id == id);
         let (changed, activation) = core.0.with_state(|state| {
@@ -875,7 +881,7 @@ pub(crate) fn notification_popup_interact(
 
 fn publish(app: &tauri::AppHandle, batch: &NotificationPopupBatch) -> Result<(), String> {
     let popups = app.state::<Popups>();
-    let queue = popups.queue.lock().unwrap();
+    let queue = popups.queue.lock_or_recover();
     if queue.visible.revision != batch.revision {
         return Ok(());
     }
@@ -922,7 +928,7 @@ pub(crate) fn refresh(app: &tauri::AppHandle) {
         return;
     };
     let changed = {
-        let mut queue = popups.queue.lock().unwrap();
+        let mut queue = popups.queue.lock_or_recover();
         core.0.with_state(|state| queue.reconcile(state))
     };
     if let Some(batch) = changed {

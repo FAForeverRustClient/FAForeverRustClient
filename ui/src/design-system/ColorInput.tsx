@@ -97,10 +97,11 @@ export function ColorInput({ value, onChange, "aria-label": ariaLabel, className
       .filter((element) => element.tabIndex >= 0 && !element.matches(":disabled"));
     const first = controls[0];
     const last = controls[controls.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    const index = controls.indexOf(document.activeElement as HTMLElement);
+    if (event.shiftKey && index <= 0) {
       event.preventDefault();
       last?.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
+    } else if (!event.shiftKey && (index === -1 || index === controls.length - 1)) {
       event.preventDefault();
       first?.focus();
     }

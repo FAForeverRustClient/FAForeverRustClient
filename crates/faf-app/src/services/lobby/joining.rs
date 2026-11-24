@@ -10,6 +10,7 @@ use crate::ports::{LobbySendError, ModPrepFailure};
 use crate::runtime::{EventSink, ServiceCtx};
 use crate::services::launcher;
 use crate::services::notifications;
+use crate::sync::LockExt;
 
 use super::launch::terminate_game;
 
@@ -284,7 +285,7 @@ pub(super) async fn host(config: HostGameConfig, ctx: &ServiceCtx, out: &EventSi
             let sent = operations.while_live(operation, || {
                 // A launch can answer immediately. It sees the host details
                 // only for a request the transport actually accepted.
-                let mut pending = ctx.lobby.hosted.lock().unwrap();
+                let mut pending = ctx.lobby.hosted.lock_or_recover();
                 ctx.ports.lobby.host(config)?;
                 *pending = Some(hosted);
                 Ok::<_, LobbySendError>(())

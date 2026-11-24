@@ -36,6 +36,8 @@ use faf_domain::AppCommand;
 use faf_ipc::shell::PickRequest;
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
+use faf_app::sync::LockExt;
+
 /// How long a pick stays good for. Long enough for an upload dialog left open
 /// over a coffee, short enough that a path picked this morning is not a
 /// standing licence.
@@ -47,7 +49,7 @@ pub(crate) struct PickedPaths(Mutex<HashMap<String, Instant>>);
 
 impl PickedPaths {
     fn remember(&self, path: &str) {
-        let mut picked = self.0.lock().unwrap();
+        let mut picked = self.0.lock_or_recover();
         let now = Instant::now();
         picked.retain(|_, at| now.duration_since(*at) < PICK_LIFETIME);
         picked.insert(path.trim().to_owned(), now);
@@ -55,8 +57,7 @@ impl PickedPaths {
 
     fn was_picked(&self, path: &str) -> bool {
         self.0
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .get(path.trim())
             .is_some_and(|at| at.elapsed() < PICK_LIFETIME)
     }

@@ -150,10 +150,16 @@ export function NotificationCenter() {
     hideToast(id);
     if (document.hasFocus()) markRead(id);
   }, [hideToast]);
-  const handleAction = useCallback((item: ClientNotification) => {
+  const handleAction = useCallback((item: ClientNotification, fromHistory = false) => {
     hideToast(item.id);
+    if (item.action && open) {
+      setOpen(false);
+      if (fromHistory) {
+        panelRef.current?.querySelector<HTMLButtonElement>(".notification-bell")?.focus();
+      }
+    }
     ipc.run(runAction(item, setGamePreviewId));
-  }, [hideToast]);
+  }, [hideToast, open]);
   const toggleOpen = () => {
     if (open) {
       setOpen(false);
@@ -312,7 +318,7 @@ export function NotificationCenter() {
               <p className="notification-empty muted">{t("notifications.empty")}</p>
             ) : items.map((item) => (
               <NotificationCard key={item.id} item={fresh.has(item.id) ? { ...item, read: false } : item} artwork={notificationArtwork(item, useAppStore.getState().state)}
-                history use24HourTime={use24HourTime} onActivate={() => handleAction(item)}
+                history use24HourTime={use24HourTime} onActivate={() => handleAction(item, true)}
                 onDismiss={() => { hideToast(item.id); dismiss(item.id); }}
                 recovery={item.kind === "error" ? <NotificationRecovery item={item} /> : undefined} />
             ))}

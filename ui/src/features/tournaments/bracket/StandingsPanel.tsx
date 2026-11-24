@@ -11,6 +11,8 @@
 // only thing keeping the three honest is that pin.
 import { memo } from "react";
 
+import { Icon } from "../../../design-system/Icon";
+
 import type { PlayerSummary, Tourney, TourneyTeam } from "../../../ipc/bindings";
 import type { Standing, StandingsKind } from "../../../shared/rules/tourneyRules";
 import { swissDivisionEvent, swissDivisions, tiebreakText } from "./swissPresentation";
@@ -47,42 +49,44 @@ interface StandingsPanelProps {
 function ImportedTables({ event }: { event: Tourney }) {
   const { t } = useTranslation();
   return (
-    <div className="tournament-standings">
+    <div className="tournament-standings-layout">
       {event.importedGroups.map((group) => (
-        <section className="tournament-panel" key={group.name}>
+        <section className="tournament-panel tournament-standings-panel" key={group.name}>
           <h4>{group.name}</h4>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th scope="col">{t("tournaments.standings.player")}</th>
-                <th scope="col">{t("tournaments.standings.winLoss")}</th>
-                <th scope="col">{t("tournaments.standings.games")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {group.rows.map((row, index) => (
-                <tr key={`${row.name}-${index}`}>
-                  <td className="mono muted">{index + 1}</td>
-                  <td>{row.name}</td>
-                  <td className="mono">
-                    {row.wins}
-                    {"–"}
-                    {row.losses}
-                  </td>
-                  <td className="mono">
-                    {row.gamesWon}
-                    {"–"}
-                    {row.gamesLost}
-                  </td>
+          <div className="tournament-standings">
+            <table aria-label={group.name}>
+              <thead>
+                <tr>
+                  <th scope="col" className="tournament-standings-place">{t("tournaments.standings.place")}</th>
+                  <th scope="col">{t("tournaments.standings.player")}</th>
+                  <th scope="col" className="tournament-standings-number">{t("tournaments.standings.winLoss")}</th>
+                  <th scope="col" className="tournament-standings-number">{t("tournaments.standings.games")}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {group.rows.map((row, index) => (
+                  <tr key={`${row.name}-${index}`}>
+                    <td className="mono muted">{index + 1}</td>
+                    <th scope="row">{row.name}</th>
+                    <td className="tournament-standings-number">
+                      {row.wins}
+                      {"–"}
+                      {row.losses}
+                    </td>
+                    <td className="tournament-standings-number">
+                      {row.gamesWon}
+                      {"–"}
+                      {row.gamesLost}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       ))}
       {event.importedStandings.length > 0 && (
-        <section className="tournament-panel">
+        <section className="tournament-panel tournament-standings-panel">
           <h4>{t("tournaments.standings.finalPlacings")}</h4>
           <ol className="tournament-placings">
             {event.importedStandings.map((placing, index) => (
@@ -122,24 +126,41 @@ export const StandingsPanel = memo(function StandingsPanel({ event, profiles }: 
     return <p className="muted">{t("tournaments.standings.none")}</p>;
   }
 
-  if (kind !== "swiss") return <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} />;
+  if (kind !== "swiss") {
+    return (
+      <div className="tournament-standings-layout">
+        <section className="tournament-panel tournament-standings-panel">
+          <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} />
+        </section>
+      </div>
+    );
+  }
 
   // A Swiss in divisions (#773): a table per division, the top one first,
   // each placed from 1 and with its own champion, as the website shows them.
   const divisions = swissDivisions(event);
   if (divisions.length > 0) {
     const withCuts = event.swissCuts.wins > 0 || event.swissCuts.losses > 0;
+    const wideTables = withCuts || event.swissTiebreak === "beaten";
     return (
-      <div className="tournament-stats">
+      <div className={wideTables ? "tournament-standings-layout" : "tournament-standings-layout is-split"}>
         {event.swissTiebreak === "beaten" && <p className="muted">{tiebreakText(event, t)}</p>}
         {divisions.map((division) => {
           const own = swissDivisionEvent(event, division);
           const ownRows = standings(own);
           if (ownRows.length === 0) return null;
+          const label = divisionLabel(division, t);
           return (
-            <section className="tournament-panel" key={division}>
-              <h4>{divisionLabel(division, t)}</h4>
-              <StandingsTable event={own} profiles={profiles} kind={kind} rows={ownRows} withStatus={withCuts} />
+            <section className="tournament-panel tournament-standings-panel" key={division}>
+              <h4>{label}</h4>
+              <StandingsTable
+                event={own}
+                profiles={profiles}
+                kind={kind}
+                rows={ownRows}
+                label={label}
+                withStatus={withCuts}
+              />
             </section>
           );
         })}
@@ -176,23 +197,31 @@ export const StandingsPanel = memo(function StandingsPanel({ event, profiles }: 
     .join(" · ");
 
   return (
-    <div className="tournament-stats">
+    <div className="tournament-standings-layout">
       {playoffEvent !== null && playoffRows.length > 0 && (
-        <section className="tournament-panel">
+        <section className="tournament-panel tournament-standings-panel">
           <h4>{t("tournaments.standings.playoffTitle")}</h4>
           <StandingsTable
             event={playoffEvent}
             profiles={profiles}
             kind={standingsKind(playoffEvent)}
             rows={playoffRows}
+            label={t("tournaments.standings.playoffTitle")}
           />
         </section>
       )}
-      <section className="tournament-panel">
+      <section className="tournament-panel tournament-standings-panel">
         {playoffEvent !== null && <h4>{t("tournaments.standings.swissTitle")}</h4>}
         {note !== "" && <p className="muted">{note}</p>}
         {event.swissTiebreak === "beaten" && <p className="muted">{tiebreakText(event, t)}</p>}
-        <StandingsTable event={event} profiles={profiles} kind={kind} rows={rows} withStatus={withCuts} />
+        <StandingsTable
+          event={event}
+          profiles={profiles}
+          kind={kind}
+          rows={rows}
+          label={playoffEvent !== null ? t("tournaments.standings.swissTitle") : undefined}
+          withStatus={withCuts}
+        />
       </section>
     </div>
   );
@@ -203,11 +232,12 @@ interface StandingsTableProps {
   profiles: PlayerSummary[];
   kind: StandingsKind;
   rows: Standing[];
+  label?: string;
   /** A Swiss stage with record cuts says what each record means. */
   withStatus?: boolean;
 }
 
-function StandingsTable({ event, profiles, kind, rows, withStatus = false }: StandingsTableProps) {
+function StandingsTable({ event, profiles, kind, rows, label, withStatus = false }: StandingsTableProps) {
   const { t } = useTranslation();
   const cuts = event.swissCuts;
   const statusOf = (row: Standing) => {
@@ -259,22 +289,22 @@ function StandingsTable({ event, profiles, kind, rows, withStatus = false }: Sta
 
   return (
     <div className="tournament-standings">
-      <table>
+      <table aria-label={label ?? t("tournaments.section.standings")}>
         <thead>
           <tr>
-            <th scope="col">{t("tournaments.standings.place")}</th>
+            <th scope="col" className="tournament-standings-place">{t("tournaments.standings.place")}</th>
             <th scope="col">
               {t(event.teamSize === 1 ? "tournaments.standings.player" : "tournaments.standings.team")}
             </th>
             {kind === "swiss" && (
               <>
-                <th scope="col">{t("tournaments.standings.wins")}</th>
-                <th scope="col">{t("tournaments.standings.losses")}</th>
-                <th scope="col">{t("tournaments.standings.gameDiff")}</th>
+                <th scope="col" className="tournament-standings-number">{t("tournaments.standings.wins")}</th>
+                <th scope="col" className="tournament-standings-number">{t("tournaments.standings.losses")}</th>
+                <th scope="col" className="tournament-standings-number">{t("tournaments.standings.gameDiff")}</th>
                 {/* Only where the event breaks ties this way, so the order the
                     server sends can be checked against the number behind it. */}
                 {showBeaten && (
-                  <th scope="col" title={t("tournaments.standings.beatenHint")}>
+                  <th scope="col" className="tournament-standings-number" title={t("tournaments.standings.beatenHint")}>
                     {t("tournaments.standings.beaten")}
                   </th>
                 )}
@@ -282,7 +312,7 @@ function StandingsTable({ event, profiles, kind, rows, withStatus = false }: Sta
             )}
             {/* A points table carries its total in the same field a Swiss table
                 keeps wins in, so only the heading differs. */}
-            {kind === "points" && <th scope="col">{t("tournaments.standings.points")}</th>}
+            {kind === "points" && <th scope="col" className="tournament-standings-number">{t("tournaments.standings.points")}</th>}
             {kind !== "swiss" && kind !== "points" && (
               <th scope="col">{t("tournaments.standings.result")}</th>
             )}
@@ -297,23 +327,35 @@ function StandingsTable({ event, profiles, kind, rows, withStatus = false }: Sta
                  leader mid-event has no place yet and must not look like one. */
               className={row.place !== null && row.place <= 3 ? `rank-${row.place}` : undefined}
             >
-              <td className="mono">
-                {row.place ?? t("tournaments.standings.unplaced")}
-                {row.outcome === "champion" && " \u{1F3C6}"}
+              <td>
+                <span className="tournament-standings-rank">{row.place ?? t("tournaments.standings.unplaced")}</span>
               </td>
-              <td>{nameOf(row.teamId)}</td>
+              <th scope="row">
+                <span className="tournament-standings-name">
+                  {nameOf(row.teamId)}
+                  {row.outcome === "champion" && (
+                    <Icon
+                      name="trophy"
+                      size={14}
+                      role="img"
+                      aria-hidden={kind !== "swiss"}
+                      aria-label={t("tournaments.standings.champion")}
+                    />
+                  )}
+                </span>
+              </th>
               {kind === "swiss" && (
                 <>
-                  <td className="mono">{row.wins}</td>
-                  <td className="mono">{row.losses}</td>
-                  <td className="mono">
+                  <td className="tournament-standings-number">{row.wins}</td>
+                  <td className="tournament-standings-number">{row.losses}</td>
+                  <td className="tournament-standings-number" data-diff={Math.sign(row.gameDiff)}>
                     {row.gameDiff > 0 ? "+" : ""}
                     {row.gameDiff}
                   </td>
-                  {showBeaten && <td className="mono">{row.beaten ?? 0}</td>}
+                  {showBeaten && <td className="tournament-standings-number">{row.beaten ?? 0}</td>}
                 </>
               )}
-              {kind === "points" && <td className="mono">{row.wins}</td>}
+              {kind === "points" && <td className="tournament-standings-number">{row.wins}</td>}
               {kind !== "swiss" && kind !== "points" && (
                 <td className="muted">{resultOf(row)}</td>
               )}

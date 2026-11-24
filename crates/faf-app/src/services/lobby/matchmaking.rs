@@ -12,6 +12,7 @@ use faf_domain::state::{
 use crate::runtime::{EventSink, LatestRequest, ServiceCtx};
 use crate::services::launcher;
 use crate::services::notifications;
+use crate::sync::LockExt;
 
 use super::game_notifications::GameNotificationTracker;
 use super::launch::{terminate_game, Background, LaunchSlot};
@@ -35,7 +36,7 @@ const MATCH_START_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(
 
 /// Start or stop the search in one queue: `LobbyCommand::Matchmake`.
 pub(super) fn matchmake(queue_name: String, start: bool, ctx: &ServiceCtx, out: &EventSink) {
-    let _submission = ctx.lobby.search_submission.lock().unwrap();
+    let _submission = ctx.lobby.search_submission.lock_or_recover();
     if !start {
         let (looking, preparing) = out.with_state(|state| {
             let matchmaking = &state.lobby.matchmaking;
@@ -232,7 +233,7 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
         return;
     }
     let (preparation, attempt) = {
-        let _submission = ctx.lobby.search_submission.lock().unwrap();
+        let _submission = ctx.lobby.search_submission.lock_or_recover();
         let refusal = out.with_state(|state| {
             if !matches!(
                 state.lobby.status,
@@ -297,7 +298,7 @@ pub(super) async fn start_search(mut queue_names: Vec<String>, ctx: &ServiceCtx,
     } else {
         Ok(())
     };
-    let _submission = ctx.lobby.search_submission.lock().unwrap();
+    let _submission = ctx.lobby.search_submission.lock_or_recover();
     ctx.lobby.search_preparation.end(&preparation);
 
     // Stopped, disconnected or replaced while the files came down. Nothing is

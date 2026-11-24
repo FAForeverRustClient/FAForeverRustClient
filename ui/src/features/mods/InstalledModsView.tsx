@@ -73,7 +73,21 @@ export function InstalledModsView({
     () => installed.filter((mod) => isFavoriteMod(favorites, mod.uid)).length,
     [favorites, installed],
   );
-  const filters = useInstalledModFilters({ installed, vaultFor, favorites, favoriteCount });
+  // One pass for both the count on the filter chip and the per-card question
+  // of whether to offer the button, so the two can never disagree.
+  const updatableFolders = useMemo(
+    () => new Set(
+      installed
+        .filter((mod) => {
+          const meta = vaultFor(mod);
+          return meta && modUpdateAvailable(mod.version, meta.version);
+        })
+        .map((mod) => mod.folderName),
+    ),
+    [installed, vaultFor],
+  );
+  const updatesCount = updatableFolders.size;
+  const filters = useInstalledModFilters({ installed, vaultFor, favorites, favoriteCount, updatesCount });
   const { choosePreset, clearSearch, filtered } = filters;
 
   /**
@@ -97,21 +111,6 @@ export function InstalledModsView({
     loadInstalled();
     loadVault();
   }, []);
-
-  // One pass for both the count on the filter chip and the per-card question
-  // of whether to offer the button, so the two can never disagree.
-  const updatableFolders = useMemo(
-    () => new Set(
-      installed
-        .filter((mod) => {
-          const meta = vaultFor(mod);
-          return meta && modUpdateAvailable(mod.version, meta.version);
-        })
-        .map((mod) => mod.folderName),
-    ),
-    [installed, vaultFor],
-  );
-  const updatesCount = updatableFolders.size;
 
   const updateCheck = useModUpdateCheck({ vault, vaultStatus, updatableFolders, choosePreset });
 

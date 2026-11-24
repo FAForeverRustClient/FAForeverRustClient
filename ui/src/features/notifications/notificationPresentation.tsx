@@ -50,17 +50,17 @@ export function actionLabel(action: NotificationAction | null): string | null {
  * press (#653): a word in capitals under the text read as a caption. The
  * whole card is the button, so this is its look, not a second one inside it.
  */
-export function actionContent(action: NotificationAction | null): ReactNode {
+export function actionContent(action: NotificationAction | null, id?: string): ReactNode {
   if (action?.type === "openStream" && isTwitchUrl(action.payload.url)) {
     return (
-      <span className="btn-ghost notification-action notification-stream" aria-label={t("notifications.action.openStream")}>
+      <span id={id} className="btn-ghost notification-action notification-stream" aria-label={t("notifications.action.openStream")}>
         <Icon name="twitch" size={14} />
         Twitch
       </span>
     );
   }
   const label = actionLabel(action);
-  return label ? <span className="btn-ghost notification-action">{label}</span> : null;
+  return label ? <span id={id} className="btn-ghost notification-action">{label}</span> : null;
 }
 
 function isTwitchUrl(url: string): boolean {

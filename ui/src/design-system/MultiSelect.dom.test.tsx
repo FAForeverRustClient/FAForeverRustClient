@@ -222,4 +222,14 @@ describe("MultiSelect keyboard, mounted", () => {
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("does not open when disabled", async () => {
+    const user = userEvent.setup();
+    render(<MultiSelect label="Queues" options={options} selected={[]} onChange={() => undefined} disabled />);
+    const trigger = screen.getByRole("button", { name: /^Queues:/ });
+    expect(trigger).toHaveProperty("disabled", true);
+    await user.click(trigger);
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("group", { name: "Queues" })).toBeNull();
+  });
 });

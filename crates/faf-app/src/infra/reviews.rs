@@ -32,6 +32,7 @@ use crate::infra::jsonapi::{
 };
 use crate::infra::session::TokenStore;
 use crate::ports::{ReviewPage, ReviewsPort};
+use crate::sync::LockExt;
 
 /// How many versions one page of the walk asks for. The API clamps a page at a
 /// hundred, so asking for more is not a way to avoid walking.
@@ -351,7 +352,7 @@ impl ReviewsPort for FakeReviews {
                 version: "2".into(),
             },
         ];
-        reviews.extend(self.written.lock().unwrap().iter().cloned());
+        reviews.extend(self.written.lock_or_recover().iter().cloned());
         Ok(ReviewPage {
             reviews,
             latest_version_id: Some(30),
@@ -373,7 +374,7 @@ impl ReviewsPort for FakeReviews {
             player: "You".into(),
             version: "3".into(),
         };
-        self.written.lock().unwrap().push(review.clone());
+        self.written.lock_or_recover().push(review.clone());
         Ok(review)
     }
 
@@ -384,7 +385,7 @@ impl ReviewsPort for FakeReviews {
         score: i32,
         text: String,
     ) -> Result<(), String> {
-        let mut written = self.written.lock().unwrap();
+        let mut written = self.written.lock_or_recover();
         if let Some(review) = written.iter_mut().find(|review| review.id == review_id) {
             review.score = clamp_score(score);
             review.text = text;
@@ -394,8 +395,7 @@ impl ReviewsPort for FakeReviews {
 
     async fn delete(&self, _kind: ReviewKind, review_id: i32) -> Result<(), String> {
         self.written
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .retain(|review| review.id != review_id);
         Ok(())
     }

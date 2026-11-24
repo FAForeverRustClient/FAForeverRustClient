@@ -70,6 +70,7 @@ use crate::ports::{
     LatestModVersion, ModPrepFailure, ModSearchPage, ModsPort, VaultInstallProgress,
     VaultInstallStep,
 };
+use crate::sync::LockExt;
 
 /// Mods per vault page fetched in [`ModsClient::list_vault`]: mirrors
 /// `infra::maps`'s identical pagination constants.
@@ -1451,7 +1452,7 @@ pub(crate) async fn activate_replay_mods(
     replay: &[String],
 ) -> Result<u64, String> {
     {
-        let mut saved = OWN_MODS_DURING_REPLAY.lock().unwrap();
+        let mut saved = OWN_MODS_DURING_REPLAY.lock_or_recover();
         // The first modded replay's view of the player's set is the real one;
         // a second one would only see the first replay's mods.
         if saved.is_none() {
@@ -1476,7 +1477,7 @@ pub(crate) async fn restore_own_mods_after_replay(generation: Option<u64>) {
         if generation.is_some_and(|expected| expected != current) {
             return;
         }
-        OWN_MODS_DURING_REPLAY.lock().unwrap().take()
+        OWN_MODS_DURING_REPLAY.lock_or_recover().take()
     };
     let Some(own) = own else {
         return;

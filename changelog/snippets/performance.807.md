@@ -1,0 +1,1 @@
+- Busy chat channels use less CPU: each new message is drawn once instead of three times.

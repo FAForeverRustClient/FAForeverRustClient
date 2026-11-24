@@ -75,6 +75,10 @@
   color: var(--color-subtle);
 }
 
+.update-gate-status:empty {
+  margin: 0;
+}
+
 /* A failure is not a status line like the others: it is the reason the
    button beside it now says "try again". */
 .update-gate-status-failed {
@@ -312,6 +316,24 @@
 
 .app-shell.is-sidebar-rail .update-notice-label {
   display: none;
+}
+
+@media (max-width: 900px) {
+  .update-notice {
+    display: flex;
+    justify-content: center;
+  }
+
+  .update-notice-button {
+    justify-content: center;
+    width: 32px;
+    min-height: 32px;
+    padding: 0;
+  }
+
+  .update-notice-label {
+    display: none;
+  }
 }
 
 /* The popover, beside the sidebar like the notification panel next to it,

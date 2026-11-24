@@ -362,16 +362,26 @@ export const MessageList = memo(function MessageList({
   // on the newest message alone: a full channel drops its oldest line for
   // every new one, so the count stops changing, and earlier history added in
   // front changes the count without anything new having arrived.
+  //
+  // It also records where the log now stands, for the earlier-history effect,
+  // while the layout it just forced is still fresh: a separate read after
+  // every render forced a second layout for each incoming line.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     if (prevScrollHeightRef.current !== null) return;
+    const height = el.scrollHeight;
     if (pinnedRef.current) {
-      el.scrollTop = el.scrollHeight;
-      setMissed(false);
-    } else {
+      el.scrollTop = height;
+      // Only on a change: setting state from a layout effect renders again
+      // before paint, even to the value it already has.
+      if (missed) setMissed(false);
+    } else if (!missed) {
       setMissed(true);
     }
+    lastScrollRef.current = { height, top: el.scrollTop, shown: displayedMessages.length };
+    // Keyed on the newest message alone, as explained above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newestMessageId]);
 
   // A tournament's visible chat height changes with its header and window.
@@ -414,7 +424,10 @@ export const MessageList = memo(function MessageList({
   useOverlayLayer(searchOpen, closeSearch);
 
   // Last of the layout effects, so it records where every other one left the
-  // log.
+  // log. Not after every render: a new line is recorded by the effect that
+  // pins the log, and scrolling by `onScroll`. This covers what changes the
+  // log's height otherwise: lines revealed or prepended, reactions, and the
+  // timestamp and name preferences.
   useLayoutEffect(() => {
     const el = scrollRef.current;
     if (el) {
@@ -424,7 +437,7 @@ export const MessageList = memo(function MessageList({
         shown: displayedMessages.length,
       };
     }
-  });
+  }, [displayedMessages.length, reactions, showTimestamps, use24HourTime, preferences]);
 
   const navigateSearch = (direction: -1 | 1) => {
     if (matchingIds.length === 0) return;

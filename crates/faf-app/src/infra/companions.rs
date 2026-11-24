@@ -32,6 +32,8 @@ use tokio::sync::mpsc;
 
 use super::game::split_command;
 
+use crate::sync::LockExt;
+
 /// What starting one entry means: the executable, its arguments, and where.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SpawnPlan {
@@ -117,14 +119,14 @@ impl Companions {
     /// Replace the entries. A process already started for an entry stays
     /// tracked, under its id, whatever the entry now says.
     pub fn set_entries(&self, entries: Vec<CompanionProgram>) {
-        *self.entries.lock().unwrap() = entries;
+        *self.entries.lock_or_recover() = entries;
     }
 
     /// The reports of every start, skip, failure and close from here on.
     /// There is one receiver: a second call gets a channel that is already
     /// closed.
     pub fn take_reports(&self) -> mpsc::UnboundedReceiver<CompanionRun> {
-        self.receiver.lock().unwrap().take().unwrap_or_else(|| {
+        self.receiver.lock_or_recover().take().unwrap_or_else(|| {
             let (_closed, receiver) = mpsc::unbounded_channel();
             receiver
         })
@@ -140,8 +142,7 @@ impl Companions {
     pub fn start_with(&self, kind: CompanionLaunchKind, timing: CompanionTiming, launch: LaunchId) {
         let entries: Vec<CompanionProgram> = self
             .entries
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .iter()
             .filter(|entry| {
                 entry.enabled
@@ -175,9 +176,9 @@ impl Companions {
     /// Blocking: each close waits a moment for the program to go. The
     /// launcher calls this on a thread of its own.
     pub fn launch_ended(&self, launch: LaunchId) {
-        let entries = self.entries.lock().unwrap().clone();
+        let entries = self.entries.lock_or_recover().clone();
         let closing: Vec<(String, SharedProgram, CompanionProgram)> = {
-            let mut tracked = self.tracked.lock().unwrap();
+            let mut tracked = self.tracked.lock_or_recover();
             tracked
                 .iter_mut()
                 .filter_map(|(id, started)| {
@@ -203,7 +204,7 @@ impl Companions {
         };
         for (id, program, entry) in closing {
             let closed = {
-                let mut program = program.lock().unwrap();
+                let mut program = program.lock_or_recover();
                 program.is_running().then(|| {
                     let pid = program.pid();
                     program.close();
@@ -213,7 +214,7 @@ impl Companions {
             // Decided under the list's lock, so a start racing this sees
             // either the closing entry or none, never a gap.
             let again = {
-                let mut tracked = self.tracked.lock().unwrap();
+                let mut tracked = self.tracked.lock_or_recover();
                 match tracked.get(&id) {
                     Some(started) if Arc::ptr_eq(&started.program, &program) => {
                         let started = tracked.remove(&id).expect("just looked up");
@@ -225,8 +226,7 @@ impl Companions {
                         // it back.
                         let current = self
                             .entries
-                            .lock()
-                            .unwrap()
+                            .lock_or_recover()
                             .iter()
                             .find(|saved| saved.id == id)
                             .cloned();
@@ -259,7 +259,7 @@ impl Companions {
         owners: HashSet<LaunchId>,
         test: bool,
     ) -> CompanionRun {
-        let mut tracked = self.tracked.lock().unwrap();
+        let mut tracked = self.tracked.lock_or_recover();
         if let Some(started) = tracked.get_mut(&entry.id) {
             if started.closing {
                 // Going away for a launch that ended. It is started again
@@ -269,7 +269,7 @@ impl Companions {
                 return run_of(entry, CompanionOutcome::AlreadyRunning { pid: started.pid });
             }
             let running = {
-                let mut program = started.program.lock().unwrap();
+                let mut program = started.program.lock_or_recover();
                 program.is_running().then(|| program.pid())
             };
             if let Some(pid) = running {

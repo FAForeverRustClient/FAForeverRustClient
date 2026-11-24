@@ -26,7 +26,7 @@ import { useAppStore } from "../../../store/store";
 import { ipc } from "../../../ipc/client";
 import { PlayerChip } from "../PlayerChip";
 import { PlayerTable } from "../PlayerTable";
-import { TeamCard, TeamSection } from "../detail/TeamsPanel";
+import { TeamCard, TeamRoster, TeamSection } from "../detail/TeamsPanel";
 import {
   draftTurn,
   isLegalFrom,
@@ -239,29 +239,29 @@ function LiveDraft(props: DraftPanelProps) {
     <div className="tournament-columns tournament-teams">
       <div className="tournament-columns-main">
         {/* What every captain has so far: the thing a pick is weighed against. */}
-        <TeamSection title={t("tournaments.section.teams")} count={String(event.teams.length)}>
-          <ul className="tournament-team-grid">
-            {draftTeams(event).map((team) => (
-              <TeamCard
-                key={team.id}
-                event={event}
-                team={team}
-                name={teamName(team.id)}
-                profiles={props.profiles}
-                busy={busy}
-                isMine={team.id === event.viewer.memberTeamId}
-                captain={myPlayerId !== null && team.captainId === myPlayerId}
-                mayAsk={false}
-                asked={false}
-                overCap={false}
-                draft={{ onClock: team.id === turn }}
-                teams={props.teams}
-                onChangeCaptain={() => undefined}
-                onAdmin={props.organiser.admin}
-              />
-            ))}
-          </ul>
-        </TeamSection>
+        <TeamRoster
+          divisions={event.divisions}
+          teams={draftTeams(event)}
+          renderTeam={(team) => (
+            <TeamCard
+              key={team.id}
+              event={event}
+              team={team}
+              name={teamName(team.id)}
+              profiles={props.profiles}
+              busy={busy}
+              isMine={team.id === event.viewer.memberTeamId}
+              captain={myPlayerId !== null && team.captainId === myPlayerId}
+              mayAsk={false}
+              asked={false}
+              overCap={false}
+              draft={{ onClock: team.id === turn }}
+              teams={props.teams}
+              onChangeCaptain={() => undefined}
+              onAdmin={props.organiser.admin}
+            />
+          )}
+        />
 
         {turn !== null ? (
           <TeamSection title={t("tournaments.draft.pool")} count={String(pool.length)}>
@@ -296,7 +296,7 @@ function LiveDraft(props: DraftPanelProps) {
           // agent is once the field is locked.
           pool.length > 0 && (
             <TeamSection
-              title={t("tournaments.teams.freeAgents")}
+              title={t("tournaments.teams.reserves")}
               count={String(pool.length)}
               hint={t("tournaments.teams.freeAgentsReserve")}
             >

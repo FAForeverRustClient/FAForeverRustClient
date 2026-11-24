@@ -22,6 +22,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::ports::{ChatPort, ChatUpdate};
+use crate::sync::LockExt;
 
 #[derive(Debug, Default)]
 pub struct FakeChat {
@@ -43,8 +44,7 @@ impl FakeChat {
     /// spawned `send`) so updates keep the order they were produced in.
     fn push(&self, update: ChatUpdate) -> bool {
         self.updates
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .map(|tx| tx.try_send(update).is_ok())
             .unwrap_or(false)
@@ -66,7 +66,7 @@ impl FakeChat {
     }
 
     fn echo(&self, channel: String, content: String, kind: ChatMessageKind) {
-        let sender = self.username.lock().unwrap().clone();
+        let sender = self.username.lock_or_recover().clone();
         let message = self.message(&sender, &content, kind);
         if !self.push(ChatUpdate::Message { channel, message }) {
             tracing::warn!("chat send ignored because there is no active connection");
@@ -78,13 +78,13 @@ impl FakeChat {
 impl ChatPort for FakeChat {
     async fn connect(&self, username: String) -> mpsc::Receiver<ChatUpdate> {
         let token = CancellationToken::new();
-        if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
+        if let Some(prev) = self.cancel.lock_or_recover().replace(token.clone()) {
             prev.cancel();
         }
-        *self.username.lock().unwrap() = username.clone();
+        *self.username.lock_or_recover() = username.clone();
 
         let (tx, rx) = mpsc::channel(64);
-        *self.updates.lock().unwrap() = Some(tx);
+        *self.updates.lock_or_recover() = Some(tx);
 
         self.push(ChatUpdate::Status(ChatStatus::Connecting, String::new()));
         self.push(ChatUpdate::Status(ChatStatus::Connected, username.clone()));
@@ -99,8 +99,7 @@ impl ChatPort for FakeChat {
         });
         let seeded_at = self
             .seeded_at
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .get_or_insert_with(|| chrono::Utc::now().to_rfc3339())
             .clone();
         for (sender, content) in seed_messages() {
@@ -135,7 +134,7 @@ impl ChatPort for FakeChat {
             return;
         }
         if is_public {
-            let username = self.username.lock().unwrap().clone();
+            let username = self.username.lock_or_recover().clone();
             self.push(ChatUpdate::Users {
                 channel,
                 users: seed_users(&username),
@@ -152,11 +151,11 @@ impl ChatPort for FakeChat {
     }
 
     fn disconnect(&self) {
-        if let Some(token) = self.cancel.lock().unwrap().take() {
+        if let Some(token) = self.cancel.lock_or_recover().take() {
             token.cancel();
         }
         self.push(ChatUpdate::Status(ChatStatus::Disconnected, String::new()));
-        *self.updates.lock().unwrap() = None;
+        *self.updates.lock_or_recover() = None;
     }
 }
 

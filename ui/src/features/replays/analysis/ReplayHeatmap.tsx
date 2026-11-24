@@ -143,7 +143,7 @@ export function ReplayHeatmap({
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.imageSmoothingEnabled = true;
     context.drawImage(scratch, 0, 0, canvas.width, canvas.height);
-  }, [bins]);
+  }, [bins, zoomed]);
 
   if (analysis.points.length === 0) {
     return <p className="replay-detail-empty muted">{t("replays.insights.noPoints")}</p>;

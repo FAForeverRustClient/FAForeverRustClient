@@ -25,6 +25,7 @@ use faf_domain::state::{
 use crate::ports::ChatUpdate;
 use crate::runtime::{account::AccountConnection, EventSink, LatestRequest, ServiceCtx};
 use crate::services::notifications;
+use crate::sync::LockExt;
 
 /// The chat connection's single-flight guard and composer/read-marker throttles.
 #[derive(Default)]
@@ -428,7 +429,7 @@ const TYPING_REFRESH_SECONDS: u32 = 3;
 fn set_typing(ctx: &ServiceCtx, channel: String, composing: bool) {
     let now = super::now_seconds();
     {
-        let mut sent = ctx.chat.typing_sent.lock().expect("typing lock poisoned");
+        let mut sent = ctx.chat.typing_sent.lock_or_recover();
         if composing {
             let last = sent.get(&channel).copied().unwrap_or(0);
             if now.saturating_sub(last) < TYPING_REFRESH_SECONDS {

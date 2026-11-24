@@ -30,6 +30,7 @@ import { Composer } from "./messages/Composer";
 import { ConversationAside } from "./ConversationAside";
 import { MessageList, type MessageReactionsMap } from "./messages/MessageList";
 import { visibleChatMessages } from "./messages/messageFilters";
+import { useDisplayedChatPreferences } from "./displayedPreferences";
 import { RosterResizeHandle, clampRosterWidth, rosterTier } from "./roster/RosterResizeHandle";
 import { UserList } from "./roster/UserList";
 import { usePlayerMenu } from "../../shared/hooks/usePlayerMenu";
@@ -119,7 +120,7 @@ export function ChatView() {
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
   const mapVault = useAppStore((s) => s.state.maps.vault);
-  const chatPreferences = useAppStore((s) => s.state.settings.chat);
+  const chatPreferences = useDisplayedChatPreferences();
   // The party's room, so the strip can refuse to close it: it belongs to the
   // party's lifecycle, not to this tab. The backend owns joining and parting;
   // this name is only used to present and protect the automatic room.
@@ -182,10 +183,13 @@ export function ChatView() {
   // rather than dropped on arrival, so flipping the preference reveals history
   // that already exists: the Python client's `joinsparts` behaviour without
   // its "you had to have it on at the time" cost.
+  // Keyed on the messages, not the channel: marking a channel read changes
+  // its unread count, and the list should not be filtered again for that.
+  const activeMessages = active?.messages;
   const messages = useMemo(() => {
-    if (!active) return [];
-    return visibleChatMessages(active.messages, chatPreferences, { foes });
-  }, [active, chatPreferences, foes]);
+    if (!activeMessages) return [];
+    return visibleChatMessages(activeMessages, chatPreferences, { foes });
+  }, [activeMessages, chatPreferences, foes]);
 
   const nicknames = useMemo(() => active?.users.map((u) => u.name) ?? [], [active]);
 
@@ -199,11 +203,14 @@ export function ChatView() {
     [active],
   );
 
+  // Keyed on the reactions alone: the channel object changes with every new
+  // line, and a fresh map each time made the message list re-measure itself.
+  const activeReactions = active?.reactions;
   const reactionsByMessage = useMemo<MessageReactionsMap>(() => {
     const map: Record<string, readonly Reaction[]> = {};
-    for (const entry of active?.reactions ?? []) map[entry.msgid] = entry.entries;
+    for (const entry of activeReactions ?? []) map[entry.msgid] = entry.entries;
     return map;
-  }, [active]);
+  }, [activeReactions]);
 
   // A typing notice expires on the reader's clock, so the view needs its own
   // tick: nothing arrives from the backend to say "that is no longer true".
@@ -265,7 +272,8 @@ export function ChatView() {
   }, []);
 
   const activateGameLink = useCallback((link: ChatGameLink) => {
-    const game = (link.kind === "openGame" ? games : liveGames)
+    const lobby = useAppStore.getState().state.lobby;
+    const game = (link.kind === "openGame" ? lobby.games : lobby.liveGames)
       .find((candidate) => candidate.id === link.uid);
     if (!game) {
       setGameLinkNotice(t("chat.gameLink.unavailable"));
@@ -276,7 +284,7 @@ export function ChatView() {
     else void watchGame(game);
     // `t` is part of the identity: switching language must rebuild this so a
     // later click reports the failure in the language now selected.
-  }, [games, liveGames, t]);
+  }, [t]);
 
   // Where the conversation's own card starts, below the channel tabs and the
   // row of controls, so a private conversation's side panel can start level

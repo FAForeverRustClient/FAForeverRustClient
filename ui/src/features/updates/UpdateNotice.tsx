@@ -169,10 +169,11 @@ export function UpdateNotice({ deferredVersion = null }: { deferredVersion?: str
               const controls = Array.from(popoverRef.current?.querySelectorAll<HTMLButtonElement>("button:not([disabled])") ?? []);
               const first = controls[0];
               const last = controls[controls.length - 1];
-              if (event.shiftKey && document.activeElement === first) {
+              const index = controls.indexOf(document.activeElement as HTMLButtonElement);
+              if (event.shiftKey && index <= 0) {
                 event.preventDefault();
                 last?.focus();
-              } else if (!event.shiftKey && document.activeElement === last) {
+              } else if (!event.shiftKey && (index === -1 || index === controls.length - 1)) {
                 event.preventDefault();
                 first?.focus();
               }

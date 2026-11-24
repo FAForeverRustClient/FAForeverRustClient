@@ -106,9 +106,8 @@ pub struct HallPlayer {
     pub wins: i32,
     pub entered: i32,
     /// The FAF account behind the row: its avatar, its current login and its
-    /// ratings. The tournament service knows none of these; the board is sent
-    /// once without them and again once FAF has answered, so `None` until
-    /// then, and for good where FAF had no such account.
+    /// ratings. A board refresh keeps any known profile until FAF answers.
+    /// `None` means no profile has loaded or FAF found no such account.
     pub profile: Option<PlayerSummary>,
 }
 

@@ -221,6 +221,7 @@ const ReplayListRowView = memo(function ReplayListRowView({ row }: { row: Replay
       // no primary action still falls through to `onActivate`, which is the
       // only thing it has.
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         const act = row.onSelect ?? row.onActivate;
         if ((event.key === "Enter" || event.key === " ") && act) {
           event.preventDefault();

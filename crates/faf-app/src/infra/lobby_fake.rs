@@ -20,6 +20,7 @@ use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::ports::{LobbyPort, LobbySendError, LobbyUpdate};
+use crate::sync::LockExt;
 
 /// Interval between simulated lobby updates.
 const TICK: Duration = Duration::from_secs(2);
@@ -58,8 +59,7 @@ impl FakeLobby {
             return Err(LobbySendError::Busy);
         }
         self.updates
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .filter(|tx| !tx.is_closed())
             .cloned()
@@ -71,24 +71,26 @@ impl FakeLobby {
     /// invites, failures) without sleeping for the demo ticker.
     pub fn push_update(&self, update: LobbyUpdate) -> bool {
         self.updates
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .is_some_and(|sender| sender.try_send(update).is_ok())
     }
 
     pub fn hosted_configs(&self) -> Vec<HostGameConfig> {
-        self.hosted.lock().unwrap().clone()
+        self.hosted.lock_or_recover().clone()
     }
 
     /// Stop answering joins on a timer; see `held_joins` and `answer_join`.
     pub fn hold_join_answers(&self) {
-        *self.held_joins.lock().unwrap() = Some(Vec::new());
+        *self.held_joins.lock_or_recover() = Some(Vec::new());
     }
 
     /// The join requests sent while answers are held, in order.
     pub fn held_joins(&self) -> Vec<i32> {
-        self.held_joins.lock().unwrap().clone().unwrap_or_default()
+        self.held_joins
+            .lock_or_recover()
+            .clone()
+            .unwrap_or_default()
     }
 
     /// Answer a join with its launch order, as the server would.
@@ -98,7 +100,7 @@ impl FakeLobby {
 
     /// Every game relay message sent, in order.
     pub fn game_relays(&self) -> Vec<GameRelay> {
-        self.relays.lock().unwrap().clone()
+        self.relays.lock_or_recover().clone()
     }
 }
 
@@ -107,13 +109,13 @@ impl LobbyPort for FakeLobby {
     async fn connect(&self) -> mpsc::Receiver<LobbyUpdate> {
         let token = CancellationToken::new();
         // Replace (and cancel) any previous connection.
-        if let Some(prev) = self.cancel.lock().unwrap().replace(token.clone()) {
+        if let Some(prev) = self.cancel.lock_or_recover().replace(token.clone()) {
             prev.cancel();
         }
 
         let (tx, rx) = mpsc::channel(8);
-        *self.updates.lock().unwrap() = Some(tx.clone());
-        *self.matchmaking.lock().unwrap() = MatchmakingState::Idle;
+        *self.updates.lock_or_recover() = Some(tx.clone());
+        *self.matchmaking.lock_or_recover() = MatchmakingState::Idle;
         tokio::spawn(async move {
             let mut games = seed_games();
             // The real transport only reports this once the server has accepted
@@ -239,10 +241,10 @@ impl LobbyPort for FakeLobby {
     fn join(&self, id: i32, _password: Option<String>) -> bool {
         // Push a synthetic launch order back on the live stream, mimicking the
         // server's `game_launch`. No-op if there's no active connection.
-        let Some(tx) = self.updates.lock().unwrap().clone() else {
+        let Some(tx) = self.updates.lock_or_recover().clone() else {
             return false;
         };
-        if let Some(held) = self.held_joins.lock().unwrap().as_mut() {
+        if let Some(held) = self.held_joins.lock_or_recover().as_mut() {
             held.push(id);
             return true;
         }
@@ -254,7 +256,7 @@ impl LobbyPort for FakeLobby {
     }
 
     fn host(&self, config: HostGameConfig) -> Result<(), LobbySendError> {
-        self.hosted.lock().unwrap().push(config.clone());
+        self.hosted.lock_or_recover().push(config.clone());
         let tx = self.outgoing()?;
         tokio::spawn(async move {
             tokio::time::sleep(JOIN_DELAY).await;
@@ -270,7 +272,7 @@ impl LobbyPort for FakeLobby {
     fn matchmake(&self, queue_names: &[String], start: bool) -> Result<(), LobbySendError> {
         let tx = self.outgoing()?;
         let state = {
-            let mut matchmaking = self.matchmaking.lock().unwrap();
+            let mut matchmaking = self.matchmaking.lock_or_recover();
             for queue_name in queue_names {
                 matchmaking.update_search(queue_name.clone(), start);
             }
@@ -303,14 +305,13 @@ impl LobbyPort for FakeLobby {
         _remove: Option<Relation>,
     ) -> bool {
         self.updates
-            .lock()
-            .unwrap()
+            .lock_or_recover()
             .as_ref()
             .is_some_and(|sender| !sender.is_closed())
     }
 
     fn set_player_vetoes(&self, vetoes: Vec<PlayerVeto>) {
-        let Some(tx) = self.updates.lock().unwrap().clone() else {
+        let Some(tx) = self.updates.lock_or_recover().clone() else {
             return;
         };
         tokio::spawn(async move {
@@ -324,7 +325,7 @@ impl LobbyPort for FakeLobby {
     }
 
     fn request_avatars(&self) -> bool {
-        let Some(tx) = self.updates.lock().unwrap().clone() else {
+        let Some(tx) = self.updates.lock_or_recover().clone() else {
             return false;
         };
         tokio::spawn(async move {
@@ -345,27 +346,27 @@ impl LobbyPort for FakeLobby {
     }
 
     fn select_avatar(&self, _url: Option<String>) -> bool {
-        self.updates.lock().unwrap().is_some()
+        self.updates.lock_or_recover().is_some()
     }
 
     fn restore_game_session(&self, _game_id: i32) -> bool {
         // Nothing to restore: the fake has no server-side game connection to
         // lose in the first place.
-        self.updates.lock().unwrap().is_some()
+        self.updates.lock_or_recover().is_some()
     }
 
     fn send_game_relay(&self, command: String, args: Vec<serde_json::Value>) {
         // The fake stops at the launch order; it doesn't simulate in-game
         // relay, only records what was sent.
-        self.relays.lock().unwrap().push((command, args));
+        self.relays.lock_or_recover().push((command, args));
     }
 
     fn disconnect(&self) {
-        if let Some(token) = self.cancel.lock().unwrap().take() {
+        if let Some(token) = self.cancel.lock_or_recover().take() {
             token.cancel();
         }
         // Drop the sender handle so a later `join` before reconnect is a no-op.
-        *self.updates.lock().unwrap() = None;
+        *self.updates.lock_or_recover() = None;
     }
 }
 

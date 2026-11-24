@@ -7,7 +7,7 @@
 // Entering is the primary action and sits in the header, not in a section. It
 // is the one thing a player opens this tab to do.
 
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "../../../design-system/Button";
 import { Icon } from "../../../design-system/Icon";
@@ -38,6 +38,7 @@ import { ProposalBox } from "./ProposalBox";
 import { proposalHoldsPublishing } from "../proposals";
 import { DisplaySettingsDialog } from "./DisplaySettingsDialog";
 import { useTournamentChatViewport } from "./useTournamentChatViewport";
+import { useTournamentSectionScroll } from "./useTournamentSectionScroll";
 import { PinButton, PinnedChat } from "./PinnedChat";
 import { swissShowsBracket } from "../bracket/swissPresentation";
 import {
@@ -152,6 +153,8 @@ interface TournamentDetailPaneProps {
    */
   jump?: { section: string; nonce: number } | null;
   detailLoading: boolean;
+  /** Shown beside the cached detail when a refresh of this event fails. */
+  detailError?: ReactNode;
   /** Every series, for the organiser's picker. Loaded when Manage is opened. */
   series: TourneySeries[];
   /** The list behind this detail, as candidates for a qualifier link. */
@@ -224,6 +227,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
   );
   const root = useRef<HTMLDivElement>(null);
   const bodyRow = useRef<HTMLDivElement>(null);
+  const tabs = useRef<HTMLElement>(null);
+  const rememberSectionScroll = useTournamentSectionScroll(root, bodyRow, tabs);
   useTournamentChatViewport(root, bodyRow, section === "chat");
 
   // The pinned room lets go of itself once its match is over, and says so:
@@ -332,7 +337,8 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.jump?.nonce]);
 
-  const openSection = (next: Section) => {
+  const openSection = (next: Section, fromTabs = false) => {
+    if (next !== section) rememberSectionScroll(fromTabs);
     setSection(next);
     // The rooms are loaded on demand rather than with the detail: chat is
     // beside the bracket, not the point of it, and a tab nobody opens should
@@ -483,7 +489,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
       {/* The shared section tabs' look (`section-tabs`), kept as a navigation
           of buttons: the sections are views of one event, and the tests and
           the pending bar's jumps address them as such. */}
-      <nav className="section-tabs tournament-sections" aria-label={t("tournaments.section.label")}>
+      <nav ref={tabs} className="section-tabs tournament-sections" aria-label={t("tournaments.section.label")}>
         {(Object.keys(SECTION_LABELS) as Section[])
           // Manage is an organiser's door out to the website; nobody else needs
           // to be told it exists. Teams only exist where there are teams to
@@ -532,7 +538,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
               key={candidate}
               className={candidate === section ? "tournament-section is-active active" : "tournament-section"}
               aria-current={candidate === section}
-              onClick={() => openSection(candidate)}
+              onClick={() => openSection(candidate, true)}
             >
               <span className="section-tab-label">{t(sectionLabel(candidate, event))}</span>
               {candidate === "players" && <span className="section-tab-count">{event.playerCount}</span>}
@@ -605,6 +611,7 @@ export function TournamentDetailPane(props: TournamentDetailPaneProps) {
           the moment the refresh took and pulled it back up, a jump for a
           reload that changes nothing the reader is looking at. */}
       {props.detailLoading && <p className="tournament-refresh-status" role="status">{t("tournaments.detailLoading")}</p>}
+      {props.detailError}
 
       {/* Everything but the bracket reads at a measure rather than at the
           window's width. The pane is as wide as the client, which on a wide

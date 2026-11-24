@@ -25,7 +25,12 @@ describe("FactionIcon", () => {
     expect(markup).toContain("<title>Random</title>");
     // The four faction colours, which is what makes it the mark rather than a
     // glyph: this one does not follow `currentColor`.
-    for (const colour of ["#F7BC0B", "#E31B13", "#3DA936", "#3884C5"]) {
+    for (const colour of [
+      'fill="var(--color-faction-seraphim)"',
+      'fill="var(--color-faction-cybran)"',
+      'fill="var(--color-faction-aeon)"',
+      'fill="var(--color-faction-uef)"',
+    ]) {
       expect(markup).toContain(colour);
     }
   });

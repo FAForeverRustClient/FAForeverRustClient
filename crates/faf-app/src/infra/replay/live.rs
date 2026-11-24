@@ -74,6 +74,7 @@ use tokio_util::sync::CancellationToken;
 use crate::infra::session::TokenStore;
 use crate::infra::{fetch_access_url, validated_ws_url};
 use crate::ports::ProcessPort;
+use crate::sync::LockExt;
 
 use super::names::normalize_mod;
 use super::preparation::ReplayPreparation;
@@ -206,7 +207,7 @@ impl LiveStreamer {
     /// kept the pipe open for as long as the client ran, and every live replay
     /// after it failed with "All pipe instances are busy" (os error 231).
     pub(super) async fn end_session(&self) {
-        let Some(session) = self.session.lock().unwrap().take() else {
+        let Some(session) = self.session.lock_or_recover().take() else {
             return;
         };
         session.stop.cancel();
@@ -420,7 +421,7 @@ impl LiveStreamer {
                 let stop = CancellationToken::new();
                 let ended = replay_ended(Arc::clone(process), stop.clone());
                 let task = tokio::spawn(pipe_relay_session(pipe, write, read, first, ended));
-                *self.session.lock().unwrap() = Some(RelaySession { stop, task });
+                *self.session.lock_or_recover() = Some(RelaySession { stop, task });
             }
         }
         Ok(warning)

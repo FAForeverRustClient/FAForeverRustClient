@@ -30,6 +30,7 @@ import { isGeneratedMap, mapPresentation, mapSize } from "../../../shared/mapPre
 import { useAppStore } from "../../../store/store";
 import { useNamedMapGeneration } from "../../../shared/hooks/useNamedMapGeneration";
 import { useClipboardCopy } from "../../../shared/hooks/useClipboardCopy";
+import { useForegroundInterval } from "../../../shared/hooks/useForegroundInterval";
 import { ReplayMapThumb } from "../ReplayCard";
 import { MapPreviewFrame } from "../../../shared/components/MapPreviewZoom";
 import { GeneratorFailure } from "../../../shared/components/GeneratorFailure";
@@ -37,7 +38,7 @@ import { isObserverTeam, playerCount, ReplayDetailRoster, type KnownAvatar } fro
 import type { PlayerMenuOpener } from "../../../shared/hooks/usePlayerMenu";
 import { liveReplayTeams } from "./LiveReplayCards";
 import { LiveWatchButton } from "./LiveReplayRow";
-import { gameStartedAt, liveLineupCount, prettyGameType } from "../../../shared/liveReplayModel";
+import { gameStartedAt, liveLineupCount, prettyGameType, replayDelayRemaining } from "../../../shared/liveReplayModel";
 import { hourCycleOptions } from "../../../shared/format/clock";
 import { clientIntlTag } from "../../../shared/format/dates";
 import { formatRelativeDuration, zeroMinutes } from "../../../shared/format/durations";
@@ -108,7 +109,12 @@ export function LiveReplayDetail({
       ? t("replays.detail.teamSummary", { teams: competingTeams, players })
       : players;
   const simMods = Object.values(game.simMods);
+  const [now, setNow] = useState(() => Date.now());
   const started = gameStartedAt(game);
+  const liveWait = started ? Math.min(replayDelayRemaining(game, now), waitSeconds) : waitSeconds;
+  // Keep ticking while this detail modal is visible even if another game or
+  // replay is running, so its countdown and Watch transition stay current.
+  useForegroundInterval(() => setNow(Date.now()), liveWait > 0 ? 1_000 : 60_000, started !== null, true);
 
   // The directory's avatars, keyed the way the roster asks for them. The lobby
   // sends no avatar with a game, so this is the only place one can come from.
@@ -130,7 +136,7 @@ export function LiveReplayDetail({
     facts.push({
       label: t("replays.live.runningFor"),
       value: formatRelativeDuration(
-        Math.max(0, (Date.now() - started.getTime()) / 1000),
+        Math.max(0, (now - started.getTime()) / 1000),
         { nowLabel: zeroMinutes() },
       ),
     });
@@ -286,7 +292,7 @@ export function LiveReplayDetail({
             busy={busy}
             game={game}
             tracking={tracking}
-            waitSeconds={waitSeconds}
+            waitSeconds={liveWait}
           />
         </div>
       </header>
