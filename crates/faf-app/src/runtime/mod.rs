@@ -50,7 +50,7 @@ pub struct ServiceCtx {
     pub(crate) admission: CommandAdmission,
     pub(crate) lifecycle: Arc<services::lifecycle::LifecycleContext>,
     pub lobby: services::lobby::LobbyContext,
-    pub launcher: services::launcher::LauncherContext,
+    pub preparation: services::preparation::PreparationContext,
     pub chat: services::chat::ChatContext,
     pub settings: services::settings::SettingsContext,
     pub auth: services::auth::AuthContext,
@@ -209,6 +209,9 @@ impl EventSink {
 
     /// A transition caused by account-owned work can report into the session
     /// it just opened, without accidentally acquiring a later session.
+    ///
+    /// The lobby's ban is the one such work, so not in the Android client.
+    #[cfg(not(target_os = "android"))]
     pub(crate) fn transition_account(&self, event: faf_domain::state::AuthEvent) -> Option<Self> {
         self.emit_event(event.into())
             .map(|token| self.with_account_token(token))
@@ -464,7 +467,7 @@ impl App {
             admission: CommandAdmission::default(),
             lifecycle,
             lobby: services::lobby::LobbyContext::default(),
-            launcher: services::launcher::LauncherContext::default(),
+            preparation: services::preparation::PreparationContext::default(),
             chat: services::chat::ChatContext::default(),
             settings: services::settings::SettingsContext::default(),
             auth: services::auth::AuthContext::default(),
@@ -709,6 +712,10 @@ impl AppLoop {
     /// single [`EventSink::emit`] chokepoint.
     pub async fn run(self) {
         let ctx = Arc::new(self.ctx);
+        // Before anything that reads it, the web link among them: a client
+        // without a lobby says so from the start, not only once a sign-in
+        // tries to connect.
+        services::lobby::announce_unavailable(&ctx, &self.sink);
         services::lifecycle::spawn(ctx.clone(), self.sink.clone());
 
         // Discord Rich Presence is the one feature no command drives: the

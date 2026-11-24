@@ -151,6 +151,10 @@ enum LaunchTarget {
 impl ReplaysContext {
     /// The Local tab's list generation, for a scan started outside a
     /// `LoadLocal` (the one after a game) to take its turn in the same order.
+    ///
+    /// Only an online game records a replay to scan for, so not in the
+    /// Android client.
+    #[cfg(not(target_os = "android"))]
     pub(crate) fn local_list_generation(&self) -> LatestRequest {
         self.local_generation.clone()
     }

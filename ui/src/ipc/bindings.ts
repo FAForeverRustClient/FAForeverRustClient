@@ -3180,7 +3180,14 @@ export type FailureCause =
  *  The lobby connection's outgoing queue is full; the request was not
  *  sent, and may be retried in a moment.
  */
-"lobbySendBusy";
+"lobbySendBusy" |
+/**
+ *  This client has no lobby to send it to
+ *  ([`crate::state::LobbyUnavailable::NotInAndroidClient`]). Not
+ *  [`Self::LobbyDisconnected`], whose sentence tells the reader to
+ *  reconnect.
+ */
+"lobbyNotInAndroidClient";
 
 /**  The parent this tournament feeds, where it feeds one. */
 export type FeedsInto = {
@@ -5147,6 +5154,13 @@ export type LobbyCommand = { type: "connect" } | { type: "join"; payload: {
 { type: "terminateGame" } | { type: "disconnect" };
 
 export type LobbyEvent = { type: "connecting" } | { type: "connected" } |
+/**
+ *  This client has no lobby, with the reason: see
+ *  [`LobbyState::unavailable`].
+ */
+{ type: "unavailable"; payload: {
+	reason: LobbyUnavailable,
+} } |
 /**  Another tab asked for the host dialog, with this title. */
 { type: "hostPrepared"; payload: {
 	title: string,
@@ -5274,9 +5288,24 @@ export type LobbyState = {
 	 *  host's decision, and the existing dialog already asks for them properly.
 	 */
 	hostPrefill: string | null,
+	/**
+	 *  Why this client has no lobby to connect to, decided before any socket
+	 *  could open (`faf-app`'s `LobbyPort::unavailable`). While it is set the
+	 *  lobby stays disconnected and the way to connect is not offered.
+	 */
+	unavailable: LobbyUnavailable | null,
 };
 
 export type LobbyStatus = "disconnected" | "connecting" | "connected";
+
+/**  A reason this client has no lobby, for the page to say. */
+export type LobbyUnavailable =
+/**
+ *  The Android client, which watches replays and plays against the AI.
+ *  Joining FAF games, custom or matchmade, hosted or not, is the desktop
+ *  client's, and the Android build has no lobby connection at all.
+ */
+"notInAndroidClient";
 
 /**
  *  The preview art an installed map carries in its own folder.

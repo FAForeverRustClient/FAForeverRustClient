@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use faf_app::infra::{fake_ports, FakeAuth};
+use faf_app::infra::{fake_ports, FakeAuth, NoLobby};
 use faf_app::ports::{
     LobbyPort, LobbySendError, LobbyUpdate, WebLinkError, WebLinkPort, WebLinkSession,
 };
@@ -311,6 +311,44 @@ async fn nothing_connects_until_the_player_turns_it_on() {
     })
     .await;
     assert!(closed.is_ok(), "the link closes when it is turned off");
+}
+
+/// A client without a lobby has nothing for a browser to steer, and the
+/// server keeps one link per account: turned on and signed in, it still never
+/// connects, so it cannot take the link from a desktop client that has one.
+#[tokio::test]
+async fn a_client_without_a_lobby_never_links() {
+    let link = Arc::new(ScriptedLink::default());
+    let (app, app_loop) = App::new(
+        "test",
+        Ports {
+            auth: Arc::new(FakeAuth {
+                player: Player::new(7, "Ada"),
+                delay: Duration::ZERO,
+                fail_with: None,
+            }),
+            web_link: link.clone(),
+            lobby: Arc::new(NoLobby),
+            ..fake_ports()
+        },
+    );
+    tokio::spawn(app_loop.run());
+    app.dispatch_and_wait(AuthCommand::Login { remember: false }.into())
+        .await
+        .unwrap();
+    app.dispatch_and_wait(
+        SettingsCommand::PatchWebLink {
+            patch: WebLinkPreferencesPatch {
+                enabled: Some(true),
+            },
+        }
+        .into(),
+    )
+    .await
+    .unwrap();
+
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(*link.connects.lock().unwrap(), 0, "the link connected");
 }
 
 #[tokio::test]

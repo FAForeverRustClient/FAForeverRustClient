@@ -8,7 +8,7 @@ import { Icon } from "../../../design-system/Icon";
 import { StatusNotice } from "../../../design-system/StatusNotice";
 import { EmptyState } from "../../../design-system/EmptyState";
 import { ResizeHandle } from "../../../design-system/ResizeHandle";
-import type { Game, JoinState, LobbyStatus, MapSummary } from "../../../ipc/bindings";
+import type { Game, JoinState, LobbyStatus, LobbyUnavailable, MapSummary } from "../../../ipc/bindings";
 import type { GameViewMode } from "../../../shared/gameRules";
 import { plainError } from "../../../shared/plainError";
 import { useTranslation } from "../../../i18n/useTranslation";
@@ -30,6 +30,8 @@ interface Props {
   vault: MapSummary[];
   viewMode: GameViewMode;
   status: LobbyStatus;
+  /** Why this client has no lobby, which leaves nothing to reconnect to. */
+  unavailable: LobbyUnavailable | null;
   join: JoinState;
   onJoin: (game: Game) => void;
   onPreview: (game: Game) => void;
@@ -50,6 +52,7 @@ export function CustomGamesPanel({
   vault,
   viewMode,
   status,
+  unavailable,
   join,
   onJoin,
   onPreview,
@@ -67,7 +70,9 @@ export function CustomGamesPanel({
   // "No games match. Adjust the search or the filters" used to stand for all
   // of these, so a player who was not connected went looking for a filter.
   const emptyGames =
-    status === "disconnected" ? (
+    status === "disconnected" && unavailable ? (
+      <EmptyState icon="globe" title={t("lobby.browser.unavailable")} hint={t(`lobby.unavailable.${unavailable}`)} />
+    ) : status === "disconnected" ? (
       <EmptyState icon="globe" title={t("lobby.browser.disconnected")} hint={t("lobby.browser.disconnectedHint")}>
         <Button onClick={() => onReconnect()}>
           {t("status.reconnect")}

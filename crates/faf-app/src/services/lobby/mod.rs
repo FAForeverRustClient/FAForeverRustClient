@@ -24,29 +24,82 @@
 //! - `game_notifications`: the game, friend and queue-opponent signals.
 //! - `avatars`: the avatar picker and the fallback when one lapses.
 //! - `updates`: the dispatch of each server update to the modules above.
+//! - `unavailable`: what a client without a lobby answers every command with.
+//!
+//! The Android client builds `unavailable` alone. It watches replays and plays
+//! against the AI and never connects to the lobby, which is decided when it
+//! is compiled: the connection, the matchmaker, hosting, joining and the
+//! launch of an online game are not in it, so no setting or command can reach
+//! them there.
 
+#[cfg(not(target_os = "android"))]
 mod avatars;
+#[cfg(not(target_os = "android"))]
 mod connection;
+#[cfg(not(target_os = "android"))]
 mod game_notifications;
+#[cfg(not(target_os = "android"))]
 mod host_updates;
+#[cfg(not(target_os = "android"))]
 mod joining;
+#[cfg(not(target_os = "android"))]
 mod launch;
+#[cfg(not(target_os = "android"))]
 mod matchmaking;
+mod unavailable;
+#[cfg(not(target_os = "android"))]
 mod updates;
 
-use faf_domain::state::{HostGameConfig, JoinState, LobbyCommand, LobbyEvent};
+use faf_domain::state::LobbyCommand;
+#[cfg(not(target_os = "android"))]
+use faf_domain::state::{HostGameConfig, JoinState, LobbyEvent};
 
+#[cfg(not(target_os = "android"))]
 use crate::runtime::{
-    account::AccountConnection, Cancellable, EventSink, LatestRequest, LobbyOperations,
-    RunningGame, ServiceCtx,
+    account::AccountConnection, Cancellable, LatestRequest, LobbyOperations, RunningGame,
 };
+use crate::runtime::{EventSink, ServiceCtx};
+#[cfg(not(target_os = "android"))]
 use crate::sync::LockExt;
 
+#[cfg(not(target_os = "android"))]
 pub use connection::reconnect;
+#[cfg(not(target_os = "android"))]
 pub use game_notifications::GameFullReport;
+
+/// Why the Android client has no lobby. Its build decides that, so the
+/// service does not ask the port there (`infra::NoLobby` says the same).
+#[cfg(target_os = "android")]
+const NOT_BUILT: faf_domain::state::LobbyUnavailable =
+    faf_domain::state::LobbyUnavailable::NotInAndroidClient;
+
+/// Bring the lobby back, at sign-in and for the reconnect watchdog. The
+/// Android client has none to bring back, and says so again.
+#[cfg(target_os = "android")]
+pub async fn reconnect(ctx: &ServiceCtx, out: &EventSink) {
+    unavailable::announce(NOT_BUILT, ctx, out);
+}
+
+/// Say at startup why this client has no lobby: the page and the status bar
+/// read it from the state, and an offline or signed-out session never tries
+/// the connection that would otherwise be the first to say it.
+#[cfg(target_os = "android")]
+pub fn announce_unavailable(ctx: &ServiceCtx, out: &EventSink) {
+    unavailable::announce(NOT_BUILT, ctx, out);
+}
+
+/// Say at startup why this client has no lobby, if it has none (see the
+/// Android client's), signed in or not.
+#[cfg(not(target_os = "android"))]
+pub fn announce_unavailable(ctx: &ServiceCtx, out: &EventSink) {
+    if let Some(reason) = ctx.ports.lobby.unavailable() {
+        unavailable::announce(reason, ctx, out);
+    }
+}
 
 /// A game this client asked the server to host, as the launch order that
 /// answers the request needs to know it.
+#[cfg(not(target_os = "android"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HostedGame {
     /// The title sent, which the launch order repeats: how a launch is told
@@ -65,6 +118,7 @@ pub struct HostedGame {
 ///
 /// Owned by this service. The launcher, auth and reconnect services reach the
 /// parts they need through the named methods below, never the fields.
+#[cfg(not(target_os = "android"))]
 #[derive(Default)]
 pub struct LobbyContext {
     /// Single-flight guard for the lobby connection while `Connect` owns an
@@ -118,6 +172,7 @@ pub struct LobbyContext {
     full_announced: game_notifications::FullAnnouncements,
 }
 
+#[cfg(not(target_os = "android"))]
 impl LobbyContext {
     /// Whether the lobby work running here was called off or superseded. The
     /// launcher asks at every boundary where a cancelled join could still be
@@ -186,7 +241,39 @@ impl LobbyContext {
     }
 }
 
+/// The Android client's: no lobby to remember anything about, and no online
+/// game to remember.
+#[cfg(target_os = "android")]
+#[derive(Default)]
+pub struct LobbyContext {}
+
+#[cfg(target_os = "android")]
+impl LobbyContext {
+    /// Never a game here: the only games this client starts are offline
+    /// ones, which the game process keeps track of itself
+    /// (`ProcessPort::game_running`).
+    pub fn running_game_id(&self) -> Option<i32> {
+        None
+    }
+}
+
+/// Every lobby command of the Android client is answered without a lobby: the
+/// handlers that would host, join, queue, launch an online game or touch a
+/// party are not built there.
+#[cfg(target_os = "android")]
 pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
+    unavailable::handle(cmd, NOT_BUILT, ctx, out);
+}
+
+#[cfg(not(target_os = "android"))]
+pub async fn handle(cmd: LobbyCommand, ctx: &ServiceCtx, out: &EventSink) {
+    // A port with no lobby behind it gets the Android client's answers, to
+    // every command and with no way on to the handlers below, so the desktop
+    // tests that wire `infra::NoLobby` hold the service to what Android runs.
+    if let Some(reason) = ctx.ports.lobby.unavailable() {
+        unavailable::handle(cmd, reason, ctx, out);
+        return;
+    }
     match cmd {
         LobbyCommand::Connect => {
             // An explicit Connect is what asks for the lobby to be kept up,

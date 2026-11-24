@@ -121,7 +121,7 @@ async fn set_up_offline_game(
          You can cancel it from the status bar.",
         None,
     );
-    let outcome = super::launcher::prepare_featured_mod_narrated(
+    let outcome = super::preparation::prepare_featured_mod_narrated(
         OFFLINE_FEATURED_MOD,
         ctx,
         out,

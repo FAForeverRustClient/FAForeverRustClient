@@ -66,6 +66,26 @@ describe("a notification's text (#458)", () => {
     expect(notificationBodyDetail(refused)).toBe("the lobby went away");
   });
 
+  it("says why a client without a lobby refused a contact change, rather than to check its connection", () => {
+    const reason = "The FAF lobby is not part of the Android client, which watches replays and plays against the AI.";
+    const refused = item({
+      kind: "error",
+      title: "Could not update contacts",
+      body: reason,
+      text: {
+        key: "notifications.msg.contactChangeRefused",
+        params: { reason },
+        cause: "lobbyNotInAndroidClient",
+      },
+    });
+    expect(notificationTitle(refused)).toBe(en["notifications.msg.contactChangeRefused.title"]);
+    expect(notificationBody(refused)).toBe(en["errors.cause.lobbyNotInAndroidClient"]);
+
+    setLocale("de");
+    expect(notificationTitle(refused)).toBe(de["notifications.msg.contactChangeRefused.title"]);
+    expect(notificationBody(refused)).toBe(de["errors.cause.lobbyNotInAndroidClient"]);
+  });
+
   it("is translated from the catalogue entry the backend attached", () => {
     setLocale("de");
     expect(notificationTitle(item())).toBe("Freund online");

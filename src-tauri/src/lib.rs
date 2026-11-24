@@ -146,9 +146,13 @@ pub fn run() {
             // no-op after the first run. Placed after diagnostics so the
             // outcome is actually logged.
             faf_app::infra::migrate_legacy_directories();
-            let ice_log_dir = log_dir.join("iceAdapterLogs");
-            std::fs::create_dir_all(&ice_log_dir)?;
-            std::env::set_var("FAF_ICE_LOG_DIR", &ice_log_dir);
+            // Where the ICE adapters write, which Android has none of.
+            #[cfg(not(target_os = "android"))]
+            {
+                let ice_log_dir = log_dir.join("iceAdapterLogs");
+                std::fs::create_dir_all(&ice_log_dir)?;
+                std::env::set_var("FAF_ICE_LOG_DIR", &ice_log_dir);
+            }
             let backend_version = env!("CARGO_PKG_VERSION").to_string();
             startup::locate_bundled_helpers(app);
             let core = startup::start_core(app, backend_version);

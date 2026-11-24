@@ -29,6 +29,7 @@ import { useLocale } from "../../i18n/useTranslation";
 import { joinGame } from "../../shared/joinGame";
 import { useRememberedFilter } from "../../shared/filterMemory";
 import { onlineCommanders } from "./galactic-war/galacticWarOnline";
+import { galacticWarIsSupported } from "../../shared/platform";
 
 /// How often the Galactic War player count is re-asked while the Play tab is
 /// open. A minute: often enough that the number is not stale advice about
@@ -182,7 +183,12 @@ export function LobbyView() {
   // nobody" is what that looks like from outside. Only the statistics are
   // asked for, not the install check, and only while this tab is mounted: the
   // gateway is a service outside FAF and this is not a background poller.
-  useForegroundInterval(() => ipc.send({ kind: "GalacticWar", command: { type: "refreshStatistics" } }), GALACTIC_WAR_POLL_MS);
+  // Nor where Galactic War is not offered, which has no number to print.
+  useForegroundInterval(
+    () => ipc.send({ kind: "GalacticWar", command: { type: "refreshStatistics" } }),
+    GALACTIC_WAR_POLL_MS,
+    galacticWarIsSupported(),
+  );
 
   return (
     <div className="play-view">
@@ -289,6 +295,7 @@ export function LobbyView() {
           vault={maps.vault}
           viewMode={gameView}
           status={lobby.status}
+          unavailable={lobby.unavailable}
           join={lobby.join}
           onJoin={requestJoin}
           onPreview={setPreviewGame}

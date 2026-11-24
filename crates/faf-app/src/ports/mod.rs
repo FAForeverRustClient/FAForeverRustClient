@@ -72,9 +72,9 @@ pub use mods::{LatestModVersion, ModPrepFailure, ModSearchPage, ModsPort};
 pub use notification_sounds::NotificationSoundsPort;
 pub use paths::PathsPort;
 pub use player_card::PlayerCardPort;
-pub use process::{
-    DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort, ReplayMetadata,
-};
+pub use process::{DiscoveredInstallPaths, InstallPresence, ProcessPort};
+#[cfg(not(target_os = "android"))]
+pub use process::{GameLaunchParams, ReplayMetadata};
 pub use replay::{
     PreparationSink, ReplayDetailsPort, ReplayLibraryPort, ReplayPlaybackPort, ReplayVaultPort,
     VaultSearchResult, DEFAULT_LOCAL_REPLAY_LIMIT,

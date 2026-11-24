@@ -178,6 +178,7 @@ export function CoopPanel({
   }, [missionsInActiveScenario, coop.selectedMissionId]);
 
   const lobbyStatus = useAppStore((state) => state.state.lobby.status);
+  const lobbyUnavailable = useAppStore((state) => state.state.lobby.unavailable);
   const connected = lobbyStatus === "connected";
   // Every open co-op game, before the search and the filters: what tells "a
   // search hid them all" from "nobody is playing".
@@ -222,7 +223,14 @@ export function CoopPanel({
   // custom games list's own words: a Host button while offline could not
   // work, and "no open games" while a search hid them all was untrue.
   const empty =
-    emptyReason === "disconnected" ? (
+    emptyReason === "disconnected" && lobbyUnavailable ? (
+      <EmptyState
+        icon="globe"
+        title={t("lobby.browser.unavailable")}
+        hint={t(`lobby.unavailable.${lobbyUnavailable}`)}
+        className="coop-games-empty"
+      />
+    ) : emptyReason === "disconnected" ? (
       <EmptyState
         icon="globe"
         title={t("lobby.browser.disconnected")}

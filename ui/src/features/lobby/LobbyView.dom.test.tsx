@@ -11,7 +11,7 @@
 
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AppCommand, CustomGameBrowserPreferences, Game, InstalledMap, PlayMode } from "../../ipc/bindings";
 import { failOnConsoleError } from "../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../testing/mounted";
@@ -400,5 +400,36 @@ describe("LobbyView mode tabs, mounted", () => {
       if (panelClass) expect(panel?.classList.contains(panelClass)).toBe(true);
       else expect(within(panel as HTMLElement).getByText("Loading matchmaker queues")).toBeDefined();
     }
+  });
+});
+
+describe("LobbyView on Android, mounted", () => {
+  // A phone's webview, which says Linux as well.
+  const ANDROID = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36";
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const galacticWarAsked = () => sentCommands().filter((command) => command.kind === "GalacticWar");
+
+  it("offers Galactic War and asks its gateway for the season elsewhere", () => {
+    clearSentCommands();
+    mountPlayTab();
+    expect(screen.getByRole("tab", { name: /Galactic War/ })).toBeDefined();
+    expect(galacticWarAsked()).toHaveLength(1);
+  });
+
+  it("offers no Galactic War, which has no build for a phone, and asks its gateway nothing", () => {
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue(ANDROID);
+    clearSentCommands();
+    mountPlayTab();
+    expect(screen.queryByRole("tab", { name: /Galactic War/ })).toBeNull();
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual([
+      expect.stringMatching(/^Custom/),
+      expect.stringMatching(/^Matchmaker/),
+      expect.stringMatching(/^Coop/),
+    ]);
+    expect(galacticWarAsked()).toEqual([]);
   });
 });

@@ -67,11 +67,17 @@ export function reduceLobby(state: LobbyState, event: LobbyEvent): LobbyState {
       return {
         ...state,
         status: "connecting",
+        // A lobby being connected to is one this client has.
+        unavailable: null,
         join: state.join.type === "launched" || state.join.type === "inGame" ? state.join : { type: "idle" },
         matchmaking: state.matchmaking.type === "launching" ? state.matchmaking : { type: "idle" },
       };
     case "connected":
       return { ...state, status: "connected" };
+    // This client has no lobby, decided before any socket could open. See
+    // the Rust twin in `state/lobby.rs`.
+    case "unavailable":
+      return { ...state, status: "disconnected", unavailable: event.payload.reason };
     // Another tab asked for the host dialog; the Play tab opens it when it sees
     // this and clears it on close.
     case "hostPrepared":

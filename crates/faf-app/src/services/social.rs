@@ -16,6 +16,7 @@
 
 use faf_domain::state::{Contact, NotificationKind, Relation, SocialCommand, SocialEvent};
 
+use crate::ports::LobbySendError;
 use crate::runtime::{EventSink, ServiceCtx};
 
 pub async fn handle(cmd: SocialCommand, ctx: &ServiceCtx, out: &EventSink) {
@@ -47,6 +48,21 @@ pub async fn handle(cmd: SocialCommand, ctx: &ServiceCtx, out: &EventSink) {
             relation,
             member,
         } => {
+            // A client without a lobby has nowhere to send it, and says why:
+            // telling the player to check a connection the client does not
+            // have sent them looking for one.
+            if let Some(reason) = ctx.ports.lobby.unavailable() {
+                let refusal = LobbySendError::Unavailable(reason);
+                super::notifications::add_required_failure(
+                    out,
+                    super::notifications::Text::new("notifications.msg.contactChangeRefused")
+                        .with_cause(refusal.cause()),
+                    "Could not update contacts",
+                    refusal.reason(),
+                    None,
+                );
+                return;
+            }
             let login = out
                 .with_state(|state| {
                     state

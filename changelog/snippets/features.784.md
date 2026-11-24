@@ -1,1 +1,1 @@
-- The client builds for Android as an APK. Signing in and playing from Android follow in later releases.
+- The client builds for Android as an APK, for watching replays and playing against the AI: it never connects to the FAF lobby, so matchmaking, custom games and hosting stay with the desktop client. Signing in and starting a game from Android follow in later releases.

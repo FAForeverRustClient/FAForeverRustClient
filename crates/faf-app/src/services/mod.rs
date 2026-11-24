@@ -77,6 +77,7 @@ pub mod discord;
 pub mod events;
 pub mod galactic_war;
 pub mod guides;
+#[cfg(not(target_os = "android"))]
 pub mod launcher;
 pub mod leaderboard;
 pub(crate) mod lifecycle;
@@ -88,6 +89,7 @@ pub mod mods;
 pub mod nav;
 pub mod notifications;
 pub mod player_card;
+pub mod preparation;
 pub mod reconnect;
 pub mod replays;
 pub mod reporting;

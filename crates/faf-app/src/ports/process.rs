@@ -10,7 +10,9 @@ use faf_domain::state::{CompanionOutcome, CompanionProgram, CompanionRun};
 use std::path::{Path, PathBuf};
 use tokio::sync::mpsc;
 
-/// Parameters for one game launch.
+/// Parameters for one online game's launch. Not in the Android client, which
+/// plays offline only (`services::lobby`).
+#[cfg(not(target_os = "android"))]
 #[derive(Debug, Clone)]
 pub struct GameLaunchParams {
     pub game_id: i32,
@@ -39,6 +41,9 @@ pub struct GameLaunchParams {
 ///
 /// The fields mirror the Python client's `fa.instance._info`, which is what both
 /// reference clients write and read.
+///
+/// Only an online game is recorded, so not in the Android client either.
+#[cfg(not(target_os = "android"))]
 #[derive(Debug, Clone, Default)]
 pub struct ReplayMetadata {
     pub uid: i32,
@@ -103,6 +108,7 @@ pub trait ProcessPort: Send + Sync {
     /// Whether this port is backed by a configured live-game launcher. The
     /// lobby service uses the capability instead of reading environment
     /// configuration directly, keeping deployment choices behind the port.
+    #[cfg(not(target_os = "android"))]
     fn supports_live_launch(&self) -> bool;
 
     /// Whether a replay window this port started is still open.
@@ -145,8 +151,12 @@ pub trait ProcessPort: Send + Sync {
         false
     }
 
-    /// Launch the game. Returns once the process has been spawned. Errors if the
-    /// executable can't be resolved or started.
+    /// Launch an online game. Returns once the process has been spawned.
+    /// Errors if the executable can't be resolved or started.
+    ///
+    /// Not in the Android client, which never connects to the lobby that
+    /// orders one.
+    #[cfg(not(target_os = "android"))]
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String>;
 
     /// Launch a single-player game on the *live* install: no lobby, no

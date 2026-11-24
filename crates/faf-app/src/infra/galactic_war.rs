@@ -628,7 +628,8 @@ impl GalacticWarPort for GalacticWarGateway {
 
 /// Reports that Galactic War is unavailable, without asking anyone.
 ///
-/// Used offline and in tests. The statistics call fails rather than returning
+/// Used offline, in tests, and in the Android client, which has no Galactic
+/// War: there is no build of it for a phone. The statistics call fails rather than returning
 /// an empty document: a panel of zeroes claims the season is empty, which is a
 /// statement about the world, while a failure says only that we do not know.
 #[derive(Debug, Clone, Default)]

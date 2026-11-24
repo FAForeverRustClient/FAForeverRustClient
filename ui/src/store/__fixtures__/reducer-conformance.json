@@ -12557,6 +12557,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12589,6 +12590,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12629,6 +12631,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12669,6 +12672,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12701,6 +12705,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12741,6 +12746,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12783,6 +12789,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12815,6 +12822,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12847,6 +12855,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12879,6 +12888,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12911,6 +12921,114 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
+            "vetoes": []
+          }
+        }
+      ]
+    },
+    {
+      "name": "a lobby the client lacks is disconnected with its reason until one is tried",
+      "steps": [
+        {
+          "event": {
+            "event": {
+              "type": "connecting"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "unavailable": null,
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "payload": {
+                "reason": "notInAndroidClient"
+              },
+              "type": "unavailable"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "disconnected",
+            "unavailable": "notInAndroidClient",
+            "vetoes": []
+          }
+        },
+        {
+          "event": {
+            "event": {
+              "type": "connecting"
+            },
+            "kind": "Lobby"
+          },
+          "expected": {
+            "availableAvatars": [],
+            "avatarListError": "",
+            "avatarListStatus": "idle",
+            "avatarSelectionError": "",
+            "avatarSelectionStatus": "idle",
+            "games": [],
+            "hostPrefill": null,
+            "join": {
+              "type": "idle"
+            },
+            "liveGames": [],
+            "matchmakerQueues": [],
+            "matchmaking": {
+              "type": "idle"
+            },
+            "party": {
+              "members": [],
+              "ownerId": null
+            },
+            "playMode": "custom",
+            "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -12948,6 +13066,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -12991,6 +13110,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13034,6 +13154,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13069,6 +13190,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13101,6 +13223,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13148,6 +13271,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13185,6 +13309,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -13222,6 +13347,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13269,6 +13395,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13301,6 +13428,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13333,6 +13461,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13382,6 +13511,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13414,6 +13544,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13446,6 +13577,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13489,6 +13621,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13524,6 +13657,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13559,6 +13693,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13591,6 +13726,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -13628,6 +13764,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13671,6 +13808,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13709,6 +13847,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13755,6 +13894,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13800,6 +13940,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13832,6 +13973,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13875,6 +14017,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13910,6 +14053,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13945,6 +14089,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -13977,6 +14122,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -14014,6 +14160,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14057,6 +14204,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14130,6 +14278,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14187,6 +14336,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14249,6 +14399,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14287,6 +14438,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14330,6 +14482,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14375,6 +14528,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14410,6 +14564,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -14447,6 +14602,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14487,6 +14643,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14547,6 +14704,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14579,6 +14737,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -14677,6 +14836,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14760,6 +14920,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14861,6 +15022,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14893,6 +15055,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -14933,6 +15096,7 @@
             },
             "playMode": "matchmaking",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14965,6 +15129,7 @@
             },
             "playMode": "matchmaking",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -14997,6 +15162,7 @@
             },
             "playMode": "matchmaking",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -15034,6 +15200,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -15079,6 +15246,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -15116,6 +15284,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -15153,6 +15322,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -15185,6 +15355,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -44685,6 +44856,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -44717,6 +44889,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -74853,6 +75026,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -74893,6 +75067,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -74933,6 +75108,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -74969,6 +75145,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75001,6 +75178,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75033,6 +75211,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75073,6 +75252,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75143,6 +75323,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75194,6 +75375,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75245,6 +75427,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75296,6 +75479,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75328,6 +75512,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75360,6 +75545,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -75397,6 +75583,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75534,6 +75721,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75675,6 +75863,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75813,6 +76002,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -75954,6 +76144,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76063,6 +76254,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76176,6 +76368,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76208,6 +76401,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -76245,6 +76439,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76315,6 +76510,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76372,6 +76568,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -76441,6 +76638,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -76495,6 +76693,7 @@
             },
             "playMode": "custom",
             "status": "connecting",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -76549,6 +76748,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -76609,6 +76809,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 91,
@@ -76658,6 +76859,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76707,6 +76909,7 @@
             },
             "playMode": "custom",
             "status": "connected",
+            "unavailable": null,
             "vetoes": [
               {
                 "mapPoolMapVersionId": 92,
@@ -76745,6 +76948,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -76782,6 +76986,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76817,6 +77022,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76849,6 +77055,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76884,6 +77091,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76916,6 +77124,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76961,6 +77170,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -76998,6 +77208,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -77038,6 +77249,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -77078,6 +77290,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         },
@@ -77110,6 +77323,7 @@
             },
             "playMode": "custom",
             "status": "disconnected",
+            "unavailable": null,
             "vetoes": []
           }
         }
@@ -138255,6 +138469,7 @@
       },
       "playMode": "custom",
       "status": "disconnected",
+      "unavailable": null,
       "vetoes": []
     },
     "mapGenerator": {

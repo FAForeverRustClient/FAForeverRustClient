@@ -3,6 +3,11 @@
 //! Both the ICE adapter and current Neroxis generator require a modern JVM.
 //! Looking up `java` independently made the adapter reuse the official FAF
 //! client's runtime while map generation still found an obsolete system Java.
+//!
+//! What a runtime reports and what an adapter's jar needs are the
+//! connectivity check's questions, so they are not built on Android, which
+//! has neither the check nor the adapter. The lookup is: the map generator
+//! asks it there too.
 
 use std::path::PathBuf;
 
@@ -77,6 +82,7 @@ fn resolve_java_from_roots(roots: &[PathBuf]) -> Option<PathBuf> {
 /// to stderr; the quoted part is the version on every vendor's build. Before
 /// Java 9 it read `"1.8.0_292"`, where the feature release is the second
 /// number.
+#[cfg(not(target_os = "android"))]
 pub(crate) fn parse_java_version(output: &str) -> Option<(String, Option<u32>)> {
     let (_, after) = output.split_once("version \"")?;
     let (version, _) = after.split_once('"')?;
@@ -93,6 +99,7 @@ pub(crate) fn parse_java_version(output: &str) -> Option<(String, Option<u32>)> 
 ///
 /// Bounded, because a JVM that never starts must not hold the connectivity
 /// check: ten seconds is several cold starts.
+#[cfg(not(target_os = "android"))]
 pub(crate) async fn query_java_version(
     path: &str,
 ) -> Result<(Option<String>, Option<u32>), String> {
@@ -126,6 +133,7 @@ pub(crate) async fn query_java_version(
 /// The Java feature release a class file was compiled for, from its header:
 /// the `0xCAFEBABE` magic, then the minor and major version. Major 65 is
 /// Java 21, and every release adds one.
+#[cfg(not(target_os = "android"))]
 pub(crate) fn class_file_java_version(header: &[u8]) -> Option<u32> {
     if header.len() < 8 || header[0..4] != [0xCA, 0xFE, 0xBA, 0xBE] {
         return None;
@@ -135,6 +143,7 @@ pub(crate) fn class_file_java_version(header: &[u8]) -> Option<u32> {
 
 /// The Java release a jar's main class needs, read from the jar itself so the
 /// check follows whichever adapter build is installed.
+#[cfg(not(target_os = "android"))]
 pub(crate) fn jar_required_java(jar: &std::path::Path) -> Option<u32> {
     use std::io::Read;
     let file = std::fs::File::open(jar).ok()?;
@@ -163,6 +172,7 @@ pub(crate) fn jar_required_java(jar: &std::path::Path) -> Option<u32> {
 mod tests {
     use super::*;
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn reads_the_version_every_vendor_prints() {
         assert_eq!(
@@ -180,6 +190,7 @@ mod tests {
         assert_eq!(parse_java_version("Error: could not create the VM"), None);
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn a_class_header_says_which_java_it_needs() {
         assert_eq!(
@@ -194,6 +205,7 @@ mod tests {
         assert_eq!(class_file_java_version(&[0xCA, 0xFE]), None);
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn reads_the_required_java_out_of_a_jar() {
         use std::io::Write;

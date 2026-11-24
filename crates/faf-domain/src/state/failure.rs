@@ -35,4 +35,9 @@ pub enum FailureCause {
     /// The lobby connection's outgoing queue is full; the request was not
     /// sent, and may be retried in a moment.
     LobbySendBusy,
+    /// This client has no lobby to send it to
+    /// ([`crate::state::LobbyUnavailable::NotInAndroidClient`]). Not
+    /// [`Self::LobbyDisconnected`], whose sentence tells the reader to
+    /// reconnect.
+    LobbyNotInAndroidClient,
 }

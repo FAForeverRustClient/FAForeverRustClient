@@ -80,6 +80,7 @@ export function MatchmakingPanel({
   const liveGames = useAppStore((state) => state.state.lobby.liveGames);
   const openGames = useAppStore((state) => state.state.lobby.games);
   const join = useAppStore((state) => state.state.lobby.join);
+  const lobbyUnavailable = useAppStore((state) => state.state.lobby.unavailable);
   const serverVetoes = useAppStore((state) => state.state.lobby.vetoes);
   const player = useAppStore((state) => state.state.auth.player);
   const playerCard = useAppStore((state) => state.state.playerCard);
@@ -310,6 +311,16 @@ export function MatchmakingPanel({
     setMapPoolQueueName(queue.queueName);
     ipc.send({ kind: "Maps", command: { type: "loadMatchmakerPools", payload: { queueName: queue.queueName } } });
   };
+
+  // A client without a lobby has no queues coming: it says why, as the custom
+  // games list does, rather than wait for them.
+  if (lobbyUnavailable !== null) {
+    return (
+      <div {...panelProps}>
+        <EmptyState icon="globe" title={t("lobby.browser.unavailable")} hint={t(`lobby.unavailable.${lobbyUnavailable}`)} />
+      </div>
+    );
+  }
 
   if (queues.length === 0) {
     // A plain block around the state, so the mode tab still has its panel

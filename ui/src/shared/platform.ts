@@ -32,6 +32,15 @@ export function runsOnWindows(): boolean {
 }
 
 /**
+ * Whether the client is the Android one, which watches replays and plays
+ * against the AI. Its user agent says Linux as well.
+ */
+export function runsOnAndroid(): boolean {
+  const agent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  return /Android/i.test(agent);
+}
+
+/**
  * Whether the Steam status can work here: Windows and Linux, the two systems
  * the client is released for and ships Valve's library on.
  *
@@ -41,5 +50,13 @@ export function runsOnWindows(): boolean {
  */
 export function steamStatusIsSupported(): boolean {
   const agent = typeof navigator === "undefined" ? "" : navigator.userAgent;
-  return runsOnWindows() || (/Linux/i.test(agent) && !/Android/i.test(agent));
+  return runsOnWindows() || (/Linux/i.test(agent) && !runsOnAndroid());
+}
+
+/**
+ * Whether Galactic War can be played here. It is a desktop game, with Windows
+ * and Linux builds only, and the Android client's backend has none behind it.
+ */
+export function galacticWarIsSupported(): boolean {
+  return !runsOnAndroid();
 }

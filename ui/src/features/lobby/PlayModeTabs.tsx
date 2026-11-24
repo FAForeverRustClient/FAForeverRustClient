@@ -1,6 +1,7 @@
 import { SectionTabs, sectionPanelProps, type SectionTab } from "../../design-system/SectionTabs";
 import type { MessageKey } from "../../i18n";
 import { useTranslation } from "../../i18n/useTranslation";
+import { galacticWarIsSupported } from "../../shared/platform";
 
 export type PlayMode = "custom" | "matchmaking" | "coop" | "galacticWar";
 
@@ -45,7 +46,10 @@ const TABS: Array<{
 
 export function PlayModeTabs(props: Props) {
   const { t } = useTranslation();
-  const items: SectionTab<PlayMode>[] = TABS.map((tab) => ({
+  // Galactic War is left out where it cannot be played rather than offered
+  // and refused: the Android client has no build of it to install.
+  const tabs = galacticWarIsSupported() ? TABS : TABS.filter((tab) => tab.mode !== "galacticWar");
+  const items: SectionTab<PlayMode>[] = tabs.map((tab) => ({
     id: tab.mode,
     label: t(tab.label),
     count: props[tab.count],

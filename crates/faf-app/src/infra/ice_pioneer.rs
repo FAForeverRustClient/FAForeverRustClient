@@ -14,7 +14,7 @@
 //! The binary is located via `FAF_ICE_ADAPTER_PATH`, or as `faf-pioneer[.exe]`
 //! in `natives/` beside the packaged app, where `scripts/ensure-faf-pioneer.mjs`
 //! downloads it during `pnpm run tauri`. It is an experimental fallback; explicit
-//! offline/test sessions inject [`FakeIce`] instead.
+//! offline/test sessions inject [`FakeIce`](super::FakeIce) instead.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -406,26 +406,6 @@ fn json_from_gpg_args(args: &[GpgArg]) -> Vec<Value> {
             GpgArg::Str(s) => Value::from(s.clone()),
         })
         .collect()
-}
-
-/// Inert ICE port: used offline and in tests. Yields a session whose channels
-/// carry nothing, so the launcher's pump idles and nothing real starts.
-#[derive(Debug, Clone, Default)]
-pub struct FakeIce;
-
-#[async_trait]
-impl IcePort for FakeIce {
-    async fn start(&self, _params: IceParams) -> Result<ConnectivitySession, String> {
-        let (_to_lobby_tx, to_lobby_rx) = mpsc::channel::<RelayMsg>(1);
-        let (from_lobby_tx, _from_lobby_rx) = mpsc::channel::<RelayMsg>(1);
-        Ok(ConnectivitySession {
-            game_port: 0,
-            to_lobby: to_lobby_rx,
-            from_lobby: from_lobby_tx,
-            late_failure: None,
-        })
-    }
-    fn stop(&self) {}
 }
 
 #[cfg(test)]

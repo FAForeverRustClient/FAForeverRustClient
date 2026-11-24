@@ -10,8 +10,8 @@
 
 use async_trait::async_trait;
 use faf_domain::state::{
-    AvailableAvatar, Contact, Game, GameLaunch, HostGameConfig, MatchmakerQueue, MatchmakingState,
-    PartyState, PlayerProfile, PlayerVeto, Relation,
+    AvailableAvatar, Contact, FailureCause, Game, GameLaunch, HostGameConfig, LobbyUnavailable,
+    MatchmakerQueue, MatchmakingState, PartyState, PlayerProfile, PlayerVeto, Relation,
 };
 use serde_json::Value;
 use tokio::sync::mpsc;
@@ -136,14 +136,20 @@ pub enum LobbyUpdate {
 pub enum LobbySendError {
     Disconnected,
     Busy,
+    /// There is no lobby to send it to, and never will be in this client:
+    /// see [`LobbyPort::unavailable`].
+    Unavailable(LobbyUnavailable),
 }
 
 impl LobbySendError {
     /// The cause, for the UI to word in the reader's language.
-    pub fn cause(self) -> faf_domain::state::FailureCause {
+    pub fn cause(self) -> FailureCause {
         match self {
-            Self::Disconnected => faf_domain::state::FailureCause::LobbyDisconnected,
-            Self::Busy => faf_domain::state::FailureCause::LobbySendBusy,
+            Self::Disconnected => FailureCause::LobbyDisconnected,
+            Self::Busy => FailureCause::LobbySendBusy,
+            Self::Unavailable(LobbyUnavailable::NotInAndroidClient) => {
+                FailureCause::LobbyNotInAndroidClient
+            }
         }
     }
 
@@ -152,6 +158,9 @@ impl LobbySendError {
         match self {
             Self::Disconnected => "The FAF lobby is disconnected. Reconnect and try again.",
             Self::Busy => "The FAF lobby send queue is full. Wait a moment and try again.",
+            Self::Unavailable(LobbyUnavailable::NotInAndroidClient) => {
+                "The FAF lobby is not part of the Android client, which watches replays and plays against the AI."
+            }
         }
     }
 }
@@ -162,6 +171,13 @@ pub trait LobbyPort: Send + Sync {
     async fn resolve_contacts(&self, _ids: &[i32]) -> Result<(), String> {
         Err("contact lookup is unavailable".into())
     }
+    /// Why this port will not connect at all, asked before [`Self::connect`]
+    /// and before any request is prepared. `None` for a port that can, which
+    /// is every port but the Android client's stand-in (`infra::NoLobby`).
+    fn unavailable(&self) -> Option<LobbyUnavailable> {
+        None
+    }
+
     /// Connect to the lobby. The receiver yields a [`LobbyUpdate`] on each change;
     /// it closes when the connection ends (server-side or via [`Self::disconnect`]).
     async fn connect(&self) -> mpsc::Receiver<LobbyUpdate>;

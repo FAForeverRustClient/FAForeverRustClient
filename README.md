@@ -164,8 +164,14 @@ pnpm exec tauri android build --apk --target aarch64
   desktop-only parts (the tray, the single-instance and window-state plugins, the notification
   popup window, the folder picker) are behind `cfg(desktop)`. The app runs in landscape: the
   page is the desktop one.
+- The Android client is for watching replays and playing against the AI, and never connects
+  to the FAF lobby: no matchmaker, no custom games, no hosting. That is decided at compile
+  time. The lobby connection, the ICE adapters and their connectivity check are not built for
+  `target_os = "android"`, and `crates/faf-app/src/infra/no_lobby.rs` stands in for them, so
+  no setting, flag or environment variable brings them back. A request that needs the lobby is
+  refused with that reason, and the Play tab says it.
 - What works so far: the app starts and shows the sign-in screen (checked on the emulator).
-  Signing in, the lobby and starting a game on Android are not done yet.
+  Signing in and starting a game on Android are not done yet.
 
 ## Conventions
 

@@ -129,7 +129,8 @@ export const INITIAL_STATE: AppState = {
     "avatarListError": "",
     "avatarSelectionStatus": "idle",
     "avatarSelectionError": "",
-    "hostPrefill": null
+    "hostPrefill": null,
+    "unavailable": null
   },
   "replays": {
     "status": {

@@ -18,6 +18,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppCommand, MatchmakerPlayerProfile, MatchmakerQueue, MatchmakingState, PartyState } from "../../../ipc/bindings";
 import { formatNumber } from "../../../i18n";
+import { en } from "../../../i18n/catalog/en";
 import { failOnConsoleError } from "../../../testing/consoleGuard";
 import { applyEvent, clearSentCommands, seedStore, sentCommands } from "../../../testing/mounted";
 import { LobbyView } from "../LobbyView";
@@ -493,6 +494,20 @@ describe("MatchmakingPanel, mounted", () => {
     // The panel did not answer the drop by sending anything of its own.
     expect(lobbySent("matchmake")).toEqual([]);
     expect(lobbySent("startSearch")).toEqual([]);
+  });
+
+  it("says why in a client without a lobby, rather than wait for queues that never come", () => {
+    seedStore((state) => ({
+      ...state,
+      auth: { ...state.auth, status: "loggedIn", player: ME },
+      lobby: { ...state.lobby, status: "disconnected", playMode: "matchmaking", unavailable: "notInAndroidClient" },
+    }));
+    render(<LobbyView />);
+
+    expect(screen.getByText(en["lobby.browser.unavailable"])).toBeDefined();
+    expect(screen.getByText(en["lobby.unavailable.notInAndroidClient"])).toBeDefined();
+    expect(screen.queryByText("Loading matchmaker queues")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Start search|Stop searching/ })).toBeNull();
   });
 
   it("keeps a launching match locked through a reconnect blip and frees it once the connection is lost", () => {

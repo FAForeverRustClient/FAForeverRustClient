@@ -41,9 +41,14 @@
 //!   base-game map's picture out of the original game). `registry` reads the Windows
 //!   registry values the original game's discovery needs.
 //! * **Fakes with no real counterpart in the same file**: `lobby_fake`,
-//!   `chat_fake`, `settings_fake`, `tourney_fake`. The other fakes sit at the
-//!   bottom of the adapter they stand in for. [`fake_ports`] assembles the
-//!   offline bundle.
+//!   `chat_fake`, `settings_fake`, `tourney_fake`, and `ice_fake` and
+//!   `connectivity_fake`, which Android builds without the adapters they
+//!   stand in for. The other fakes sit at the bottom of the adapter they
+//!   stand in for. [`fake_ports`] assembles the offline bundle.
+//! * **Android**: `no_lobby` is what the Android client has where the desktop
+//!   one has the lobby, the ICE adapters and their connectivity check. Those
+//!   (`lobby_ws`, `ice_java`, `ice_pioneer`, `ice_select`, `gpgnet_proxy`,
+//!   `jsonrpc`, `relay`, `connectivity`) are not built for Android at all.
 //! * **Cross-cutting**: `session` (the access token store), `discord`, and
 //!   `web_link`, the socket to the web client.
 
@@ -74,7 +79,9 @@ pub mod chat_fake;
 pub mod clan;
 pub mod client_update;
 pub mod companions;
+#[cfg(not(target_os = "android"))]
 pub mod connectivity;
+pub mod connectivity_fake;
 pub mod coop;
 pub mod discord;
 pub mod events;
@@ -86,23 +93,30 @@ pub mod game_cache;
 pub mod game_logs;
 pub mod game_prefs_backup;
 pub mod game_updater;
+#[cfg(not(target_os = "android"))]
 pub(crate) mod gpgnet_proxy;
 pub mod guides;
 mod history_cache;
 pub(crate) mod http;
+pub mod ice_fake;
+#[cfg(not(target_os = "android"))]
 pub mod ice_java;
+#[cfg(not(target_os = "android"))]
 pub mod ice_pioneer;
+#[cfg(not(target_os = "android"))]
 pub mod ice_select;
 mod interrupted_work;
 pub mod irc;
 pub(crate) mod irc_session;
 pub(crate) mod java_runtime;
 pub(crate) mod jsonapi;
+#[cfg(not(target_os = "android"))]
 pub mod jsonrpc;
 pub mod leaderboard;
 pub(crate) mod league_keys;
 pub mod linux_runtime;
 pub mod lobby_fake;
+#[cfg(not(target_os = "android"))]
 pub mod lobby_ws;
 pub mod map_analysis;
 pub mod map_generator;
@@ -110,6 +124,7 @@ pub mod map_markers;
 pub mod maps;
 mod metadata_file;
 pub mod mods;
+pub mod no_lobby;
 pub mod notification_sounds;
 pub mod oauth;
 pub mod official_map_preview;
@@ -119,12 +134,18 @@ pub mod png;
 #[cfg(windows)]
 pub(crate) mod process_list;
 pub(crate) mod registry;
+#[cfg(not(target_os = "android"))]
 pub mod relay;
 mod release_metadata;
 pub mod replay;
 pub(crate) mod replay_analysis;
+// A game this client plays online, recorded and posted to FAF: not in the
+// Android client, which plays offline only.
+#[cfg(not(target_os = "android"))]
 pub(crate) mod replay_recorder;
+#[cfg(not(target_os = "android"))]
 pub(crate) mod replay_relay;
+#[cfg(not(target_os = "android"))]
 mod replay_spool;
 pub mod reporting;
 pub(crate) mod review_totals;
@@ -152,26 +173,35 @@ pub use changelog::{ChangelogClient, ChangelogConfig, FakeChangelog};
 pub use chat_fake::FakeChat;
 pub use clan::{ClanClient, ClanConfig, FakeClan};
 pub use client_update::{ClientUpdateConfig, FakeClientUpdates, GitHubUpdates};
-pub use connectivity::{ConnectivityProbe, FakeConnectivity, IceSessionMemory};
+#[cfg(not(target_os = "android"))]
+pub use connectivity::{ConnectivityProbe, IceSessionMemory};
+pub use connectivity_fake::FakeConnectivity;
 pub use coop::{CoopClient, CoopConfig, FakeCoop};
 pub use discord::{DiscordClient, DiscordConfig, FakeDiscord};
 pub use events::{EventsCatalogueClient, EventsConfig, FakeEvents};
 pub use galactic_war::{FakeGalacticWar, GalacticWarConfig, GalacticWarGateway};
 pub use game::{FakeGame, GameConfig, GameProcess};
 pub use guides::{FakeGuides, GuidesClient, GuidesConfig};
+pub use ice_fake::FakeIce;
+#[cfg(not(target_os = "android"))]
 pub use ice_java::{JavaAdapter, JavaConfig};
-pub use ice_pioneer::{FakeIce, IceConfig, PioneerAdapter};
+#[cfg(not(target_os = "android"))]
+pub use ice_pioneer::{IceConfig, PioneerAdapter};
+#[cfg(not(target_os = "android"))]
 pub use ice_select::SelectableIce;
 pub use irc::{IrcClient, IrcConfig};
 pub use leaderboard::{FakeLeaderboard, LeaderboardClient, LeaderboardConfig};
 pub use lobby_fake::FakeLobby;
+#[cfg(not(target_os = "android"))]
 pub use lobby_ws::{LobbyClient, LobbyConfig};
 pub use map_generator::{FakeMapGenerator, MapGeneratorConfig, NeroxisMapGenerator};
 pub use maps::{FakeMaps, MapsClient, MapsConfig};
 pub use mods::{FakeMods, ModsClient, ModsConfig};
+pub use no_lobby::{NoConnectivity, NoIce, NoLobby};
 pub use oauth::{OAuthAuth, OAuthConfig};
 pub use paths::{ConfiguredPaths, FakePaths};
 pub use player_card::{FakePlayerCard, PlayerCardClient, PlayerCardConfig};
+#[cfg(not(target_os = "android"))]
 pub use relay::{GpgRelayServer, RelayChannels};
 pub use replay::{
     FakeReplay, ReplayAdapters, ReplayConfig, ReplayLibrary, ReplayPlayback, ReplayReader,
@@ -242,6 +272,7 @@ pub(crate) fn hide_console(command: &mut tokio::process::Command) {
 /// backends to pick GPGNet/RPC ports for subprocesses. Mirrors the Python client's
 /// `tcp_server()` helper; the brief gap before the subprocess binds is the same
 /// small race it accepts.
+#[cfg(not(target_os = "android"))]
 pub(crate) fn free_port() -> Option<u16> {
     free_ports(1).map(|ports| ports[0])
 }
@@ -257,6 +288,7 @@ pub(crate) fn free_port() -> Option<u16> {
 ///
 /// The gap between choosing and the subprocess binding is still there and is
 /// still the race the reference client accepts.
+#[cfg(not(target_os = "android"))]
 pub(crate) fn free_ports(count: usize) -> Option<Vec<u16>> {
     let mut listeners = Vec::with_capacity(count);
     for _ in 0..count {
@@ -742,13 +774,15 @@ pub fn fake_ports() -> Ports {
 /// developing against the real account flow. `FAF_REAL_LOBBY` and
 /// `FAF_REAL_CHAT` remain accepted as backwards-compatible no-op overrides;
 /// real services are the default whenever `FAF_FAKE_AUTH` is not enabled.
+///
+/// Android has no lobby and no ICE adapter whatever is set: those are not
+/// built there (`no_lobby`).
 pub fn real_ports() -> Ports {
     let tokens = TokenStore::new();
-    let lobby: Arc<dyn LobbyPort> = if env_enabled("FAF_FAKE_LOBBY") {
-        Arc::new(FakeLobby::default())
-    } else {
-        Arc::new(LobbyClient::faf(tokens.clone()))
-    };
+    #[cfg(not(target_os = "android"))]
+    let online = OnlinePlay::faf(&tokens);
+    #[cfg(target_os = "android")]
+    let online = OnlinePlay::none();
 
     // The real chat client speaks live IRC against production Ergochat. It is
     // selected by default for a real account; `FAF_FAKE_CHAT=1` is the local
@@ -765,18 +799,17 @@ pub fn real_ports() -> Ports {
     // `game_launch`, then the client intentionally did nothing. Offline
     // development already selects `fake_ports` through `FAF_FAKE_AUTH`, so a
     // real account always gets the real launch chain.
-    // One memory between the adapters, which write the relay URLs of each
-    // game's session, and the connectivity check, which tests them.
-    let ice_sessions = IceSessionMemory::default();
-    let ice: Arc<dyn IcePort> = select_ice_adapter(&tokens, &ice_sessions);
-    let connectivity: Arc<dyn crate::ports::ConnectivityPort> =
-        Arc::new(ConnectivityProbe::faf(tokens.clone(), ice_sessions));
     // Uploading, not just recording: FAF builds a game's vault entry out of the
     // replay streams clients post while the game is played, so a launcher that
     // only wrote a local file left every game it ran stuck at "not uploaded
     // yet" for everyone else.
+    //
+    // The Android client launches offline games only, which record nothing.
+    #[cfg(not(target_os = "android"))]
     let process: Arc<dyn ProcessPort> =
         Arc::new(GameProcess::faf().uploading_replays(tokens.clone()));
+    #[cfg(target_os = "android")]
+    let process: Arc<dyn ProcessPort> = Arc::new(GameProcess::faf());
 
     // Follows `process`, not the other ports: patching writes into the live
     // install and only ever runs on the launch path, which is itself inert
@@ -869,10 +902,16 @@ pub fn real_ports() -> Ports {
     // owner alone. Falls back to the inert port only when no data directory
     // can be resolved, which is the one case where installing anywhere is
     // wrong.
+    #[cfg(not(target_os = "android"))]
     let galactic_war: Arc<dyn crate::ports::GalacticWarPort> = match GalacticWarGateway::faf() {
         Ok(gateway) => Arc::new(gateway.with_tokens(tokens.clone())),
         Err(_) => Arc::new(FakeGalacticWar),
     };
+    // The inert port on Android: Galactic War is a desktop game, and the
+    // gateway would hand a phone its Linux x86_64 build. The Play tab does not
+    // offer it there.
+    #[cfg(target_os = "android")]
+    let galactic_war: Arc<dyn crate::ports::GalacticWarPort> = Arc::new(FakeGalacticWar);
 
     // Always real, and never gated: Rich Presence needs no account, no install
     // and no subprocess: just a local socket that is usually not there. When
@@ -892,10 +931,10 @@ pub fn real_ports() -> Ports {
         coop,
         discord,
         web_link,
-        lobby,
+        lobby: online.lobby,
         settings: Arc::new(FileSettings::faf()),
-        ice,
-        connectivity,
+        ice: online.ice,
+        connectivity: online.connectivity,
         process,
         updater,
         replay_vault: replays.vault,
@@ -938,16 +977,50 @@ pub fn real_ports() -> Ports {
     }
 }
 
-/// Build the connectivity backend.
-///
-/// All adapters are constructed and handed to [`SelectableIce`], so the
-/// Settings toggle changes which one starts the next game without a restart.
-fn select_ice_adapter(tokens: &TokenStore, sessions: &IceSessionMemory) -> Arc<dyn IcePort> {
-    Arc::new(SelectableIce::new(
-        Arc::new(JavaAdapter::faf(tokens.clone()).remembering(sessions.clone())),
-        Arc::new(JavaAdapter::exp_faf(tokens.clone()).remembering(sessions.clone())),
-        Arc::new(PioneerAdapter::faf(tokens.clone()).remembering(sessions.clone())),
-    ))
+/// The lobby, the ICE adapter, and the check of the relays that adapter uses:
+/// what joins FAF games, and so chosen together.
+struct OnlinePlay {
+    lobby: Arc<dyn LobbyPort>,
+    ice: Arc<dyn IcePort>,
+    connectivity: Arc<dyn crate::ports::ConnectivityPort>,
+}
+
+impl OnlinePlay {
+    /// The desktop client's: FAF's lobby, unless `FAF_FAKE_LOBBY=1` keeps it
+    /// local, and every adapter, handed to [`SelectableIce`] so the Settings
+    /// toggle changes which one starts the next game without a restart.
+    #[cfg(not(target_os = "android"))]
+    fn faf(tokens: &TokenStore) -> Self {
+        let lobby: Arc<dyn LobbyPort> = if env_enabled("FAF_FAKE_LOBBY") {
+            Arc::new(FakeLobby::default())
+        } else {
+            Arc::new(LobbyClient::faf(tokens.clone()))
+        };
+        // One memory between the adapters, which write the relay URLs of each
+        // game's session, and the connectivity check, which tests them.
+        let sessions = IceSessionMemory::default();
+        let ice = Arc::new(SelectableIce::new(
+            Arc::new(JavaAdapter::faf(tokens.clone()).remembering(sessions.clone())),
+            Arc::new(JavaAdapter::exp_faf(tokens.clone()).remembering(sessions.clone())),
+            Arc::new(PioneerAdapter::faf(tokens.clone()).remembering(sessions.clone())),
+        ));
+        Self {
+            lobby,
+            ice,
+            connectivity: Arc::new(ConnectivityProbe::faf(tokens.clone(), sessions)),
+        }
+    }
+
+    /// The Android client's, whatever the environment says: it watches
+    /// replays and plays against the AI, and has none of this (`no_lobby`).
+    #[cfg(target_os = "android")]
+    fn none() -> Self {
+        Self {
+            lobby: Arc::new(NoLobby),
+            ice: Arc::new(NoIce),
+            connectivity: Arc::new(NoConnectivity),
+        }
+    }
 }
 
 /// Treat a non-empty environment variable as enabled, matching the existing
@@ -980,6 +1053,15 @@ pub fn ports_from_env() -> Ports {
         if !roles.is_empty() {
             ports.auth = Arc::new(FakeAuth::with_roles(roles.clone()));
             ports.test_login_roles = roles;
+        }
+        // Not even the offline lobby on Android: it hands out games to join
+        // and host, which is what the Android client does not do.
+        #[cfg(target_os = "android")]
+        {
+            let none = OnlinePlay::none();
+            ports.lobby = none.lobby;
+            ports.ice = none.ice;
+            ports.connectivity = none.connectivity;
         }
         ports
     } else {

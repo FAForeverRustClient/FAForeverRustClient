@@ -802,6 +802,8 @@ mod tests {
     /// were still incompatible, because the recorder emitted the bare stream and
     /// everything the list shows comes from the JSON header the stream has none
     /// of. Asserting the pair together is the only thing that catches that.
+    // The recorder of an online game, which an Android build leaves out.
+    #[cfg(not(target_os = "android"))]
     #[tokio::test]
     async fn a_recorded_replay_lists_with_its_game_details() {
         let dir = std::env::temp_dir().join(format!("forge-recorded-{}", std::process::id()));

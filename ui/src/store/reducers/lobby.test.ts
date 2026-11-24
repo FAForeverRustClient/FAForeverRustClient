@@ -26,6 +26,7 @@ function state(overrides: Partial<LobbyState> = {}): LobbyState {
     avatarSelectionStatus: "idle",
     avatarSelectionError: "",
     hostPrefill: null,
+    unavailable: null,
     ...overrides,
   };
 }
@@ -157,6 +158,19 @@ describe("the join state machine", () => {
 
     const running = state({ join: { type: "inGame" } });
     expect(apply(running, { type: "launchAbandoned", payload: { id: launch.uid } })).toBe(running);
+  });
+});
+
+describe("unavailable", () => {
+  it("leaves the lobby disconnected with its reason until a connection is tried", () => {
+    const held = apply(
+      state({ status: "connecting" }),
+      { type: "unavailable", payload: { reason: "notInAndroidClient" } },
+    );
+
+    expect(held.status).toBe("disconnected");
+    expect(held.unavailable).toBe("notInAndroidClient");
+    expect(apply(held, { type: "connecting" }).unavailable).toBeNull();
   });
 });
 

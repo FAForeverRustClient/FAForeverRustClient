@@ -43,6 +43,7 @@ const CAUSES: { key: MessageKey; pattern: RegExp }[] = [
 const CAUSE_KEYS: Record<FailureCause, MessageKey> = {
   lobbyDisconnected: "errors.cause.lobbyDisconnected",
   lobbySendBusy: "errors.cause.lobbySendBusy",
+  lobbyNotInAndroidClient: "errors.cause.lobbyNotInAndroidClient",
 };
 
 /** One plain sentence for a cause the backend named, in the client's language. */

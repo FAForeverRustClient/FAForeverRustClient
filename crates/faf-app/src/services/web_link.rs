@@ -52,9 +52,16 @@ pub fn spawn(ctx: Arc<ServiceCtx>, sink: EventSink) {
     tokio::spawn(async move { run(ctx, sink, events).await });
 }
 
-/// Turned on, and signed in.
+/// Turned on, signed in, and a lobby to steer.
+///
+/// Everything a browser can see or ask for here is the lobby's: its games,
+/// a search, a join. A client without one (the Android client) has nothing
+/// to offer it, and the server keeps one link per account, so connecting
+/// would take the link from a desktop client that has a lobby.
 fn wanted(state: &AppState) -> bool {
-    state.settings.web_link.enabled && state.auth.player.is_some()
+    state.settings.web_link.enabled
+        && state.auth.player.is_some()
+        && state.lobby.unavailable.is_none()
 }
 
 /// Wait for the next event; false once the event stream has closed.

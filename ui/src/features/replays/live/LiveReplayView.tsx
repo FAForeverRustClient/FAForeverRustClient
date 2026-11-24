@@ -32,6 +32,7 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
   const { t } = useTranslation();
   const liveGames = useAppStore((s) => s.state.lobby.liveGames);
   const lobbyStatus = useAppStore((s) => s.state.lobby.status);
+  const lobbyUnavailable = useAppStore((s) => s.state.lobby.unavailable);
   const mapVault = useAppStore((s) => s.state.maps.vault);
   // The mod catalogue, for the ranked filter below: a sim mod that is not
   // on the ranked list is one of the three things a client can see about
@@ -238,6 +239,18 @@ export function LiveReplayView({ busy }: { busy: boolean }) {
       setSortDirection(key === "title" || key === "host" ? "ascending" : "descending");
     }
   }, [sortKey]);
+
+  // The live games are the lobby's, and a client without one has none
+  // coming: it says why, as the Play tab does, rather than wait for them.
+  if (lobbyUnavailable !== null) {
+    return (
+      <div className="live-replay-empty surface-panel">
+        <Icon name="globe" size={22} />
+        <h3>{t("lobby.browser.unavailable")}</h3>
+        <p>{t(`lobby.unavailable.${lobbyUnavailable}`)}</p>
+      </div>
+    );
+  }
 
   if (lobbyStatus !== "connected") {
     return (

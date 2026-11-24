@@ -29,7 +29,11 @@ pub(crate) fn log_directory(
         "game" => faf_app::infra::game_logs::directory(),
         // The ICE adapters' own logs, opened from the connectivity check:
         // the same folder the adapters are told to write to.
+        #[cfg(not(target_os = "android"))]
         "ice" => Ok(faf_app::infra::ice_java::log_directory()),
+        // The Android client runs no adapter, so nothing writes any.
+        #[cfg(target_os = "android")]
+        "ice" => Err("the Android client runs no ICE adapter, so there are no ICE logs".into()),
         "client" => app
             .path()
             .app_log_dir()

@@ -1,5 +1,11 @@
 //! The integration tests of `faf-app`, as one test binary.
 //!
+//! Desktop only: they drive the runtime through the desktop client's ports
+//! and fakes, whose online parts (the lobby, the online launch, the
+//! recorder) an Android build leaves out. What Android has in their place,
+//! the stand-ins of `infra::no_lobby`, is tested here on the desktop
+//! (`without_lobby`).
+//!
 //! Each file in this folder is a module of it and covers one feature area,
 //! driving the real runtime on fake ports. They used to be sixty binaries of
 //! their own, which is sixty times the whole crate and its dependencies went
@@ -24,6 +30,7 @@
 //!
 //! A new test that sets an environment variable, changes the working
 //! directory or otherwise writes process-wide state belongs with that one.
+#![cfg(not(target_os = "android"))]
 
 mod support;
 
@@ -89,3 +96,4 @@ mod unit_history_budget;
 mod updater_cancellation;
 mod uploads;
 mod web_link;
+mod without_lobby;

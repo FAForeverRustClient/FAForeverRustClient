@@ -37,7 +37,9 @@ use tokio::process::{Child, Command};
 use tokio::sync::{mpsc, Notify};
 
 use crate::infra::companions::{Companions, LaunchId};
-use crate::ports::{DiscoveredInstallPaths, GameLaunchParams, InstallPresence, ProcessPort};
+#[cfg(not(target_os = "android"))]
+use crate::ports::GameLaunchParams;
+use crate::ports::{DiscoveredInstallPaths, InstallPresence, ProcessPort};
 use crate::sync::LockExt;
 
 const MANAGED_EXE: &str = "ForgedAlliance.exe";
@@ -153,7 +155,9 @@ pub struct GameProcess {
     replay_exited: Arc<Notify>,
     /// Kept alive for the duration of a live game so FA has somewhere to stream
     /// its replay. Replaced on the next launch, which drops and stops the
-    /// previous one.
+    /// previous one. Not in the Android client, which starts no online game:
+    /// an offline game streams no replay to anybody.
+    #[cfg(not(target_os = "android"))]
     replay_recorder: Mutex<Option<crate::infra::replay_recorder::ReplayRecorder>>,
     /// What the recorder needs to forward the stream on to FAF, so the game
     /// lands in the vault rather than only on this disk.
@@ -162,6 +166,7 @@ pub struct GameProcess {
     /// offline/dev wiring, which has no session to authenticate with. It is
     /// deliberately not fatal, here or at launch time, because a replay that
     /// only exists locally is still a replay.
+    #[cfg(not(target_os = "android"))]
     replay_relay: Option<crate::infra::replay_relay::ReplayRelayConfig>,
     /// Show each game on Steam while it runs; see `infra::steam_presence`.
     /// Off until Settings says otherwise, which is also its default there.
@@ -190,7 +195,9 @@ impl GameProcess {
             replay_child: Arc::new(Mutex::new(None)),
             exited: Arc::new(Notify::new()),
             replay_exited: Arc::new(Notify::new()),
+            #[cfg(not(target_os = "android"))]
             replay_recorder: Mutex::new(None),
+            #[cfg(not(target_os = "android"))]
             replay_relay: None,
             steam_presence: AtomicBool::new(false),
             borderless_window: AtomicBool::new(false),
@@ -210,6 +217,7 @@ impl GameProcess {
     /// Separate from [`Self::faf`] because the offline wiring uses the same
     /// real launcher (game paths are a local capability, not a network one) and
     /// has no session to upload with.
+    #[cfg(not(target_os = "android"))]
     pub fn uploading_replays(mut self, tokens: crate::infra::session::TokenStore) -> Self {
         self.replay_relay = Some(crate::infra::replay_relay::ReplayRelayConfig::faf(tokens));
         self
@@ -602,6 +610,7 @@ impl GameProcess {
 
 #[async_trait]
 impl ProcessPort for GameProcess {
+    #[cfg(not(target_os = "android"))]
     fn supports_live_launch(&self) -> bool {
         true
     }
@@ -645,6 +654,7 @@ impl ProcessPort for GameProcess {
         }
     }
 
+    #[cfg(not(target_os = "android"))]
     fn replay_upload_pending(&self) -> bool {
         self.replay_recorder
             .lock_or_recover()
@@ -652,6 +662,7 @@ impl ProcessPort for GameProcess {
             .is_some_and(|recorder| !recorder.is_finished())
     }
 
+    #[cfg(not(target_os = "android"))]
     async fn launch_game(&self, params: GameLaunchParams) -> Result<(), String> {
         require_init_name(&params.featured_mod)?;
         let path = self.config.lock_or_recover().game_path.clone();
@@ -1480,6 +1491,7 @@ fn prefs_relative_to(dir: &Path, file: &Path, wrapped: bool) -> Option<String> {
 /// local [`crate::infra::replay_recorder::ReplayRecorder`]; without it FA writes
 /// no replay for a networked game at all, which is why played games used to
 /// leave nothing in the local library.
+#[cfg(not(target_os = "android"))]
 fn build_arguments(
     params: &GameLaunchParams,
     log_path: &str,
@@ -1527,10 +1539,12 @@ pub struct FakeGame;
 
 #[async_trait]
 impl ProcessPort for FakeGame {
+    #[cfg(not(target_os = "android"))]
     fn supports_live_launch(&self) -> bool {
         false
     }
 
+    #[cfg(not(target_os = "android"))]
     async fn launch_game(&self, _params: GameLaunchParams) -> Result<(), String> {
         Ok(())
     }
@@ -1690,6 +1704,8 @@ mod tests {
         );
     }
 
+    // The online launch's arguments, which an Android build leaves out.
+    #[cfg(not(target_os = "android"))]
     fn params() -> GameLaunchParams {
         GameLaunchParams {
             game_id: 99,
@@ -1734,6 +1750,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn builds_fa_command_line_in_order() {
         let args = build_arguments(&params(), "diagnostics/game-99.log", None);
@@ -1753,6 +1770,7 @@ mod tests {
         assert!(args[8].ends_with("game-99.log"));
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn savereplay_precedes_gpgnet_when_a_recorder_is_listening() {
         // Ordering matches `fa/play.py`, and the flag is what makes FA emit a
@@ -1765,6 +1783,7 @@ mod tests {
         assert!(save < args.iter().position(|a| a == "/gpgnet").unwrap());
     }
 
+    #[cfg(not(target_os = "android"))]
     #[test]
     fn no_recorder_means_no_savereplay_flag() {
         // A recorder that could not bind must not leave FA streaming at a dead

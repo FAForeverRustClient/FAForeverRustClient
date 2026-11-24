@@ -30,6 +30,12 @@ pub(super) async fn connect(ctx: &ServiceCtx, out: &EventSink) {
 
 async fn connect_with(ctx: &ServiceCtx, out: &EventSink, only_if_armed: bool) {
     let out = out.scoped_to_account();
+    // A client without a lobby (`LobbyPort::unavailable`), as at sign-in:
+    // said again, and nothing opened or retried.
+    if let Some(reason) = ctx.ports.lobby.unavailable() {
+        super::unavailable::announce(reason, ctx, &out);
+        return;
+    }
     let session = out.account_token();
     let Some(_active) = ctx.lobby.active.acquire(&session).await else {
         return;

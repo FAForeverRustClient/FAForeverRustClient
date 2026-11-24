@@ -23,6 +23,8 @@ use faf_domain::AppEvent;
 
 use crate::support;
 
+// The real lobby client, which Android does not build.
+#[cfg(not(target_os = "android"))]
 #[tokio::test]
 async fn a_refused_contact_change_leaves_the_list_alone_and_reports_failure() {
     use faf_app::infra::{LobbyClient, TokenStore};
