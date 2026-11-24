@@ -21,6 +21,10 @@ val releaseKeystore: String? = System.getenv("ANDROID_KEYSTORE_PATH")?.takeIf { 
 
 android {
     compileSdk = 36
+    // The NDK AGP strips the native libraries with: the one the release workflow
+    // installs (NDK_VERSION), which the README names for local builds too. The
+    // Rust library itself is linked with the NDK that NDK_HOME names.
+    ndkVersion = "29.0.14206865"
     namespace = "com.faforever.rustclient"
     signingConfigs {
         create("release") {
@@ -52,11 +56,6 @@ android {
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
-            packaging {                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
-                jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86/*.so")
-                jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
-            }
         }
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
@@ -80,15 +79,24 @@ rust {
     rootDirRel = "../../../"
 }
 
+// Debug builds keep the native library's symbols, for a debugger. `packaging` is
+// the whole project's in the DSL, also inside a build type's block, so this is
+// set per variant: in the template's place it kept about 17 MB of symbols in
+// the release APK too.
+androidComponents {
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.packaging.jniLibs.keepDebugSymbols.addAll(
+            listOf("*/arm64-v8a/*.so", "*/armeabi-v7a/*.so", "*/x86/*.so", "*/x86_64/*.so"),
+        )
+    }
+}
+
 dependencies {
     implementation("androidx.webkit:webkit:1.14.0")
     implementation("androidx.appcompat:appcompat:1.7.1")
     implementation("androidx.activity:activity-ktx:1.10.1")
     implementation("com.google.android.material:material:1.12.0")
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.4")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.0")
 }
 
 apply(from = "tauri.build.gradle.kts")

@@ -1,6 +1,8 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Theme.faforever_rust_client" parent="Theme.MaterialComponents.NoActionBar">
-        <!-- Dark, as the client's page is: the window shows beside it where the system bars are. -->
+        <!-- Dark (Theme.MaterialComponents, no values-night): the window shows where the
+             system bars are, so it stays dark whatever the system's mode or the client's
+             theme, and the bars' light icons always read. -->
     </style>
 </resources>

@@ -14,7 +14,8 @@ name: Release
 # carry them anyway, because `workflow_dispatch` inputs are one line.
 #
 # The release is opened as a draft, the builds upload into it, and only when
-# every platform has succeeded is it published. Publishing is the moment two
+# every desktop build has succeeded is it published; the Android job only has to
+# have finished, and a release whose APK failed goes out without one. Publishing is the moment two
 # things happen at once: clients are offered the update, and the release
 # webhook fires, which is what the changelog bridge on Discord listens for
 # (FAForeverRustClient/Client-Release-Changelog-Bridge, `action ==
@@ -51,9 +52,11 @@ on:
         type: boolean
         default: false
       allow_existing_tag:
-        # A failed build no longer needs this: nothing was published, so the
-        # draft is still there and a plain re-run picks it up. This is for
-        # adding to a release that is already out.
+        # A failed desktop build no longer needs this: nothing was published,
+        # so the draft is still there and a plain re-run picks it up. A failed
+        # Android build leaves a published release, which "Re-run failed jobs"
+        # completes with its APK. This is for adding to a release that is
+        # already out by a new run.
         description: 'Add to an already published release instead of refusing.'
         type: boolean
         default: false
@@ -294,14 +297,25 @@ jobs:
   publish-android:
     name: Build Android
     needs: prepare
+    # The signing key is kept as secrets of the `release` environment, not of
+    # the repository: only a run approved for that environment can read it,
+    # as `prepare` describes, while a repository secret is open to any
+    # workflow run on any branch a writer pushes. GitHub asks the reviewer to
+    # approve this job's deployment beside prepare's.
+    environment: release
+    # A hung Gradle or SDK step must not hold the desktop release: a timed-out
+    # job is a failure, which `publish` lets through, while cancelling the run
+    # would skip `publish` as well.
+    timeout-minutes: 60
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     env:
-      # The release key, made once with keytool and kept only in the repository's
-      # secrets, base64-encoded: Android installs an update only when it carries
-      # the installed app's key, so losing it strands every installed copy.
-      # Without it the job builds nothing and the release goes out without an APK.
+      # The release key, made once with keytool by the maintainers and kept only
+      # in the `release` environment's secrets, base64-encoded: Android installs
+      # an update only when it carries the installed app's key, so losing it
+      # strands every installed copy. Without it the job builds nothing and the
+      # release goes out without an APK.
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       # The NDK compiles the C in the dependency tree (zstd, ring and the like)
       # and links the library.
@@ -319,6 +333,12 @@ jobs:
 
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         if: steps.key.outputs.present == 'true'
+
+      # The Gradle wrapper is a committed binary the build runs: it has to be
+      # one of Gradle's own releases (checked against Gradle's checksums).
+      - name: Validate the Gradle wrapper
+        if: steps.key.outputs.present == 'true'
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Install Rust stable with the Android target
         if: steps.key.outputs.present == 'true'
@@ -378,16 +398,29 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           APK=$(ls src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk)
+          NAME="FAForever.Client_${VERSION}_android_arm64.apk"
+          # A rerun reuses the draft (prepare), which may already hold this APK
+          # from the run before, and GitHub refuses a second asset of the same
+          # name: the old one goes first, as tauri-action does with its own.
+          OLD=$(gh api --paginate "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" \
+            --jq ".[] | select(.name == \"$NAME\") | .id")
+          if [ -n "$OLD" ]; then
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$OLD"
+          fi
           gh api --method POST -H "Content-Type: application/vnd.android.package-archive" \
-            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=FAForever.Client_${VERSION}_android_arm64.apk" \
+            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=$NAME" \
             --input "$APK" --jq .browser_download_url
 
   publish:
     name: Publish the release
     # `needs` on a matrix job waits for every platform and fails if any did,
-    # so a release missing an installer is never offered to anybody. The
-    # Android job succeeds without building when there is no release key.
+    # so a release missing a desktop installer is never offered to anybody.
+    # The Android job only has to have finished, so that its APK is in the
+    # draft before it is published: when it fails, or builds nothing for want
+    # of the release key, the desktop installers go out without an APK, and
+    # the failed run says so.
     needs: [prepare, publish-tauri, publish-android]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && needs.publish-tauri.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

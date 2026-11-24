@@ -272,7 +272,8 @@ gh issue view <number> --json author -q .author.login
 ```
 
 **No dependency arrives without being identified first.** Before a new entry
-appears in a `Cargo.toml`, `package.json` or a lockfile, the pull request says
+appears in a `Cargo.toml`, `package.json`, one of the Android project's
+`build.gradle.kts` files or a lockfile, the pull request says
 what it does and why nothing already here does it, who publishes it and what
 else they publish, its licence, and its own dependency count.
 
@@ -282,7 +283,10 @@ and one nobody here controls is one nobody here can vouch for.
 
 `cargo deny` and `cargo audit` run in CI and enforce the licence and advisory
 half of this. Neither answers "who is this", which is why the rule is written
-down rather than left to the tools.
+down rather than left to the tools. The Android project's committed Gradle
+wrapper (`gradle-wrapper.jar`) is checked against Gradle's published checksums
+in CI (`gradle/actions/wrapper-validation`), and the Gradle distribution it
+downloads against `distributionSha256Sum`.
 
 ---
 

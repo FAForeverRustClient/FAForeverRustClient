@@ -146,8 +146,9 @@ pnpm run build              # build the frontend to ui/dist
 
 The Android app is Tauri's mobile build of the same client, in its own Android project
 `src-tauri/gen/android` (made once by `tauri android init`; its activity, manifest and
-signing are ours). It needs JDK 17, the Android SDK with platform 36 and an NDK (`ANDROID_HOME`,
-`NDK_HOME`), and the Rust target:
+signing are ours). It needs JDK 17, the Android SDK with platform 36 and NDK 29.0.14206865, the
+one the release workflow uses (`ANDROID_HOME`, and `NDK_HOME` pointing at that NDK), and the Rust
+target:
 
 ```bash
 rustup target add aarch64-linux-android        # x86_64-linux-android too for the emulator
@@ -158,20 +159,26 @@ pnpm exec tauri android build --apk --target aarch64
   helpers (`faf-uid`, the ICE adapters, a Java runtime), which an Android build does not use.
 - The release APK is signed with the keystore `ANDROID_KEYSTORE_PATH` names (with
   `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`), as the release
-  workflow sets them from its secrets. Without them it is signed with the standard debug key,
-  for the builder's own devices only.
+  workflow sets them from the `release` environment's secrets. The maintainers make that key and
+  hold it: Android installs an update only with the installed app's key. Without it a build is signed with the
+  standard debug key, for the builder's own devices only.
 - On Android the TLS stack is rustls with Mozilla's roots (`crates/faf-app/Cargo.toml`), and the
   desktop-only parts (the tray, the single-instance and window-state plugins, the notification
-  popup window, the folder picker) are behind `cfg(desktop)`. The app runs in landscape: the
-  page is the desktop one.
+  popup window) are behind `cfg(desktop)`. File and folder pickers are refused on Android: the
+  system's picker hands back a content address, not a path. The app runs in landscape on phones
+  (Android 16 lets a large screen rotate it): the page is the desktop one.
 - The Android client is for watching replays and playing against the AI, and never connects
   to the FAF lobby: no matchmaker, no custom games, no hosting. That is decided at compile
-  time. The lobby connection, the ICE adapters and their connectivity check are not built for
-  `target_os = "android"`, and `crates/faf-app/src/infra/no_lobby.rs` stands in for them, so
-  no setting, flag or environment variable brings them back. A request that needs the lobby is
-  refused with that reason, and the Play tab says it.
-- What works so far: the app starts and shows the sign-in screen (checked on the emulator).
-  Signing in and starting a game on Android are not done yet.
+  time. Not built for `target_os = "android"`: the lobby connection and the lobby service's
+  online handlers (hosting, joining, the matchmaker, parties), the launcher's online
+  preparation and the game's online launch, the ICE adapters and their connectivity check,
+  and the upload of a recorded online game. `crates/faf-app/src/infra/no_lobby.rs` stands in
+  for the ports, so no setting, flag or environment variable brings any of it back. The
+  reason is in the state from startup, a request that needs the lobby is refused with it, and
+  the Play tab says it. The web link and Galactic War are not offered there either.
+- What works so far: the app starts and shows the sign-in screen, and Local replays opens it
+  offline (checked on the emulator). Signing in, the vaults and replays in the game app follow
+  in later pull requests.
 
 ## Conventions
 

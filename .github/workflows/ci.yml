@@ -138,6 +138,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The Android project's Gradle wrapper is a committed binary that every
+      # Android build runs: it has to be one of Gradle's own releases, checked
+      # against the checksums Gradle publishes.
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
