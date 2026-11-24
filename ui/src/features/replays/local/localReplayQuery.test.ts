@@ -3,6 +3,7 @@ import type { LocalReplay } from "../../../ipc/bindings";
 import {
   EMPTY_LOCAL_REPLAY_QUERY,
   filterLocalReplays,
+  localReplayAdvancedFilterCount,
   nextLocalDetailLimit,
   type LocalReplayQuery,
 } from "./localReplayQuery";
@@ -261,5 +262,12 @@ describe("the slot a player sat in (#791)", () => {
     const query = { ...EMPTY_LOCAL_REPLAY_QUERY, playerSlot: 1 };
     expect(filterLocalReplays([seated], query)).toEqual([seated]);
     expect(filterLocalReplays([seated], { ...query, playerSlot: 5 })).toEqual([]);
+  });
+});
+
+describe("localReplayAdvancedFilterCount", () => {
+  it("counts the player's slot, which sits under More filters (#791)", () => {
+    const base = localReplayAdvancedFilterCount(EMPTY_LOCAL_REPLAY_QUERY);
+    expect(localReplayAdvancedFilterCount({ ...EMPTY_LOCAL_REPLAY_QUERY, playerSlot: 8 })).toBe(base + 1);
   });
 });

@@ -3,15 +3,16 @@
 .slot-positions-info {
   display: inline-flex;
   align-items: center;
-  margin-left: 4px;
+  margin-left: 5px;
   vertical-align: -2px;
   color: var(--color-muted);
   cursor: help;
+  transition: color 120ms ease;
 }
 
 .slot-positions-info:hover,
 .slot-positions-info:focus-visible {
-  color: var(--color-text);
+  color: var(--color-accent);
 }
 
 .slot-positions-info:focus-visible {
@@ -25,9 +26,8 @@
   position: fixed;
   z-index: 90;
   display: grid;
-  gap: var(--space-2);
-  max-width: calc(100vw - 32px);
-  padding: var(--space-3);
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
   color: var(--color-text);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -38,51 +38,78 @@
 }
 
 .slot-positions-heading {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13px;
   font-weight: 600;
 }
 
 .slot-positions-maps {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3);
+  align-items: start;
+  gap: var(--space-4);
+}
+
+.slot-positions-map {
+  width: 100%;
+  border-collapse: collapse;
 }
 
 .slot-positions-map-name {
-  margin: 0 0 var(--space-1);
-  font-size: 11px;
+  padding-bottom: var(--space-2);
+  caption-side: top;
+  text-align: left;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--color-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.slot-positions-list {
-  display: grid;
-  gap: 3px;
-  margin: 0;
-}
-
-.slot-positions-row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-/* Square-cornered, like the slot tag in the roster. */
-.slot-positions-slot {
-  justify-self: start;
-  padding: 2px 5px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-muted);
-  line-height: 1;
+  color: var(--color-text);
   white-space: nowrap;
 }
 
-.slot-positions-position {
-  margin: 0;
+.slot-positions-map thead th {
+  padding: 0 2px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--color-muted);
+}
+
+.slot-positions-map tbody tr + tr > * {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.slot-positions-map tbody th {
+  padding: 5px var(--space-2) 5px 0;
+  font-weight: 500;
+  text-align: left;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
+/* Wide enough for the side names over them ("NORTH", "SÜD", "POŁUDNIE"). */
+.slot-positions-map tbody td,
+.slot-positions-map thead th:not(:first-child) {
+  width: 58px;
+}
+
+.slot-positions-map tbody td {
+  padding: 4px 0;
+  text-align: center;
+}
+
+/* The slot number: a flat, square-cornered chip in the accent, never a pill. */
+.slot-positions-slot {
+  display: inline-block;
+  min-width: 24px;
+  padding: 3px 4px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  text-align: center;
 }

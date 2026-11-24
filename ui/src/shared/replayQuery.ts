@@ -87,6 +87,8 @@ export function advancedReplayFilterCount(query: ReplayQuery): number {
     // is looking at. Nor are duration, players in the game, map size and
     // review score, which moved up beside the rating into the search panel's
     // always-visible row of sliders.
+    // The player's slot sits under More filters (#791).
+    query.playerSlot != null,
     query.title.trim() !== "",
     query.host !== "",
     query.mapAuthor !== "",

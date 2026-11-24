@@ -48,6 +48,11 @@ describe("advancedReplayFilterCount", () => {
     })).toBe(0);
   });
 
+  it("counts the player's slot, which sits under More filters (#791)", () => {
+    expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, playerSlot: 8 })).toBe(1);
+    expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, playerSlot: null })).toBe(0);
+  });
+
   it("counts the lobby title, which sits under More filters", () => {
     expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, title: "Cup" })).toBe(1);
     expect(advancedReplayFilterCount({ ...EMPTY_REPLAY_QUERY, title: "  " })).toBe(0);

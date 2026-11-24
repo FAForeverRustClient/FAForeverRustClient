@@ -179,6 +179,8 @@ export function filterLocalReplays(
 export function localReplayAdvancedFilterCount(query: LocalReplayQuery): number {
   return [
     query.exactPlayer,
+    // The slot filter sits under More filters (#791).
+    query.playerSlot != null,
     query.mod !== "",
     query.title !== "",
     query.note.trim() !== "",

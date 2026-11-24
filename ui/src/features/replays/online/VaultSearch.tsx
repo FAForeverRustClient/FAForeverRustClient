@@ -35,8 +35,6 @@ import {
   EMPTY_REPLAY_QUERY,
   isRecentBound,
   isoDaysAgo,
-  MAX_SLOT,
-  parseSlot,
 } from "../../../shared/replayQuery";
 import { AdvancedReplayFilters, ReplayGameTypeField, ReplaySearchSliders } from "./AdvancedReplayFilters";
 import { replayGameModes, selectedGameModes, withGameModes } from "./replayGameModes";
@@ -52,7 +50,6 @@ import {
   summarizeOnlineReplayPreset,
 } from "../savedReplaySearches";
 import { FriendReplayPicker } from "./FriendReplayPicker";
-import { SlotPositionsInfo } from "../SlotPositionsInfo";
 import { MultiSelect } from "../../../design-system/MultiSelect";
 import { useAppStore } from "../../../store/store";
 import { allReplayTags, gameReplayNotes, replayIdsTagged } from "../../../shared/rules/replayNotes";
@@ -280,26 +277,6 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
           />
         </label>
 
-        {/* Beside the name it narrows (#791): "Seraphim-Noob in slot 8" is
-            one question, matched on the same player row. See
-            `ReplayQuery::player_slot`. */}
-        <label className="vault-field vault-search-slot search-panel-field">
-          <span className="vault-field-label search-panel-label">
-            {t("replays.search.slot")}
-            <SlotPositionsInfo />
-          </span>
-          <input
-            className="vault-input search-panel-control"
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={MAX_SLOT}
-            value={form.playerSlot ?? ""}
-            placeholder={t("replays.search.anySlot")}
-            title={t("replays.search.slotTooltip")}
-            onChange={(e) => set("playerSlot", parseSlot(e.target.value))}
-          />
-        </label>
 
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
           <span className="vault-field-label search-panel-label">{t("replays.search.map")}</span>

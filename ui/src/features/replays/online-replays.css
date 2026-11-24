@@ -141,12 +141,6 @@
   min-width: 120px;
 }
 
-/* A slot is one or two digits: issue 791. */
-.vault-search-slot {
-  flex: 0 0 88px;
-  min-width: 88px;
-}
-
 .vault-input {
   font: inherit;
   min-width: 0;
