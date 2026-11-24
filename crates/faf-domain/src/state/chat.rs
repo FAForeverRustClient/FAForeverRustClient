@@ -449,6 +449,40 @@ impl ChatState {
     }
 }
 
+/// Lay the latest history in among the lines already on screen, by time.
+///
+/// Appending it was right for a channel, which asks for its history before
+/// anything is said in it. A private conversation is different: it is opened
+/// by the message that arrives, and the history it then asks for is mostly
+/// older than that message. Appended, the whole backlog landed below the line
+/// that had opened the conversation, which sat alone on top (#794).
+///
+/// Both lists are already in order, so this is one merge. A line only moves
+/// in front of one on screen when both times read and the backfill's is
+/// strictly earlier: equal or unreadable times keep the old order, which is
+/// the line on screen first.
+fn merge_by_time(held: Vec<ChatMessage>, fresh: Vec<ChatMessage>) -> Vec<ChatMessage> {
+    if fresh.is_empty() {
+        return held;
+    }
+    let time = |message: &ChatMessage| chrono::DateTime::parse_from_rfc3339(&message.timestamp);
+    let mut merged = Vec::with_capacity(held.len() + fresh.len());
+    let mut fresh = fresh.into_iter().peekable();
+    for line in held {
+        while let Some(next) = fresh.peek() {
+            match (time(next), time(&line)) {
+                (Ok(next_at), Ok(line_at)) if next_at < line_at => {
+                    merged.extend(fresh.next());
+                }
+                _ => break,
+            }
+        }
+        merged.push(line);
+    }
+    merged.extend(fresh);
+    merged
+}
+
 /// Whether `incoming` is the line `held` already is. See [`ChatChannel::holds`].
 fn same_line(held: &ChatMessage, incoming: &ChatMessage) -> bool {
     if !held.msgid.is_empty() && !incoming.msgid.is_empty() {
@@ -1080,7 +1114,7 @@ pub fn reduce(state: &mut ChatState, event: &ChatEvent) {
                 fresh.append(&mut c.messages);
                 c.messages = fresh;
             } else {
-                c.messages.append(&mut fresh);
+                c.messages = merge_by_time(std::mem::take(&mut c.messages), fresh);
             }
             cap_messages(&mut c.messages);
             c.history_exhausted = !more_before || c.history_full();
@@ -1419,6 +1453,46 @@ mod tests {
         );
         assert_eq!(channel.messages[0].id, "old-3", "the oldest go first");
         assert!(channel.history_exhausted, "a full channel loads no more");
+    }
+
+    #[test]
+    fn a_private_backfill_goes_before_the_message_that_opened_the_conversation() {
+        // #794: the conversation opens on today's message, and the history it
+        // then asks for is last week's. It went below today's line.
+        let at = |id: &str, timestamp: &str| ChatMessage {
+            timestamp: timestamp.into(),
+            ..message(id)
+        };
+        let mut s = connected("Aurora");
+        reduce(
+            &mut s,
+            &ChatEvent::MessageReceived {
+                channel: "Nuggets".into(),
+                message: at("today", "2026-11-21T19:45:00Z"),
+            },
+        );
+        reduce(
+            &mut s,
+            &ChatEvent::HistoryReceived {
+                channel: "Nuggets".into(),
+                messages: vec![
+                    at("last-week", "2026-11-14T15:10:00Z"),
+                    at("later-that-day", "2026-11-14T15:11:00.000Z"),
+                    replayed(&at("today", "2026-11-21T19:45:00Z")),
+                    at("just-after", "2026-11-21T19:46:00Z"),
+                ],
+                earlier: false,
+                more_before: true,
+            },
+        );
+        let ids: Vec<_> = s
+            .channel("Nuggets")
+            .unwrap()
+            .messages
+            .iter()
+            .map(|m| m.id.clone())
+            .collect();
+        assert_eq!(ids, ["last-week", "later-that-day", "today", "just-after"]);
     }
 
     #[test]

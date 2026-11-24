@@ -1110,6 +1110,26 @@ pub fn symmetry_fits_teams(symmetry: &str, num_teams: u32) -> bool {
     symmetry_points(symmetry).is_none_or(|points| points % num_teams == 0)
 }
 
+/// The symmetries the current generator offers that can make `num_teams`
+/// teams, for telling somebody what to pick instead (#803).
+///
+/// The rule is [`symmetry_fits_teams`], checked against generator 1.22.2 for
+/// every symmetry with 2 to 12 teams and found to be exactly the
+/// generator's own. `QUAD`, `DIAG` and `NONE` are left out: they belong to
+/// releases older than every one the dialog lists, and a suggestion has to
+/// be something the picker shows.
+pub fn symmetries_fitting(num_teams: u32) -> Vec<String> {
+    if num_teams == ASYMMETRIC_TEAMS {
+        return Vec::new();
+    }
+    SYMMETRIES
+        .iter()
+        .filter(|(name, _)| !matches!(*name, "QUAD" | "DIAG" | "NONE"))
+        .filter(|(_, points)| points % num_teams == 0)
+        .map(|(name, _)| (*name).to_string())
+        .collect()
+}
+
 /// The size, spawn and team window a whole-map style is designed for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -1203,10 +1223,17 @@ pub enum ValidationIssue {
     #[serde(rename_all = "camelCase")]
     MapSizeNotAMultiple { map_size: u32 },
     /// The generator aborts: no selected symmetry can make this many teams.
+    ///
+    /// A symmetry splits the map into equal parts, and the teams have to share
+    /// them out evenly: `XZ` and `ZX` mirror it into two halves and so make
+    /// two teams, never twelve. `fitting` names what would work, because "ZX,
+    /// XZ cannot produce 12 teams" alone read as the client refusing what the
+    /// generator allows (#803).
     #[serde(rename_all = "camelCase")]
     SymmetryIncompatible {
         symmetries: Vec<String>,
         num_teams: u32,
+        fitting: Vec<String>,
     },
     /// Outside the generator's accepted range.
     #[serde(rename_all = "camelCase")]
@@ -1268,6 +1295,7 @@ impl std::fmt::Display for ValidationIssue {
             ValidationIssue::SymmetryIncompatible {
                 symmetries,
                 num_teams,
+                fitting: _,
             } => write!(
                 f,
                 "terrain symmetry {} is not compatible with {num_teams} teams",
@@ -1375,6 +1403,7 @@ pub fn validate_options(options: &GeneratorOptions) -> Vec<ValidationIssue> {
         issues.push(ValidationIssue::SymmetryIncompatible {
             symmetries: selected,
             num_teams,
+            fitting: symmetries_fitting(num_teams),
         });
     }
 
@@ -2351,6 +2380,39 @@ mod tests {
         // A symmetry from a future release must not become unselectable.
         assert_eq!(symmetry_points("POINT99"), None);
         assert!(symmetry_fits_teams("POINT99", 3));
+    }
+
+    #[test]
+    fn an_incompatible_symmetry_names_what_would_fit() {
+        // #803: ZX and XZ with twelve teams. The generator refuses it ("Terrain
+        // symmetry `ZX` not compatible with Num Teams `12`"), and the only
+        // symmetry that makes twelve equal starts is twelve-fold.
+        let twelve = GeneratorOptions {
+            symmetries: vec!["ZX".into(), "XZ".into()],
+            ..options(12, 12, 960)
+        };
+        let issue = validate_options(&twelve)
+            .into_iter()
+            .find(|i| matches!(i, ValidationIssue::SymmetryIncompatible { .. }))
+            .expect("refused");
+        assert_eq!(
+            issue,
+            ValidationIssue::SymmetryIncompatible {
+                symmetries: vec!["ZX".into(), "XZ".into()],
+                num_teams: 12,
+                fitting: vec!["POINT12".into()],
+            }
+        );
+
+        assert_eq!(
+            symmetries_fitting(4),
+            ["POINT4", "POINT8", "POINT12", "POINT16"]
+        );
+        // Two teams: every symmetry but the odd point counts.
+        let two = symmetries_fitting(2);
+        assert!(two.iter().any(|s| s == "XZ") && two.iter().any(|s| s == "ZX"));
+        assert!(!two.iter().any(|s| s == "POINT3" || s == "QUAD"));
+        assert!(symmetries_fitting(ASYMMETRIC_TEAMS).is_empty());
     }
 
     #[test]

@@ -253,6 +253,7 @@ export function decodeOnlineReplayPreset(
   const query: ReplayQuery = {
     player: readString(record, "player", EMPTY_REPLAY_QUERY.player),
     exactPlayer: readBoolean(record, "exactPlayer", EMPTY_REPLAY_QUERY.exactPlayer),
+    playerSlot: readNullableNumber(record, "playerSlot", EMPTY_REPLAY_QUERY.playerSlot ?? null),
     map: readString(record, "map", EMPTY_REPLAY_QUERY.map),
     mapAuthor: readString(record, "mapAuthor", EMPTY_REPLAY_QUERY.mapAuthor),
     title: readString(record, "title", EMPTY_REPLAY_QUERY.title),
@@ -303,6 +304,7 @@ export function onlinePresetSignature(query: ReplayQuery, tags: readonly string[
   return JSON.stringify({
     player: query.player.trim(),
     exactPlayer: query.exactPlayer,
+    playerSlot: query.playerSlot ?? null,
     map: query.map.trim(),
     mapAuthor: query.mapAuthor.trim(),
     title: query.title.trim(),
@@ -366,6 +368,7 @@ export function decodeLocalReplayPreset(raw: string): LocalReplayQuery | null {
   return {
     player: readString(record, "player", EMPTY_LOCAL_REPLAY_QUERY.player),
     exactPlayer: readBoolean(record, "exactPlayer", EMPTY_LOCAL_REPLAY_QUERY.exactPlayer),
+    playerSlot: readNullableNumber(record, "playerSlot", EMPTY_LOCAL_REPLAY_QUERY.playerSlot),
     map: readString(record, "map", EMPTY_LOCAL_REPLAY_QUERY.map),
     replayId: readString(record, "replayId", EMPTY_LOCAL_REPLAY_QUERY.replayId),
     mod: readString(record, "mod", EMPTY_LOCAL_REPLAY_QUERY.mod),
@@ -399,6 +402,7 @@ export function localPresetSignature(query: LocalReplayQuery): string {
   return JSON.stringify({
     player: query.player.trim(),
     exactPlayer: query.exactPlayer,
+    playerSlot: query.playerSlot ?? null,
     map: query.map.trim(),
     replayId: query.replayId.trim(),
     mod: query.mod.trim(),

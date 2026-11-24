@@ -196,6 +196,8 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
       ...form,
       player: EMPTY_REPLAY_QUERY.player,
       exactPlayer: EMPTY_REPLAY_QUERY.exactPlayer,
+      // The slot narrows the name, so it goes where the name goes.
+      playerSlot: EMPTY_REPLAY_QUERY.playerSlot,
       sortBy: EMPTY_REPLAY_QUERY.sortBy,
       sortDescending: EMPTY_REPLAY_QUERY.sortDescending,
       minReviewScore: EMPTY_REPLAY_QUERY.minReviewScore,
@@ -274,6 +276,7 @@ export function VaultSearch({ featuredMods, leaderboards, self, friends, initial
             onChange={(e) => set("player", e.target.value)}
           />
         </label>
+
 
         <label className="vault-field vault-field-grow search-panel-field search-panel-field-grow">
           <span className="vault-field-label search-panel-label">{t("replays.search.map")}</span>

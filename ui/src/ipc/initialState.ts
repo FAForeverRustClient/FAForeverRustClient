@@ -145,6 +145,7 @@ export const INITIAL_STATE: AppState = {
     "vaultQuery": {
       "player": "",
       "exactPlayer": true,
+      "playerSlot": null,
       "map": "",
       "mapAuthor": "",
       "title": "",

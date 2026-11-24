@@ -1,0 +1,1 @@
+- Opening a private conversation no longer puts the newest message above the older history.

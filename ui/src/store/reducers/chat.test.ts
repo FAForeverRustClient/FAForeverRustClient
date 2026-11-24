@@ -420,6 +420,34 @@ describe("history replayed on a rejoin (#471)", () => {
   });
 });
 
+describe("a private conversation's backfill (#794)", () => {
+  // Rust: `merge_by_time`. The conversation opens on today's message, and the
+  // history it asks for next is mostly older than that message.
+  const backfill = (initial: ChatState, messages: ChatMessage[]): ChatState =>
+    apply(initial, {
+      type: "historyReceived",
+      payload: { channel: "Nuggets", messages, earlier: false, moreBefore: true },
+    });
+
+  it("goes before the message that opened the conversation", () => {
+    const today = message({ msgid: "srv-today", timestamp: "2026-11-21T19:45:00Z" });
+    const lastWeek = message({ msgid: "srv-week", timestamp: "2026-11-14T15:10:00Z" });
+    const sameDay = message({ msgid: "srv-day", timestamp: "2026-11-14T15:11:00.000Z" });
+    const after = message({ msgid: "srv-after", timestamp: "2026-11-21T19:46:00Z" });
+    const opened = state({ channels: [channel("Nuggets", { messages: [today] })] });
+    const next = backfill(opened, [lastWeek, sameDay, { ...today, id: "replayed" }, after]);
+    expect(next.channels[0].messages).toEqual([lastWeek, sameDay, today, after]);
+  });
+
+  it("keeps the old order where a time cannot be read or is the same", () => {
+    const shown = message({ msgid: "srv-shown", timestamp: "2026-11-21T19:45:00Z" });
+    const same = message({ msgid: "srv-same", timestamp: "2026-11-21T19:45:00Z" });
+    const untimed = message({ msgid: "srv-untimed", timestamp: "yesterday" });
+    const opened = state({ channels: [channel("Nuggets", { messages: [shown] })] });
+    expect(backfill(opened, [untimed, same]).channels[0].messages).toEqual([shown, untimed, same]);
+  });
+});
+
 describe("server auto-join list", () => {
   // Twin of `normalize_channels`. The conformance fixture replays one case
   // through both reducers; these cover the edges it does not carry.

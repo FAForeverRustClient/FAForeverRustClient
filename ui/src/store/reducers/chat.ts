@@ -103,6 +103,39 @@ function holds(messages: readonly ChatMessage[], incoming: ChatMessage): boolean
   return messages.some((held) => sameLine(held, incoming));
 }
 
+const RFC3339 = /^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$/;
+
+/** Milliseconds of an RFC 3339 time, `null` for anything else, as chrono reads it. */
+function messageTime(message: ChatMessage): number | null {
+  if (!RFC3339.test(message.timestamp)) return null;
+  const at = Date.parse(message.timestamp.replace(" ", "T"));
+  return Number.isNaN(at) ? null : at;
+}
+
+/**
+ * The latest history laid in among the lines on screen by time. Twin of
+ * `merge_by_time`: a private conversation opens on the message that arrives,
+ * and its backlog is older than that message (#794). A line only moves in
+ * front when both times read and the backfill's is strictly earlier.
+ */
+function mergeByTime(held: readonly ChatMessage[], fresh: readonly ChatMessage[]): ChatMessage[] {
+  if (fresh.length === 0) return [...held];
+  const merged: ChatMessage[] = [];
+  let next = 0;
+  for (const line of held) {
+    const lineAt = messageTime(line);
+    while (next < fresh.length) {
+      const nextAt = messageTime(fresh[next]);
+      if (lineAt === null || nextAt === null || nextAt >= lineAt) break;
+      merged.push(fresh[next]);
+      next += 1;
+    }
+    merged.push(line);
+  }
+  merged.push(...fresh.slice(next));
+  return merged;
+}
+
 /** Twin of `ChatChannel::history_full`. */
 function historyFull(messages: readonly ChatMessage[]): boolean {
   return messages.filter((message) => message.kind !== "info").length >= MAX_MESSAGES;
@@ -387,7 +420,7 @@ export function reduceChat(state: ChatState, event: ChatEvent): ChatState {
           if (!holds(current.messages, message) && !holds(fresh, message)) fresh.push(message);
         }
         const messages = capMessages(
-          earlier ? [...fresh, ...current.messages] : [...current.messages, ...fresh],
+          earlier ? [...fresh, ...current.messages] : mergeByTime(current.messages, fresh),
         );
         return {
           ...current,
