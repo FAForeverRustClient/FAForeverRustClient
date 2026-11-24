@@ -224,7 +224,7 @@ pub(crate) fn build_main(
     );
     let nav_handle = app.clone();
     let new_win_handle = app.clone();
-    tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::default())
+    let builder = tauri::WebviewWindowBuilder::new(app, label, tauri::WebviewUrl::default())
         .title("FAForever Client")
         // First run only: the window-state plugin replaces this with the
         // remembered geometry when there is one.
@@ -236,12 +236,15 @@ pub(crate) fn build_main(
         // interface cannot be used at.
         .min_inner_size(560.0, 480.0)
         .resizable(true)
-        .visible(build == Build::First)
-        // Not focused when built again: a crash can come mid-game, and taking
-        // the focus would pull the player out of it. Tao shows a window built
-        // this way without activating it the first time, the one time a
-        // recovery shows it (`webview_recovery`).
-        .focused(build == Build::First)
+        .visible(build == Build::First);
+    // Not focused when built again: a crash can come mid-game, and taking
+    // the focus would pull the player out of it. Tao shows a window built
+    // this way without activating it the first time, the one time a
+    // recovery shows it (`webview_recovery`). On Android the activity's
+    // window is the only one and the system gives it the focus.
+    #[cfg(desktop)]
+    let builder = builder.focused(build == Build::First);
+    builder
         .initialization_script_for_all_frames(NEWS_EXTERNAL_LINK_SCRIPT)
         .initialization_script_for_all_frames(UNIT_DATABASE_EMBED_SCRIPT)
         // The only navigation hook. A plugin carrying a second copy of

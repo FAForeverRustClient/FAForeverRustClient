@@ -527,7 +527,15 @@ pub(crate) async fn show_notification_popup(
     Ok(())
 }
 
+/// Android has one window, the activity's: a second one floating above the
+/// game does not exist there.
+#[cfg(mobile)]
+fn popup_window(_app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
+    Err("desktop notification popups do not exist on Android".into())
+}
+
 /// The popup window, built hidden on first use.
+#[cfg(desktop)]
 fn popup_window(app: &tauri::AppHandle) -> Result<tauri::WebviewWindow, String> {
     if let Some(window) = app.get_webview_window(LABEL) {
         tracing::debug!("reusing desktop popup window");
@@ -856,6 +864,7 @@ pub(crate) fn notification_popup_interact(
     let updated = batch.map_or(Ok(()), |batch| publish(&app, &batch));
     if let Some(open_main) = interaction_result? {
         if open_main {
+            #[cfg(desktop)]
             crate::tray::restore_main_window(&app);
             if let Some(main) = crate::window::main_window(&app) {
                 // This is a wake-up, not the only copy of the click.
