@@ -25,10 +25,12 @@ interface MapPositions {
  * comes up most, for the slot filter of the replay searches (#791).
  *
  * Every position is held by one slot per side, so each row is a position with
- * its two slots. Seton's Clutch splits north (odd slots) from south (even),
- * Dual Gap left from right, with its pairs in the order the players name them
- * ("8/7 bottom air": 8 on the left). The map names stay as the vault spells
- * them; only the positions and sides are translated.
+ * its two slots, the odd one first. Seton's Clutch puts the odd slots north
+ * and the even ones south; Dual Gap Adaptive v14 puts them left and right, as
+ * its `_save.lua` places the spawn markers (odd at x 112 to 184, even at x 840
+ * to 911), so its bottom air is 7 on the left and 8 on the right. The map
+ * names stay as the vault spells them; only the positions and sides are
+ * translated.
  */
 const MAPS: MapPositions[] = [
   {
@@ -50,7 +52,7 @@ const MAPS: MapPositions[] = [
       { position: "replays.slotPositions.secondFront", slots: [9, 10] },
       { position: "replays.slotPositions.navy", slots: [5, 6] },
       { position: "replays.slotPositions.eco", slots: [11, 12] },
-      { position: "replays.slotPositions.bottomAir", slots: [8, 7] },
+      { position: "replays.slotPositions.bottomAir", slots: [7, 8] },
     ],
   },
 ];
