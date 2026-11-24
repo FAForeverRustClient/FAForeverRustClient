@@ -142,6 +142,31 @@ pnpm test                   # run frontend tests
 pnpm run build              # build the frontend to ui/dist
 ```
 
+### Android
+
+The Android app is Tauri's mobile build of the same client, in its own Android project
+`src-tauri/gen/android` (made once by `tauri android init`; its activity, manifest and
+signing are ours). It needs JDK 17, the Android SDK with platform 36 and an NDK (`ANDROID_HOME`,
+`NDK_HOME`), and the Rust target:
+
+```bash
+rustup target add aarch64-linux-android        # x86_64-linux-android too for the emulator
+pnpm exec tauri android build --apk --target aarch64
+```
+
+- `pnpm exec tauri`, not `pnpm run tauri`: the package script first downloads the desktop
+  helpers (`faf-uid`, the ICE adapters, a Java runtime), which an Android build does not use.
+- The release APK is signed with the keystore `ANDROID_KEYSTORE_PATH` names (with
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`), as the release
+  workflow sets them from its secrets. Without them it is signed with the standard debug key,
+  for the builder's own devices only.
+- On Android the TLS stack is rustls with Mozilla's roots (`crates/faf-app/Cargo.toml`), and the
+  desktop-only parts (the tray, the single-instance and window-state plugins, the notification
+  popup window, the folder picker) are behind `cfg(desktop)`. The app runs in landscape: the
+  page is the desktop one.
+- What works so far: the app starts and shows the sign-in screen (checked on the emulator).
+  Signing in, the lobby and starting a game on Android are not done yet.
+
 ## Conventions
 
 When you add anything, follow [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §8:

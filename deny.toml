@@ -52,6 +52,14 @@ allow = ["MIT", "Apache-2.0"]
 name = "libbz2-rs-sys"
 allow = ["bzip2-1.0.6"]
 
+[[licenses.exceptions]]
+# Mozilla's root certificates, compiled into the Android build: Android has no
+# OpenSSL for the platform TLS stack the desktop builds use, so there reqwest
+# and tokio-tungstenite use rustls with these roots. The licence is the Linux
+# Foundation's permissive one for data. Allowed for this crate alone.
+name = "webpki-roots"
+allow = ["CDLA-Permissive-2.0"]
+
 [bans]
 # Duplicates are a fact of a Tauri dependency tree (three `winnow`s, two
 # `reqwest`s), and forcing them to one version is upstream's work, not a gate

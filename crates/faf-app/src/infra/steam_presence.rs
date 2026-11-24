@@ -22,12 +22,13 @@
 //! * A helper that dies for any reason takes the status with it. A flag in this
 //!   process could outlive the game it was about.
 //!
-//! Windows and Linux, the two platforms this client is released for. On Linux
-//! the game runs through Wine or Proton but the library is the native one, and
-//! it talks to the native Steam client, which does not mind that app 9420 is a
-//! Windows game: ownership is what it checks. The process watched there is the
-//! one the launch wrapper started, the same one the launcher already waits on
-//! to notice the game ending.
+//! Windows and Linux, the two desktop platforms this client is released for.
+//! Android has no Steam, so there the helper has nothing to load and says so.
+//! On Linux the game runs through Wine or Proton but the library is the native
+//! one, and it talks to the native Steam client, which does not mind that app
+//! 9420 is a Windows game: ownership is what it checks. The process watched
+//! there is the one the launch wrapper started, the same one the launcher
+//! already waits on to notice the game ending.
 //!
 //! Off unless the player turns it on (`GamePreferences::steam_presence`), and
 //! quiet when it cannot work: no library in this build, Steam not running, or
@@ -131,7 +132,9 @@ pub(crate) fn start(game_pid: u32) {
             Ok(output) => {
                 let reason = String::from_utf8_lossy(&output.stderr);
                 match output.status.code() {
-                    Some(0) => tracing::info!("Steam status cleared: the game ended"),
+                    Some(code) if code == Exit::GameEnded as i32 => {
+                        tracing::info!("Steam status cleared: the game ended")
+                    }
                     code => tracing::info!(
                         ?code,
                         reason = %reason.trim(),
@@ -159,18 +162,24 @@ pub fn run_helper_if_asked(arguments: &[String]) -> Option<i32> {
 }
 
 /// What the helper's exit code says. Only [`Exit::GameEnded`] ever showed a
-/// status; the rest are the reasons it could not.
+/// status; the rest are the reasons it could not, each where it can happen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(i32)]
 enum Exit {
     GameEnded = 0,
+    #[cfg(any(windows, target_os = "linux"))]
     Usage = 2,
+    #[cfg(any(windows, target_os = "linux"))]
     GameGone = 3,
+    #[cfg(any(windows, target_os = "linux"))]
     NoLibrary = 4,
+    #[cfg(any(windows, target_os = "linux"))]
     NoEntryPoint = 5,
+    #[cfg(any(windows, target_os = "linux"))]
     SteamRefused = 6,
-    /// A platform the client is not released for.
-    #[cfg_attr(any(windows, target_os = "linux"), allow(dead_code))]
+    /// A platform without Valve's library: Android, which has no Steam, and
+    /// any the client is not released for.
+    #[cfg(not(any(windows, target_os = "linux")))]
     Unsupported = 7,
 }
 
@@ -477,6 +486,7 @@ mod tests {
         assert!(matches!(code, Some(code) if code != Exit::GameEnded as i32));
     }
 
+    #[cfg(any(windows, target_os = "linux"))]
     #[test]
     fn a_helper_for_a_game_that_is_gone_says_so() {
         // Not a process id any system hands out: the largest a pid can be on
@@ -487,8 +497,6 @@ mod tests {
             "steam_api64.dll",
             "4194311",
         ]));
-        if LIBRARY.is_some() {
-            assert_eq!(code, Some(Exit::GameGone as i32));
-        }
+        assert_eq!(code, Some(Exit::GameGone as i32));
     }
 }

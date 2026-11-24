@@ -291,11 +291,103 @@ jobs:
           releaseId: ${{ needs.prepare.outputs.release_id }}
           args: ${{ matrix.args }}
 
+  publish-android:
+    name: Build Android
+    needs: prepare
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      # The release key, made once with keytool and kept only in the repository's
+      # secrets, base64-encoded: Android installs an update only when it carries
+      # the installed app's key, so losing it strands every installed copy.
+      # Without it the job builds nothing and the release goes out without an APK.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      # The NDK compiles the C in the dependency tree (zstd, ring and the like)
+      # and links the library.
+      NDK_VERSION: "29.0.14206865"
+    steps:
+      - name: Check for the release key
+        id: key
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No ANDROID_KEYSTORE_BASE64 secret: no Android build."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        if: steps.key.outputs.present == 'true'
+
+      - name: Install Rust stable with the Android target
+        if: steps.key.outputs.present == 'true'
+        uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable, 2026-10
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android
+
+      - name: Setup Java
+        if: steps.key.outputs.present == 'true'
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install the NDK
+        if: steps.key.outputs.present == 'true'
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$NDK_VERSION" "platforms;android-36" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Setup pnpm
+        if: steps.key.outputs.present == 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+
+      - name: Setup Node
+        if: steps.key.outputs.present == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: lts/*
+          cache: 'pnpm'
+
+      - name: Install frontend dependencies
+        if: steps.key.outputs.present == 'true'
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm exec`, not `pnpm run tauri`: the package script first downloads
+      # the desktop helpers (faf-uid, the ICE adapters, a Java runtime), which
+      # an Android build has no use for.
+      - name: Build the APK
+        if: steps.key.outputs.present == 'true'
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
+          pnpm exec tauri android build --apk --target aarch64 --ci
+          rm -f "$RUNNER_TEMP/release.keystore"
+
+      - name: Upload into the draft
+        if: steps.key.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ needs.prepare.outputs.release_id }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          APK=$(ls src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk)
+          gh api --method POST -H "Content-Type: application/vnd.android.package-archive" \
+            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets?name=FAForever.Client_${VERSION}_android_arm64.apk" \
+            --input "$APK" --jq .browser_download_url
+
   publish:
     name: Publish the release
     # `needs` on a matrix job waits for every platform and fails if any did,
-    # so a release missing an installer is never offered to anybody.
-    needs: [prepare, publish-tauri]
+    # so a release missing an installer is never offered to anybody. The
+    # Android job succeeds without building when there is no release key.
+    needs: [prepare, publish-tauri, publish-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write

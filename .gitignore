@@ -20,8 +20,11 @@ ui/dist
 *.local
 .pnpm-store/
 
-# Tauri generated
-src-tauri/gen
+# Tauri generated, except the Android project: `tauri android init` makes it once,
+# and the app's own Android parts (its activity, manifest and signing) live in it.
+# Its own .gitignore files leave out what each build writes into it.
+src-tauri/gen/*
+!src-tauri/gen/android
 
 # Runtime logs and crash output can contain player identities, game IDs, IPs,
 # ports, local paths, and authentication diagnostics.
