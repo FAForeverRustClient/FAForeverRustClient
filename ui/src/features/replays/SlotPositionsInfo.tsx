@@ -25,10 +25,10 @@ interface MapPositions {
  * comes up most, for the slot filter of the replay searches (#791).
  *
  * Every position is held by one slot per side, so each row is a position with
- * its two slots. Seton's Clutch splits north (odd slots) from south (even);
- * Dual Gap's pairs are kept in the order the players name them ("8/7 bottom
- * air"). The map names stay as the vault spells them; only the positions are
- * translated.
+ * its two slots. Seton's Clutch splits north (odd slots) from south (even),
+ * Dual Gap left from right, with its pairs in the order the players name them
+ * ("8/7 bottom air": 8 on the left). The map names stay as the vault spells
+ * them; only the positions and sides are translated.
  */
 const MAPS: MapPositions[] = [
   {
@@ -43,7 +43,7 @@ const MAPS: MapPositions[] = [
   },
   {
     name: "Dual Gap Adaptive v14",
-    sides: null,
+    sides: ["replays.slotPositions.left", "replays.slotPositions.right"],
     rows: [
       { position: "replays.slotPositions.topAir", slots: [1, 2] },
       { position: "replays.slotPositions.front", slots: [3, 4] },

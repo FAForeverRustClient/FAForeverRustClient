@@ -2699,6 +2699,8 @@ export const en = {
   "replays.slotPositions.heading": "Start positions by slot",
   "replays.slotPositions.north": "North",
   "replays.slotPositions.south": "South",
+  "replays.slotPositions.left": "Left",
+  "replays.slotPositions.right": "Right",
   "replays.slotPositions.mid": "Mid",
   "replays.slotPositions.rock": "Rock",
   "replays.slotPositions.beach": "Beach",

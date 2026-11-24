@@ -3735,6 +3735,8 @@ export const ru: Partial<Record<MessageKey, Message>> = {
   "replays.slotPositions.heading": "Стартовые позиции по слотам",
   "replays.slotPositions.north": "Север",
   "replays.slotPositions.south": "Юг",
+  "replays.slotPositions.left": "Слева",
+  "replays.slotPositions.right": "Справа",
   "replays.slotPositions.mid": "Центр",
   "replays.slotPositions.rock": "Скала",
   "replays.slotPositions.beach": "Пляж",

@@ -3249,6 +3249,8 @@ export const es: Partial<Record<MessageKey, Message>> = {
   "replays.slotPositions.heading": "Puntos de inicio por posición",
   "replays.slotPositions.north": "Norte",
   "replays.slotPositions.south": "Sur",
+  "replays.slotPositions.left": "Izquierda",
+  "replays.slotPositions.right": "Derecha",
   "replays.slotPositions.mid": "Centro",
   "replays.slotPositions.rock": "Roca",
   "replays.slotPositions.beach": "Playa",
