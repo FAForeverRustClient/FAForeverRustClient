@@ -26,6 +26,7 @@ import type { MessageKey } from "../../../i18n";
 import { useTranslation } from "../../../i18n/useTranslation";
 import { DateInput } from "../../../design-system/DateInput";
 import { MAX_SLOT, parseSlot } from "../../../shared/replayQuery";
+import { SlotPositionsInfo } from "../SlotPositionsInfo";
 
 const SORT_LABELS: Record<LocalReplaySortField, MessageKey> = {
   date: "replays.search.sort.datePlayed",
@@ -151,7 +152,10 @@ export function LocalReplaySearch({
 
         {/* Beside the name it narrows, as in the vault search (#791). */}
         <label className="vault-field vault-search-slot search-panel-field">
-          <span className="vault-field-label search-panel-label">{t("replays.search.slot")}</span>
+          <span className="vault-field-label search-panel-label">
+            {t("replays.search.slot")}
+            <SlotPositionsInfo />
+          </span>
           <input
             className="vault-input search-panel-control"
             type="number"

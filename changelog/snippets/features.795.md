@@ -1,1 +1,2 @@
 - Replays show the slot each player sat in, and both replay searches can filter by it: a name with slot 8 finds the games that player played from slot 8.
+- An info icon beside the slot filter shows which start position each slot is on Seton's Clutch and Dual Gap Adaptive v14.
