@@ -20,8 +20,11 @@ use super::launch::terminate_game;
 /// game ended, and its preparation would update the install a running game is
 /// using. A join still being prepared is not counted: a second click on it is
 /// refused quietly by the join slot, as before.
+///
+/// An offline copy the player started beside the game slot, with several
+/// copies allowed in Settings, is not counted: that is what they allowed.
 fn a_game_is_starting_or_running(ctx: &ServiceCtx, out: &EventSink) -> bool {
-    ctx.ports.process.game_running()
+    ctx.ports.process.game_slot_taken()
         || ctx.lobby.running_game_id().is_some()
         || out.with_state(|state| {
             matches!(

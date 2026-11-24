@@ -259,7 +259,12 @@ impl LiveStreamer {
         // has gone.
         // Before the stop, for the reason given in `launch_replay_file`.
         let _replacement = super::ReplacementGuard(Arc::clone(process));
-        process.stop_replay().await;
+        // With several copies allowed (Settings, Game) the replay already
+        // open stays open. The previous live session still ends: its pipe is
+        // the one this session needs.
+        if !process.multiple_instances() {
+            process.stop_replay().await;
+        }
         self.end_session().await;
         let token = self
             .tokens

@@ -221,6 +221,17 @@ export function GameSettingsSection() {
         )}
 
         <SettingRow
+          label={t("settings.game.multipleInstances")}
+          hint={t("settings.game.multipleInstancesHint")}
+        >
+          <SettingsSwitch
+            checked={preferences.allowMultipleInstances ?? false}
+            onChange={(allowMultipleInstances) => void save({ allowMultipleInstances })}
+            label={t("settings.game.multipleInstances")}
+          />
+        </SettingRow>
+
+        <SettingRow
           label={t("settings.game.forceAffinity")}
           hint={t("settings.game.forceAffinityHint")}
         >

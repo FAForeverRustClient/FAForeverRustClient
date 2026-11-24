@@ -2561,6 +2561,8 @@ export const pl: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Usuwa ramkę okna gry i rozciąga je na cały ekran, dopóki gra działa. Samo Forged Alliance musi być ustawione na tryb okienkowy.",
   "settings.game.borderlessWindow": "Okno bez ramki",
+  "settings.game.multipleInstancesHint": "Otwiera kolejną powtórkę obok już otwartej zamiast ją zamykać, a „Graj offline” i samouczki uruchamia obok trwającej gry. Jedna gra online naraz pozostaje zasadą serwera. Kopie jednej instalacji dzielą jej pliki: powtórka z innej wersji gry może się nie uruchomić, dopóki otwarta jest inna.",
+  "settings.game.multipleInstances": "Zezwalaj na wiele instancji",
   "settings.game.forceAffinity": "Trzymaj grę z dala od pierwszych rdzeni",
   "settings.game.forceAffinityHint": "Na komputerach z sześcioma lub więcej rdzeniami logicznymi Forged Alliance omija dwa pierwsze, na których system wykonuje większość własnej pracy. Działa od następnej gry.",
   "lobby.modConflict.title": "Zastąpić zainstalowane mody?",

@@ -6530,6 +6530,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -69622,6 +69623,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -69945,6 +69947,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -70278,6 +70281,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -70615,6 +70619,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -70944,6 +70949,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -71284,6 +71290,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -71638,6 +71645,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -71984,6 +71992,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -72340,6 +72349,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -72775,6 +72785,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -73217,6 +73228,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -73612,6 +73624,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -74009,6 +74022,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -74575,6 +74589,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -92122,6 +92137,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -92468,6 +92484,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -92852,6 +92869,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -93256,6 +93274,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -93442,6 +93461,7 @@
               "payload": {
                 "preferences": {
                   "additionalArguments": [],
+                  "allowMultipleInstances": false,
                   "autoGenerateMaps": true,
                   "autoUpdateMapAndMods": false,
                   "borderlessWindow": false,
@@ -93624,6 +93644,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -93775,6 +93796,7 @@
               "field": "game",
               "value": {
                 "additionalArguments": [],
+                "allowMultipleInstances": false,
                 "autoGenerateMaps": true,
                 "autoUpdateMapAndMods": false,
                 "borderlessWindow": false,
@@ -93971,6 +93993,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -94306,6 +94329,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -94667,6 +94691,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -95021,6 +95046,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -95364,6 +95390,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -95709,6 +95736,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -96030,6 +96058,7 @@
                   },
                   "game": {
                     "additionalArguments": [],
+                    "allowMultipleInstances": false,
                     "autoGenerateMaps": true,
                     "autoUpdateMapAndMods": false,
                     "borderlessWindow": false,
@@ -96340,6 +96369,7 @@
             },
             "game": {
               "additionalArguments": [],
+              "allowMultipleInstances": false,
               "autoGenerateMaps": true,
               "autoUpdateMapAndMods": false,
               "borderlessWindow": false,
@@ -96648,6 +96678,7 @@
                 },
                 "game": {
                   "additionalArguments": [],
+                  "allowMultipleInstances": false,
                   "autoGenerateMaps": true,
                   "autoUpdateMapAndMods": false,
                   "borderlessWindow": false,
@@ -138935,6 +138966,7 @@
       },
       "game": {
         "additionalArguments": [],
+        "allowMultipleInstances": false,
         "autoGenerateMaps": true,
         "autoUpdateMapAndMods": false,
         "borderlessWindow": false,

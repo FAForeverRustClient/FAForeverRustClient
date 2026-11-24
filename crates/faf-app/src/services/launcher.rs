@@ -77,7 +77,7 @@ pub async fn start(
     out: &EventSink,
     already_prepared: bool,
 ) -> Option<LaunchSession> {
-    if ctx.ports.process.game_running() {
+    if ctx.ports.process.game_slot_taken() {
         return fail(
             ctx,
             out,

@@ -1,0 +1,1 @@
+- Settings, Game has a new "Allow multiple instances" switch: open several replays at once, and play offline beside a running game.

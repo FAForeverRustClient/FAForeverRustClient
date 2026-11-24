@@ -218,6 +218,23 @@ pub struct GamePreferences {
     /// game itself set to windowed. Off by default. Windows only.
     #[serde(default)]
     pub borderless_window: bool,
+    /// Let more than one Forged Alliance run from this client at once: a
+    /// replay opened while another is still open starts beside it instead of
+    /// replacing it, "Play offline" and tutorials start beside whatever game
+    /// is already running, and the game and the replay may share one install.
+    ///
+    /// The game itself allows this since the client sets
+    /// `debug.enable_debug_facilities` in `game.prefs` before every launch
+    /// (#676), which is how FA's developers start several copies of one
+    /// install (`scripts/LaunchFAInstances.ps1` in FAForever/fa). What stays
+    /// one at a time is what the server allows: one live game per account,
+    /// and with it one lesson, which reads its result when its game ends.
+    ///
+    /// Off by default: copies of one install share its cache and its files,
+    /// and a replay of another game version updates the replay install under
+    /// the replay already open.
+    #[serde(default)]
+    pub allow_multiple_instances: bool,
     /// Programs of the player's own started alongside the game, such as a
     /// recording tool. See [`CompanionProgram`].
     #[serde(default)]
@@ -273,6 +290,7 @@ impl Default for GamePreferences {
             map_generator_instances: 0,
             steam_presence: false,
             borderless_window: false,
+            allow_multiple_instances: false,
             companions: Vec::new(),
             auto_update_map_and_mods: false,
             force_affinity: true,
@@ -335,6 +353,7 @@ preference_patch! {
         map_generator_instances: u32,
         steam_presence: bool,
         borderless_window: bool,
+        allow_multiple_instances: bool,
         companions: Vec<CompanionProgram>,
         auto_update_map_and_mods: bool,
         force_affinity: bool,

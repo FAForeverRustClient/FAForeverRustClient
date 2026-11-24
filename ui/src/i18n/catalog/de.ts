@@ -4857,6 +4857,8 @@ export const de: Partial<Record<MessageKey, Message>> = {
 
   "settings.game.borderlessWindowHint": "Entfernt den Rahmen des Spielfensters und zieht es über den ganzen Bildschirm, solange das Spiel läuft. Forged Alliance selbst muss dafür auf Fenstermodus stehen.",
   "settings.game.borderlessWindow": "Randloses Fenster",
+  "settings.game.multipleInstancesHint": "Öffnet ein weiteres Replay neben dem bereits offenen, statt es zu schließen, und startet „Offline spielen“ und Tutorials neben einem laufenden Spiel. Ein Online-Spiel zur Zeit bleibt die Regel des Servers. Kopien einer Installation teilen sich ihre Dateien: Ein Replay einer anderen Spielversion startet unter Umständen nicht, solange ein anderes offen ist.",
+  "settings.game.multipleInstances": "Mehrere Instanzen erlauben",
   "settings.game.forceAffinity": "Spiel von den ersten CPU-Kernen fernhalten",
   "settings.game.forceAffinityHint": "Auf Rechnern mit sechs oder mehr logischen Kernen meidet Forged Alliance die ersten beiden, auf denen das System den Großteil seiner eigenen Arbeit erledigt. Gilt ab dem nächsten Spiel.",
   "lobby.joinDownload.title": "Diese Lobby braucht Mods, die du nicht hast",
