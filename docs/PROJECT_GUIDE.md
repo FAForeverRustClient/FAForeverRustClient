@@ -70,7 +70,7 @@ ui/          ← depends only on the generated TS types
 | `README.md` | Quick start + status + commands. |
 | `docs/ARCHITECTURE.md` | The **architecture contract** (rules, rationale, phase plan). |
 | `docs/PROJECT_GUIDE.md` | **This document** (the map). |
-| `app-icon.png` | Source icon from which Tauri icons are generated. |
+| `app-icon.svg` | Source icon from which Tauri icons are generated. |
 | `.gitignore` | Build output, local config, and anything that could carry a secret or a player identity. Also `AGENTS.md` and `docs/env.txt`, which are personal files by design. |
 | `docs/` | Documentation. [`docs/README.md`](README.md) says which documents are kept current and which are dated notes. |
 | `scripts/` | Build and check scripts run through pnpm, including the repository guardrails in §8. |
