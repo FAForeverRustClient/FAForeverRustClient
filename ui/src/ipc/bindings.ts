@@ -14976,10 +14976,19 @@ export type ValidationIssue =
 { kind: "mapSizeNotAMultiple"; payload: {
 	mapSize: number,
 } } |
-/**  The generator aborts: no selected symmetry can make this many teams. */
+/**
+ *  The generator aborts: no selected symmetry can make this many teams.
+ *
+ *  A symmetry splits the map into equal parts, and the teams have to share
+ *  them out evenly: `XZ` and `ZX` mirror it into two halves and so make
+ *  two teams, never twelve. `fitting` names what would work, because "ZX,
+ *  XZ cannot produce 12 teams" alone read as the client refusing what the
+ *  generator allows (#803).
+ */
 { kind: "symmetryIncompatible"; payload: {
 	symmetries: string[],
 	numTeams: number,
+	fitting: string[],
 } } |
 /**  Outside the generator's accepted range. */
 { kind: "outOfRange"; payload: {

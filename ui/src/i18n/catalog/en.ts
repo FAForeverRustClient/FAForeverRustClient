@@ -3570,6 +3570,8 @@ export const en = {
   "maps.generate.issue.spawnsNotDivisible": "{spawns} spawns cannot be split evenly between {teams} teams.",
   "maps.generate.issue.mapSizeNotMultiple": "Map size {size} is not a multiple of {step}.",
   "maps.generate.issue.symmetryIncompatible": "{symmetries} cannot produce {teams} teams.",
+  "maps.generate.issue.symmetryIncompatibleFitting": "{symmetries} cannot produce {teams} teams: a symmetry splits the map into equal parts, and the teams have to share them evenly. For {teams} teams, pick {fitting}.",
+  "maps.generate.issue.fittingAndMore": "{list} or {count} more",
   "maps.generate.issue.outOfRange": "{field} {value} is outside {min}-{max}.",
   "maps.generate.field.spawnCount": "Spawn count",
   "maps.generate.field.teamCount": "Team count",

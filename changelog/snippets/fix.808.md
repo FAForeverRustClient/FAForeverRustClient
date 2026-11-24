@@ -1,0 +1,1 @@
+- When the chosen map symmetries cannot make the selected number of teams, the map generator now says which symmetries would.
