@@ -39,6 +39,7 @@ const IGNORED_FILES = new Map([
   ["ui/src/ipc/bindings.ts", "generated wire contracts and compact-delta kind names, never UI copy"],
   ["ui/src/store/reducer.ts", "AppEvent kind discriminants, matched against the wire"],
   ["ui/src/shared/mapPresentation.ts", "official map names: proper nouns, never translated"],
+  ["ui/src/features/replays/slotPositions.ts", "the slot table's map names: proper nouns, never translated; its positions are keys"],
   ["ui/src/shared/linuxRuntimeText.ts", "product names (GE-Proton, DXVK) and the shell commands that install packages"],
   ["ui/src/design-system/Icon.tsx", "inline SVG path data"],
   ["ui/src/shared/externalLinks.ts", "developer-facing throw messages, never rendered"],
