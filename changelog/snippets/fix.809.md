@@ -1,0 +1,1 @@
+- The app icon has a dark outline and fills its square, so it stays visible on a light taskbar.
